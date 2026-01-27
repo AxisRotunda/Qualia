@@ -1,0 +1,5 @@
+{
+  "name": "Newton's Lab 3D",
+  "description": "A high-performance 3D physics sandbox using Rapier WASM and Three.js. Spawn objects, manipulate gravity, and observe realistic rigid body dynamics.",
+  "requestFramePermissions": []
+}
