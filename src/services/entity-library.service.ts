@@ -8,7 +8,7 @@ export interface EntityTemplate {
   id: string;
   label: string;
   geometry: 'box' | 'cylinder' | 'sphere';
-  size: THREE.Vector3; // For cylinder: x=radiusTop, y=height, z=radiusBottom (unused)
+  size: THREE.Vector3; // For cylinder: x=radiusTop, y=height
   color: number;
   mass: number;
   friction: number;
@@ -66,8 +66,8 @@ export class EntityLibraryService {
     if (tpl.geometry === 'box') {
       bodyDef = engine.physicsService.createBox(position.x, position.y, position.z, tpl.size.x, tpl.size.y, tpl.size.z, tpl.mass);
     } else if (tpl.geometry === 'cylinder') {
-      // createCylinder(x, y, z, height, radius)
-      // tpl.size.x is radius, tpl.size.y is height
+      // createCylinder(x, y, z, height, radius, mass)
+      // tpl.size.y is height, tpl.size.x is radius
       bodyDef = engine.physicsService.createCylinder(position.x, position.y, position.z, tpl.size.y, tpl.size.x, tpl.mass);
     } else {
        // Sphere
@@ -102,4 +102,3 @@ export class EntityLibraryService {
     return this.templates.filter(t => t.tags.includes(tag));
   }
 }
-    

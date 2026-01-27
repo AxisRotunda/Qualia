@@ -54,6 +54,7 @@ export class EngineService {
 
   async init(canvas: HTMLCanvasElement) {
     try {
+      // Deterministic init order
       await this.physicsService.init();
       this.sceneService.init(canvas);
       
@@ -124,50 +125,65 @@ export class EngineService {
       // Particles
       this.particleService.update(dt);
 
-      // Physics
+      // Physics & Transform Sync
       if (!this.isPaused()) {
         const pStart = performance.now();
         this.physicsService.step();
         this.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
 
+        // Single pass: Sync Physics -> ECS -> Mesh
         this.world.rigidBodies.forEach((rb, entity) => {
+          // Skip if being dragged by gizmo
           if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) return;
 
           const pose = this.physicsService.getBodyPose(rb.handle);
           if (pose) {
             const transform = this.world.transforms.get(entity);
             if (transform) {
+                // 1. Physics -> ECS
                 transform.position = pose.p;
                 transform.rotation = pose.q;
+
+                // 2. ECS -> Mesh
+                const meshRef = this.world.meshes.get(entity);
+                if (meshRef) {
+                    meshRef.mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
+                    meshRef.mesh.quaternion.set(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
+                    meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
+                }
             }
           }
         });
+      } else {
+          // Paused State: Handle Gizmo updates or static sync
+          this.world.meshes.forEach((meshRef, entity) => {
+             // Only strictly necessary if we allow manipulation while paused (we do)
+             const transform = this.world.transforms.get(entity);
+             if (transform) {
+                 // Gizmo dragging updates the ECS transform directly in the loop below
+                 if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) {
+                      const mesh = meshRef.mesh;
+                      // Mesh -> ECS
+                      transform.position = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+                      transform.rotation = { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w };
+                      transform.scale = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
+                      
+                      const rb = this.world.rigidBodies.get(entity);
+                      const def = this.world.bodyDefs.get(entity);
+
+                      if (rb) {
+                          this.physicsService.updateBodyTransform(rb.handle, transform.position, transform.rotation);
+                          if (def) this.physicsService.updateBodyScale(rb.handle, def, transform.scale);
+                      }
+                 } else {
+                      // ECS -> Mesh (for consistency)
+                      meshRef.mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
+                      meshRef.mesh.quaternion.set(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
+                      meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
+                 }
+             }
+          });
       }
-
-      // Sync ECS -> Render
-      this.world.meshes.forEach((meshRef, entity) => {
-        const transform = this.world.transforms.get(entity);
-        if (transform) {
-          if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) {
-              const mesh = meshRef.mesh;
-              transform.position = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
-              transform.rotation = { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w };
-              transform.scale = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
-              
-              const rb = this.world.rigidBodies.get(entity);
-              const def = this.world.bodyDefs.get(entity);
-
-              if (rb) {
-                  this.physicsService.updateBodyTransform(rb.handle, transform.position, transform.rotation);
-                  if (def) this.physicsService.updateBodyScale(rb.handle, def, transform.scale);
-              }
-          } else {
-              meshRef.mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
-              meshRef.mesh.quaternion.set(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
-              meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
-          }
-        }
-      });
       
       if (!this.isPaused() || this.selectedEntity() !== null) {
         this.sceneService.updateSelectionHelper();
@@ -184,13 +200,20 @@ export class EngineService {
   stepSimulation() {
       if (!this.isPaused()) return;
       this.physicsService.step();
-      // Sync one frame
+      
       this.world.rigidBodies.forEach((rb, entity) => {
           const pose = this.physicsService.getBodyPose(rb.handle);
-          if (pose && this.world.transforms.has(entity)) {
-            const t = this.world.transforms.get(entity)!;
-            t.position = pose.p;
-            t.rotation = pose.q;
+          if (pose) {
+              const transform = this.world.transforms.get(entity);
+              const meshRef = this.world.meshes.get(entity);
+              if (transform) {
+                  transform.position = pose.p;
+                  transform.rotation = pose.q;
+                  if (meshRef) {
+                      meshRef.mesh.position.set(pose.p.x, pose.p.y, pose.p.z);
+                      meshRef.mesh.quaternion.set(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
+                  }
+              }
           }
       });
   }
@@ -212,11 +235,12 @@ export class EngineService {
   }
 
   spawnSphere() {
-      // Manual sphere for now as template is specific
+      // Manual sphere spawn using normalized helpers
       const x = (Math.random() - 0.5) * 5;
       const y = 10 + Math.random() * 5;
       const z = (Math.random() - 0.5) * 5;
-      const bodyDef = this.physicsService.createSphere(x, y, z);
+      
+      const bodyDef = this.physicsService.createSphere(x, y, z, 0.5, 1.0); // radius 0.5, mass 1
       const mesh = this.sceneService.createMesh(bodyDef, 0xff0000);
       
       const entity = this.world.createEntity();
@@ -248,31 +272,30 @@ export class EngineService {
   }
 
   duplicateEntity(e: Entity) {
-      // Reuse logic from before or adapt to use template if possible
-      // For now keep legacy duplicate logic but ensure we handle Cylinder
       const t = this.world.transforms.get(e);
       const meshRef = this.world.meshes.get(e);
+      const oldDef = this.world.bodyDefs.get(e);
       const scale = t?.scale ?? { x: 1, y: 1, z: 1 };
       
-      if (t && meshRef) {
+      if (t && meshRef && oldDef) {
         const x = t.position.x + 1;
         const y = t.position.y;
         const z = t.position.z;
         const color = (meshRef.mesh.material as THREE.MeshStandardMaterial).color.getHex();
-        const geo = meshRef.mesh.geometry;
         
         let bodyDef;
         let typeName = 'Object';
 
-        if (geo instanceof THREE.SphereGeometry) {
-           bodyDef = this.physicsService.createSphere(x, y, z);
+        // Use the stored BodyDef to faithfully recreate physics
+        if (oldDef.type === 'sphere') {
+           bodyDef = this.physicsService.createSphere(x, y, z, oldDef.radius, oldDef.mass);
            typeName = 'Sphere';
-        } else if (geo instanceof THREE.CylinderGeometry) {
-            // parameters: radiusTop, radiusBottom, height
-            bodyDef = this.physicsService.createCylinder(x, y, z, geo.parameters.height, geo.parameters.radiusTop);
+        } else if (oldDef.type === 'cylinder') {
+            bodyDef = this.physicsService.createCylinder(x, y, z, oldDef.height!, oldDef.radius!, oldDef.mass);
             typeName = 'Cylinder';
         } else {
-           bodyDef = this.physicsService.createBox(x, y, z);
+           // Box
+           bodyDef = this.physicsService.createBox(x, y, z, oldDef.size?.w, oldDef.size?.h, oldDef.size?.d, oldDef.mass);
            typeName = 'Box';
         }
 
@@ -395,4 +418,3 @@ export class EngineService {
   }
   updateCount() { this.objectCount.set(this.world.entities.size); }
 }
-    

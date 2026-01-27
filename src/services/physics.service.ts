@@ -7,10 +7,11 @@ export interface PhysicsBodyDef {
   type: 'box' | 'sphere' | 'cylinder';
   position: { x: number, y: number, z: number };
   rotation: { x: number, y: number, z: number, w: number };
-  // Dimensions
+  // Dimensions (Full Size)
   size?: { w: number, h: number, d: number };
   radius?: number;
   height?: number; // for cylinder
+  mass?: number;
 }
 
 @Injectable({
@@ -32,6 +33,7 @@ export class PhysicsService {
     // Ground
     const groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
     const groundBody = this.world.createRigidBody(groundBodyDesc);
+    // Ground collider: 200x200 plane roughly (100 half-extent)
     const groundColliderDesc = RAPIER.ColliderDesc.cuboid(100, 0.1, 100);
     this.world.createCollider(groundColliderDesc, groundBody);
 
@@ -67,15 +69,23 @@ export class PhysicsService {
     const height = h ?? width;
     const depth = d ?? width;
     
-    const rigidBodyDesc = mass === 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+    // Use dynamic unless mass is explicitly 0 (static)
+    const rigidBodyDesc = (mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
     rigidBodyDesc.setTranslation(x, y, z);
-    if (mass && mass > 0) rigidBodyDesc.setMass(mass);
     
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
     
+    // Rapier expects half-extents
     const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2)
         .setRestitution(0.7)
         .setFriction(0.5);
+    
+    if (mass && mass > 0) {
+        colliderDesc.setMass(mass);
+    } else if (mass !== 0) {
+        colliderDesc.setDensity(1.0);
+    }
+
     this.world.createCollider(colliderDesc, rigidBody);
 
     return {
@@ -83,7 +93,8 @@ export class PhysicsService {
       type: 'box',
       position: { x, y, z },
       rotation: { x: 0, y: 0, z: 0, w: 1 },
-      size: { w: width, h: height, d: depth }
+      size: { w: width, h: height, d: depth },
+      mass
     };
   }
 
@@ -92,15 +103,21 @@ export class PhysicsService {
 
     const radius = r ?? (0.3 + Math.random() * 0.4);
 
-    const rigidBodyDesc = mass === 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+    const rigidBodyDesc = (mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
     rigidBodyDesc.setTranslation(x, y, z);
-    if (mass && mass > 0) rigidBodyDesc.setMass(mass);
 
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
 
     const colliderDesc = RAPIER.ColliderDesc.ball(radius)
         .setRestitution(0.8)
         .setFriction(0.5);
+
+    if (mass && mass > 0) {
+        colliderDesc.setMass(mass);
+    } else if (mass !== 0) {
+        colliderDesc.setDensity(1.0);
+    }
+
     this.world.createCollider(colliderDesc, rigidBody);
 
     return {
@@ -108,14 +125,15 @@ export class PhysicsService {
       type: 'sphere',
       position: { x, y, z },
       rotation: { x: 0, y: 0, z: 0, w: 1 },
-      radius
+      radius,
+      mass
     };
   }
 
   createCylinder(x: number, y: number, z: number, height: number, radius: number, mass: number = 1): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
       
-      const rigidBodyDesc = mass === 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+      const rigidBodyDesc = (mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
       rigidBodyDesc.setTranslation(x, y, z);
       
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
@@ -125,6 +143,12 @@ export class PhysicsService {
         .setRestitution(0.5)
         .setFriction(0.5);
       
+      if (mass && mass > 0) {
+        colliderDesc.setMass(mass);
+      } else if (mass !== 0) {
+        colliderDesc.setDensity(1.0);
+      }
+      
       this.world.createCollider(colliderDesc, rigidBody);
 
       return {
@@ -133,7 +157,8 @@ export class PhysicsService {
           position: { x, y, z },
           rotation: { x: 0, y: 0, z: 0, w: 1 },
           height,
-          radius
+          radius,
+          mass
       };
   }
 
@@ -186,9 +211,10 @@ export class PhysicsService {
     for(let i=0; i<n; i++) collidersToRemove.push(body.collider(i));
     collidersToRemove.forEach(c => this.world!.removeCollider(c, false));
 
-    let colliderDesc: RAPIER.ColliderDesc;
+    let colliderDesc: RAPIER.ColliderDesc | null = null;
 
     if (def.type === 'box' && def.size) {
+        // Calculate new half-extents
         const hx = (def.size.w / 2) * scale.x;
         const hy = (def.size.h / 2) * scale.y;
         const hz = (def.size.d / 2) * scale.z;
@@ -204,8 +230,15 @@ export class PhysicsService {
         return; 
     }
 
-    colliderDesc.setRestitution(0.7).setFriction(0.5);
-    this.world.createCollider(colliderDesc, body);
+    if (colliderDesc) {
+        colliderDesc.setRestitution(0.7).setFriction(0.5);
+        if (def.mass && def.mass > 0) {
+            colliderDesc.setMass(def.mass);
+        } else if (def.mass !== 0) {
+            colliderDesc.setDensity(1.0);
+        }
+        this.world.createCollider(colliderDesc, body);
+    }
   }
 
   removeBody(handle: number) {
@@ -215,4 +248,3 @@ export class PhysicsService {
     }
   }
 }
-    
