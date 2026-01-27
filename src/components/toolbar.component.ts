@@ -6,64 +6,62 @@ import { EngineService } from '../services/engine.service';
   selector: 'app-toolbar',
   standalone: true,
   template: `
-    <div class="h-10 flex items-center justify-between px-2 bg-slate-900 border-b border-slate-800 shadow-sm relative z-30">
+    <div class="h-10 flex items-center justify-between px-2 bg-slate-900 border-b border-slate-800 shadow-sm relative z-30 shrink-0">
       
-      <!-- Left Controls -->
-      <div class="flex items-center gap-1">
+      <!-- Left: Mobile Toggle & Spawning -->
+      <div class="flex items-center gap-1.5">
         <button class="tool-btn lg:hidden" 
                 [class.active]="leftPanelOpen()" 
                 (click)="toggleLeftPanel.emit()"
-                aria-label="Toggle Scene Tree">
-          <span class="material-symbols-outlined text-[20px]">menu</span>
+                aria-label="Toggle Outliner">
+          <span class="material-symbols-outlined icon-sm">menu</span>
         </button>
 
-        <!-- Divider for desktop -->
-        <div class="w-px h-5 bg-slate-700 mx-1 hidden lg:block"></div>
+        <div class="w-px h-5 bg-slate-800 mx-1 hidden lg:block"></div>
 
-        <!-- Spawn Tools -->
-        <div class="flex bg-slate-800 rounded p-0.5">
-            <button class="tool-btn-sm" (click)="spawnBox.emit()" title="Spawn Box">
-            <span class="material-symbols-outlined text-[18px]">check_box_outline_blank</span>
+        <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50">
+            <button class="tool-btn-sm" (click)="spawnBox.emit()" title="Spawn Cube" aria-label="Spawn Cube">
+              <span class="material-symbols-outlined icon-sm">check_box_outline_blank</span>
             </button>
-            <button class="tool-btn-sm" (click)="spawnSphere.emit()" title="Spawn Sphere">
-            <span class="material-symbols-outlined text-[18px]">circle</span>
+            <button class="tool-btn-sm" (click)="spawnSphere.emit()" title="Spawn Sphere" aria-label="Spawn Sphere">
+              <span class="material-symbols-outlined icon-sm">circle</span>
             </button>
         </div>
 
-        <div class="w-px h-5 bg-slate-700 mx-2"></div>
+        <div class="w-px h-5 bg-slate-800 mx-1"></div>
 
-        <!-- Selection Tools -->
         <button class="tool-btn" 
                 [disabled]="engine.selectedEntity() === null"
                 [class.opacity-40]="engine.selectedEntity() === null"
                 (click)="engine.focusSelectedEntity()" 
                 title="Focus Selection (F)">
-          <span class="material-symbols-outlined text-[20px]">center_focus_strong</span>
+          <span class="material-symbols-outlined icon-sm">center_focus_strong</span>
         </button>
       </div>
 
-      <!-- Center Controls (Playback) -->
-      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
-        <button class="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-                [class.bg-emerald-500]="!engine.isPaused()"
+      <!-- Center: Playback (Icon Only) -->
+      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <button class="w-8 h-8 rounded-full flex items-center justify-center transition-all focus-visible:outline-cyan-400"
+                [class.bg-emerald-600]="!engine.isPaused()"
                 [class.text-white]="!engine.isPaused()"
+                [class.hover:bg-emerald-500]="!engine.isPaused()"
                 [class.bg-slate-800]="engine.isPaused()"
                 [class.text-slate-400]="engine.isPaused()"
+                [class.hover:text-slate-200]="engine.isPaused()"
                 (click)="engine.togglePause()"
-                title="Play/Pause">
-             <span class="material-symbols-outlined text-[20px]">{{ engine.isPaused() ? 'play_arrow' : 'pause' }}</span>
+                [attr.aria-label]="engine.isPaused() ? 'Play Simulation' : 'Pause Simulation'">
+             <span class="material-symbols-outlined icon-md">{{ engine.isPaused() ? 'play_arrow' : 'pause' }}</span>
         </button>
       </div>
       
-      <!-- Right Controls -->
-      <div class="flex items-center gap-1">
-        <!-- View Options -->
-        <div class="flex bg-slate-800 rounded p-0.5 mr-2">
+      <!-- Right: View Options & Mobile Toggle -->
+      <div class="flex items-center gap-1.5">
+        <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50 mr-2">
             <button class="tool-btn-sm" [class.active]="showGrid()" (click)="toggleGrid()" title="Toggle Grid">
-                <span class="material-symbols-outlined text-[18px]">grid_3x3</span>
+                <span class="material-symbols-outlined icon-sm">grid_3x3</span>
             </button>
             <button class="tool-btn-sm" [class.active]="engine.wireframe()" (click)="engine.toggleWireframe()" title="Toggle Wireframe">
-                <span class="material-symbols-outlined text-[18px]">deployed_code</span>
+                <span class="material-symbols-outlined icon-sm">deployed_code</span>
             </button>
         </div>
 
@@ -71,24 +69,26 @@ import { EngineService } from '../services/engine.service';
                 [class.active]="rightPanelOpen()" 
                 (click)="toggleRightPanel.emit()"
                 aria-label="Toggle Inspector">
-          <span class="material-symbols-outlined text-[20px]">tune</span>
+          <span class="material-symbols-outlined icon-sm">tune</span>
         </button>
       </div>
     </div>
   `,
   styles: [`
     .tool-btn {
-      @apply w-8 h-8 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors;
+      @apply w-8 h-8 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors focus-visible:outline-cyan-400;
     }
     .tool-btn.active {
-      @apply text-cyan-400 bg-cyan-950/50;
+      @apply text-cyan-400 bg-cyan-950/30;
     }
     .tool-btn-sm {
-      @apply w-7 h-7 flex items-center justify-center rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors;
+      @apply w-7 h-7 flex items-center justify-center rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors focus-visible:outline-cyan-400;
     }
     .tool-btn-sm.active {
       @apply text-cyan-400 bg-slate-700;
     }
+    .icon-sm { font-size: 18px; }
+    .icon-md { font-size: 20px; }
   `]
 })
 export class ToolbarComponent {

@@ -14,6 +14,7 @@ export class SelectionHighlightService {
     effect(() => {
       const entity = this.engine.selectedEntity();
       if (entity !== null) {
+        // Safe check if mesh still exists (might have been deleted)
         const meshRef = this.engine.world.meshes.get(entity);
         this.scene.setSelection(meshRef ? meshRef.mesh : null);
       } else {

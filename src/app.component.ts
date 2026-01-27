@@ -1,5 +1,5 @@
 
-import { Component, ElementRef, ViewChild, AfterViewInit, HostListener, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, HostListener, inject, signal, computed } from '@angular/core';
 import { EngineService } from './services/engine.service';
 import { CameraControlService } from './services/camera-control.service';
 import { SelectionHighlightService } from './services/selection-highlight.service';
@@ -24,33 +24,30 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
       
-      <!-- Top Section -->
+      <!-- Header Area -->
       <app-menu-bar />
       <app-toolbar 
         (spawnBox)="engine.spawnBox()"
         (spawnSphere)="engine.spawnSphere()"
-        (toggleLeftPanel)="togglePanel('left')"
-        (toggleRightPanel)="togglePanel('right')"
-        [leftPanelOpen]="showLeftPanel()"
-        [rightPanelOpen]="showRightPanel()"
+        (toggleLeftPanel)="toggleLeft()"
+        (toggleRightPanel)="toggleRight()"
+        [leftPanelOpen]="leftPanelOpen()"
+        [rightPanelOpen]="rightPanelOpen()"
       />
 
       <!-- Main Layout Area -->
-      <div class="relative flex-grow overflow-hidden flex">
+      <div class="flex flex-1 overflow-hidden relative">
         
-        <!-- LEFT DRAWER / PANEL -->
-        <aside class="panel-transition bg-slate-900 border-r border-slate-800 flex flex-col z-20"
-               [class.absolute]="isMobile"
-               [class.h-full]="true"
-               [class.w-64]="true"
-               [class.-translate-x-full]="!showLeftPanel()"
-               [class.translate-x-0]="showLeftPanel()"
-               [class.shadow-2xl]="isMobile">
-          <app-scene-tree />
-        </aside>
+        <!-- Desktop Left Panel -->
+        @if (leftPanelOpen() && !isMobile()) {
+          <aside class="flex flex-col w-64 bg-slate-950/95 border-r border-slate-800 z-10" aria-label="Outliner">
+            <app-scene-tree />
+          </aside>
+        }
 
-        <!-- CENTER VIEWPORT -->
-        <main class="relative flex-grow bg-slate-950 overflow-hidden select-none"
+        <!-- Viewport -->
+        <main class="relative flex-1 bg-slate-950 overflow-hidden select-none isolate"
+             aria-label="3D Viewport"
              (contextmenu)="onCanvasContextMenu($event)">
              
           @if (engine.loading()) {
@@ -60,11 +57,6 @@ import { CommonModule } from '@angular/common';
             </div>
           }
 
-          <!-- Overlay when mobile drawer is open to close it on click -->
-          @if (isMobile && (showLeftPanel() || showRightPanel())) {
-             <div class="absolute inset-0 bg-black/50 z-10 backdrop-blur-sm" (click)="closeAllPanels()"></div>
-          }
-
           <canvas #renderCanvas 
                   class="block w-full h-full outline-none touch-none"
                   (pointerdown)="onPointerDown($event)"
@@ -72,7 +64,7 @@ import { CommonModule } from '@angular/common';
           
           <!-- Context Menu -->
           @if (contextMenu()) {
-            <div class="absolute bg-slate-800 border border-slate-700 shadow-xl rounded-lg py-1 z-50 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
+            <div class="absolute bg-slate-900 border border-slate-700 shadow-xl rounded-lg py-1 z-50 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
                  [style.top.px]="contextMenu()!.y"
                  [style.left.px]="contextMenu()!.x"
                  (mouseleave)="contextMenu.set(null)">
@@ -82,26 +74,41 @@ import { CommonModule } from '@angular/common';
                <button class="menu-item" (click)="duplicateEntity(contextMenu()!.entity)">
                  <span class="material-symbols-outlined icon-xs">content_copy</span> Duplicate
                </button>
-               <div class="h-px bg-slate-700 my-1 mx-2"></div>
-               <button class="menu-item text-red-400 hover:text-red-300 hover:bg-red-900/20" (click)="deleteEntity(contextMenu()!.entity)">
+               <div class="h-px bg-slate-800 my-1 mx-2"></div>
+               <button class="menu-item text-red-400 hover:bg-red-950/50" (click)="deleteEntity(contextMenu()!.entity)">
                  <span class="material-symbols-outlined icon-xs">delete</span> Delete
                </button>
             </div>
           }
-
         </main>
 
-        <!-- RIGHT DRAWER / PANEL -->
-        <aside class="panel-transition bg-slate-900 border-l border-slate-800 flex flex-col z-20"
-               [class.absolute]="isMobile"
-               [class.right-0]="isMobile"
-               [class.h-full]="true"
-               [class.w-72]="true"
-               [class.translate-x-full]="!showRightPanel()"
-               [class.translate-x-0]="showRightPanel()"
-               [class.shadow-2xl]="isMobile">
-           <app-inspector />
-        </aside>
+        <!-- Desktop Right Panel -->
+        @if (rightPanelOpen() && !isMobile()) {
+          <aside class="flex flex-col w-80 bg-slate-950/95 border-l border-slate-800 z-10" aria-label="Inspector">
+            <app-inspector />
+          </aside>
+        }
+
+        <!-- Mobile Drawers (Overlay) -->
+        @if (isMobile()) {
+          <!-- Left Drawer -->
+          @if (leftPanelOpen()) {
+            <div class="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm" (click)="leftPanelOpen.set(false)">
+              <aside class="absolute left-0 top-0 bottom-0 w-72 bg-slate-900 border-r border-slate-800 shadow-2xl" (click)="$event.stopPropagation()">
+                <app-scene-tree />
+              </aside>
+            </div>
+          }
+
+          <!-- Right Drawer -->
+          @if (rightPanelOpen()) {
+            <div class="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm" (click)="rightPanelOpen.set(false)">
+              <aside class="absolute right-0 top-0 bottom-0 w-80 bg-slate-900 border-l border-slate-800 shadow-2xl" (click)="$event.stopPropagation()">
+                <app-inspector />
+              </aside>
+            </div>
+          }
+        }
 
       </div>
       
@@ -110,8 +117,7 @@ import { CommonModule } from '@angular/common';
     </div>
   `,
   styles: [`
-    .panel-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .menu-item { @apply w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-700 transition-colors text-slate-200; }
+    .menu-item { @apply w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-800 transition-colors text-slate-300; }
     .icon-xs { font-size: 16px; }
   `]
 })
@@ -123,18 +129,16 @@ export class AppComponent implements AfterViewInit {
   selectionHighlight = inject(SelectionHighlightService);
 
   // Layout State
-  showLeftPanel = signal(true);
-  showRightPanel = signal(true);
+  leftPanelOpen = signal(true);
+  rightPanelOpen = signal(true);
   
+  isMobile = signal(window.innerWidth < 1024);
+
   // Interaction State
   private pointerDownPos = { x: 0, y: 0 };
   private pointerDownTime = 0;
   
   contextMenu = signal<{x: number, y: number, entity: number} | null>(null);
-
-  get isMobile(): boolean {
-      return window.innerWidth < 1024;
-  }
 
   ngAfterViewInit() {
     this.engine.init(this.canvasRef.nativeElement);
@@ -143,32 +147,25 @@ export class AppComponent implements AfterViewInit {
 
   @HostListener('window:resize')
   onResize() {
+    this.isMobile.set(window.innerWidth < 1024);
     this.engine.resize(window.innerWidth, window.innerHeight);
     this.checkResponsive();
   }
 
-  private checkResponsive() {
-    if (window.innerWidth < 1024) {
-      // Auto-collapse on mobile
-      this.showLeftPanel.set(false);
-      this.showRightPanel.set(false);
-    } else {
-      // Auto-open on desktop
-      this.showLeftPanel.set(true);
-      this.showRightPanel.set(true);
-    }
+  toggleLeft() {
+    this.leftPanelOpen.update(v => !v);
   }
 
-  togglePanel(side: 'left' | 'right') {
-      if (side === 'left') this.showLeftPanel.update(v => !v);
-      if (side === 'right') this.showRightPanel.update(v => !v);
+  toggleRight() {
+    this.rightPanelOpen.update(v => !v);
   }
-  
-  closeAllPanels() {
-      if (this.isMobile) {
-          this.showLeftPanel.set(false);
-          this.showRightPanel.set(false);
-      }
+
+  private checkResponsive() {
+    // Optional: Auto-collapse logic could go here, but strictly relying on user preference + mobile override is cleaner
+    if (this.isMobile()) {
+       // ensure panels don't default open on small screens if logic requires
+       // currently keeping user state but rendering as overlay
+    }
   }
 
   // --- Interaction ---
@@ -180,16 +177,16 @@ export class AppComponent implements AfterViewInit {
   }
 
   onPointerUp(event: PointerEvent) {
-      // Calculate distance moved to distinguish Click vs Drag
-      const dist = Math.sqrt(
-          Math.pow(event.clientX - this.pointerDownPos.x, 2) + 
-          Math.pow(event.clientY - this.pointerDownPos.y, 2)
-      );
-      
-      const timeDiff = performance.now() - this.pointerDownTime;
+      const dx = event.clientX - this.pointerDownPos.x;
+      const dy = event.clientY - this.pointerDownPos.y;
+      const distSq = dx*dx + dy*dy;
+      const dt = performance.now() - this.pointerDownTime;
 
-      // Threshold: Movement < 5px AND duration < 300ms (standard click definition)
-      if (dist < 5 && timeDiff < 300 && event.button === 0) {
+      // Tight threshold: < 16px sq (4px linear) AND < 200ms
+      // This prevents accidental selection while orbiting
+      const isClick = distSq < 16 && dt < 200;
+
+      if (isClick && event.button === 0) {
           const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
           this.engine.selectedEntity.set(entity);
       }

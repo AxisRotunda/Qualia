@@ -10,12 +10,12 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
   standalone: true,
   imports: [MenuDropdownComponent],
   template: `
-    <nav class="flex items-center gap-1 px-3 py-1.5 bg-slate-950 border-b border-slate-800 select-none z-40 relative"
-         role="menubar">
+    <nav class="flex items-center gap-1 px-3 py-1 bg-slate-950 border-b border-slate-800 select-none z-50 relative shrink-0"
+         aria-label="Main Menu">
       <!-- Brand -->
-      <div class="flex items-center gap-2 mr-4">
-         <span class="material-symbols-outlined text-cyan-500 text-[20px]">deployed_code_history</span>
-         <span class="font-bold text-slate-200 text-sm tracking-wide">QUALIA<span class="text-cyan-500">3D</span></span>
+      <div class="flex items-center gap-2 mr-6">
+         <span class="material-symbols-outlined text-cyan-500 text-[18px]">deployed_code_history</span>
+         <span class="font-bold text-slate-200 text-xs tracking-wider">QUALIA<span class="text-cyan-500">3D</span></span>
       </div>
 
       <div class="hidden md:flex gap-1">
@@ -34,7 +34,7 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
       
       <!-- Right-aligned items -->
       <a href="https://github.com/dimforge/rapier" target="_blank" class="hidden md:flex items-center gap-1 px-2 py-1 text-[10px] text-slate-500 hover:text-cyan-400 transition-colors">
-        <span class="font-bold">Powered by Rapier & Three.js</span>
+        <span>Rapier & Three.js</span>
       </a>
     </nav>
   `
@@ -52,9 +52,9 @@ export class MenuBarComponent {
       label: 'File',
       execute: () => {},
       children: [
-        { id: 'new', label: 'New Scene', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
-        { id: 'save', label: 'Save Scene', shortcut: 'Ctrl+S', execute: () => console.log('Save triggered') },
-        { id: 'load', label: 'Load Scene', shortcut: 'Ctrl+O', execute: () => console.log('Load triggered') },
+        { id: 'new', label: 'New', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
+        { id: 'save', label: 'Save', shortcut: 'Ctrl+S', execute: () => console.log('Save triggered') },
+        { id: 'load', label: 'Open', shortcut: 'Ctrl+O', execute: () => console.log('Load triggered') },
         { id: 'export', label: 'Export GLTF', execute: () => console.log('Export triggered') }
       ]
     },
@@ -88,7 +88,7 @@ export class MenuBarComponent {
       children: [
         { id: 'sim-play',  label: 'Play',  shortcut: 'Space', isDisabled: () => !this.engine.isPaused(), execute: () => this.engine.setPaused(false) },
         { id: 'sim-pause', label: 'Pause', shortcut: 'Space', isDisabled: () => this.engine.isPaused(), execute: () => this.engine.setPaused(true) },
-        { id: 'sim-reset', label: 'Reset Scene', execute: () => this.engine.reset() },
+        { id: 'sim-reset', label: 'Reset', execute: () => this.engine.reset() },
       ]
     },
     {
@@ -97,9 +97,9 @@ export class MenuBarComponent {
       execute: () => {},
       children: [
         { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => this.engine.focusSelectedEntity() },
-        { id: 'camera-top', label: 'Top View', execute: () => this.engine.setCameraPreset('top') },
-        { id: 'camera-front', label: 'Front View', execute: () => this.engine.setCameraPreset('front') },
-        { id: 'camera-side', label: 'Side View', execute: () => this.engine.setCameraPreset('side') }
+        { id: 'camera-top', label: 'Top', execute: () => this.engine.setCameraPreset('top') },
+        { id: 'camera-front', label: 'Front', execute: () => this.engine.setCameraPreset('front') },
+        { id: 'camera-side', label: 'Side', execute: () => this.engine.setCameraPreset('side') }
       ]
     }
   ];

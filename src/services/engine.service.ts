@@ -1,3 +1,4 @@
+
 import { Injectable, signal, computed } from '@angular/core';
 import { PhysicsService } from './physics.service';
 import { SceneService } from './scene.service';
@@ -157,7 +158,6 @@ export class EngineService {
 
   private generateRandomColor(): number {
       const color = new THREE.Color();
-      // Generate vibrant colors: H 0-1, S 0.5-0.9, L 0.4-0.6
       color.setHSL(Math.random(), 0.6 + Math.random() * 0.3, 0.4 + Math.random() * 0.2);
       return color.getHex();
   }
@@ -282,7 +282,10 @@ export class EngineService {
   // --- Interaction API ---
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
-    const rect = this.sceneService.getDomElement().getBoundingClientRect();
+    const domEl = this.sceneService.getDomElement();
+    if (!domEl) return null;
+
+    const rect = domEl.getBoundingClientRect();
     
     // Normalized device coordinates (-1 to +1)
     this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -312,7 +315,6 @@ export class EngineService {
       if (e === null) return;
       const t = this.world.transforms.get(e);
       if (!t) return;
-      // Convert to THREE Vector for camera service
       this.cameraControl.focusOn(new THREE.Vector3(t.position.x, t.position.y, t.position.z));
   }
 
@@ -351,21 +353,31 @@ export class EngineService {
   // --- Entity Updates from Inspector ---
 
   updateEntityScale(e: Entity, scale: { x: number, y: number, z: number }) {
+      // Clamp scale to sane limits
+      const s = Math.max(0.1, Math.min(scale.x, 10));
+      const safeScale = { x: s, y: s, z: s };
+
       const t = this.world.transforms.get(e);
       const def = this.world.bodyDefs.get(e);
       const rb = this.world.rigidBodies.get(e);
 
       if (t && def && rb) {
-          t.scale = scale; // Update visual scale (synced in loop)
-          this.physicsService.updateBodyScale(rb.handle, def, scale);
+          t.scale = safeScale;
+          this.physicsService.updateBodyScale(rb.handle, def, safeScale);
       }
   }
 
   updateEntityPhysics(e: Entity, props: { friction: number, restitution: number }) {
+      // Clamp props
+      const safeProps = {
+          friction: Math.max(0, Math.min(props.friction, 5)),
+          restitution: Math.max(0, Math.min(props.restitution, 2))
+      };
+
       const rb = this.world.rigidBodies.get(e);
       if (rb) {
-          this.physicsService.updateBodyMaterial(rb.handle, props);
-          this.world.physicsProps.add(e, props);
+          this.physicsService.updateBodyMaterial(rb.handle, safeProps);
+          this.world.physicsProps.add(e, safeProps);
       }
   }
 
