@@ -130,6 +130,10 @@ export class SceneService {
       return this.materialRegistry.get(id) || this.materialRegistry.get('mat-default')!;
   }
 
+  hasMaterial(id: string): boolean {
+    return this.materialRegistry.has(id);
+  }
+
   setAtmosphere(preset: 'clear'|'fog'|'night') {
     switch(preset) {
       case 'clear':

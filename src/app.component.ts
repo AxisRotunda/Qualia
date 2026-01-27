@@ -8,6 +8,7 @@ import { InspectorComponent } from './components/inspector.component';
 import { MenuBarComponent } from './components/menu/menu-bar.component';
 import { ToolbarComponent } from './components/toolbar.component';
 import { StatusBarComponent } from './components/status-bar.component';
+import { DebugOverlayComponent } from './components/debug-overlay.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -19,7 +20,8 @@ import { CommonModule } from '@angular/common';
       InspectorComponent, 
       MenuBarComponent, 
       ToolbarComponent, 
-      StatusBarComponent
+      StatusBarComponent,
+      DebugOverlayComponent
   ],
   template: `
     <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
@@ -56,6 +58,8 @@ import { CommonModule } from '@angular/common';
               <p class="font-mono text-sm tracking-widest animate-pulse opacity-70">INITIALIZING ENGINE</p>
             </div>
           }
+
+          <app-debug-overlay />
 
           <canvas #renderCanvas 
                   class="block w-full h-full outline-none touch-none"

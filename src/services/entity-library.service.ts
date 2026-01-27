@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { EngineService } from './engine.service';
+import { SceneService } from './scene.service';
 import { Entity } from '../engine/core';
 
 export interface EntityTemplate {
@@ -36,6 +37,11 @@ export class EntityLibraryService {
       size: new THREE.Vector3(15, 5, 10), materialId: 'mat-concrete',
       mass: 0, friction: 0.6, restitution: 0.1, tags: ['building'] },
 
+    // Structures
+    { id: 'structure-ramp', label: 'Ramp', geometry: 'box',
+      size: new THREE.Vector3(10, 0.5, 20), materialId: 'mat-metal',
+      mass: 0, friction: 0.1, restitution: 0, tags: ['structure'] },
+
     // Terrain
     { id: 'terrain-road', label: 'Road Segment', geometry: 'box',
       size: new THREE.Vector3(20, 0.2, 8), materialId: 'mat-road',
@@ -63,7 +69,20 @@ export class EntityLibraryService {
       mass: 10, friction: 0.2, restitution: 0.5, tags: ['prop', 'dynamic'] }
   ];
 
-  spawnFromTemplate(engine: EngineService, templateId: string, position: THREE.Vector3): Entity {
+  validateTemplates(sceneService: SceneService) {
+    this.templates.forEach(tpl => {
+      // 1. Material Existence
+      if (tpl.materialId && !sceneService.hasMaterial(tpl.materialId)) {
+        console.warn(`[Validation Warning] Template '${tpl.id}' references missing material '${tpl.materialId}'`);
+      }
+      // 2. Geometry Support
+      if (!['box', 'sphere', 'cylinder'].includes(tpl.geometry)) {
+         console.error(`[Validation Error] Template '${tpl.id}' uses unsupported geometry '${tpl.geometry}'`);
+      }
+    });
+  }
+
+  spawnFromTemplate(engine: EngineService, templateId: string, position: THREE.Vector3, rotation?: THREE.Quaternion): Entity {
     const tpl = this.templates.find(t => t.id === templateId);
     if (!tpl) throw new Error(`Template ${templateId} not found`);
 
@@ -76,16 +95,25 @@ export class EntityLibraryService {
        bodyDef = engine.physicsService.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
     }
 
+    if (rotation) {
+        // Apply rotation to physics body
+        engine.physicsService.updateBodyTransform(bodyDef.handle, bodyDef.position, {x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w});
+        // Update bodyDef rotation for consistency (though bodyDef is mostly for creation record)
+        bodyDef.rotation = {x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w};
+    }
+
     engine.physicsService.updateBodyMaterial(bodyDef.handle, { friction: tpl.friction, restitution: tpl.restitution });
 
     const mesh = engine.sceneService.createMesh(bodyDef, { color: tpl.color, materialId: tpl.materialId });
+    // Mesh rotation will be synced by engine loop or set here
+    mesh.quaternion.copy(rotation || new THREE.Quaternion());
     
     const entity = engine.world.createEntity();
     engine.world.rigidBodies.add(entity, { handle: bodyDef.handle });
     engine.world.meshes.add(entity, { mesh });
     engine.world.transforms.add(entity, {
       position: { x: position.x, y: position.y, z: position.z },
-      rotation: { x: 0, y: 0, z: 0, w: 1 },
+      rotation: { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w },
       scale: { x: 1, y: 1, z: 1 }
     });
     engine.world.bodyDefs.add(entity, bodyDef);

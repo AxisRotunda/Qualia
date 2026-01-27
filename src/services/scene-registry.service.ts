@@ -23,19 +23,13 @@ export class SceneRegistryService {
     this.registerScenes();
   }
 
-  private registerScenes() {
-    this.scenes.set('city', {
-      label: 'City Slice',
-      load: (engine) => this.loadCitySlice(engine)
-    });
-    this.scenes.set('stacks', {
-      label: 'Stacks & Ramps',
-      load: (engine) => this.loadStacksAndRamps(engine)
-    });
-    this.scenes.set('particles', {
-      label: 'Pillars & Particles',
-      load: (engine) => this.loadPillarsAndParticles(engine)
-    });
+  // Plug-in surface: registerScene, listScenes, loadScene
+  registerScene(id: string, preset: ScenePreset) {
+      this.scenes.set(id, preset);
+  }
+
+  listScenes(): {id: string, label: string}[] {
+      return Array.from(this.scenes.entries()).map(([id, preset]) => ({id, label: preset.label}));
   }
 
   loadScene(engine: EngineService, sceneId: string) {
@@ -48,6 +42,21 @@ export class SceneRegistryService {
     // Uniform Lifecycle: Reset -> Atmosphere -> Spawn -> Camera
     engine.reset();
     preset.load(engine);
+  }
+
+  private registerScenes() {
+    this.registerScene('city', {
+      label: 'City Slice',
+      load: (engine) => this.loadCitySlice(engine)
+    });
+    this.registerScene('stacks', {
+      label: 'Stacks & Ramps',
+      load: (engine) => this.loadStacksAndRamps(engine)
+    });
+    this.registerScene('particles', {
+      label: 'Pillars & Particles',
+      load: (engine) => this.loadPillarsAndParticles(engine)
+    });
   }
 
   private loadCitySlice(engine: EngineService) {
@@ -83,18 +92,9 @@ export class SceneRegistryService {
   private loadStacksAndRamps(engine: EngineService) {
       engine.sceneService.setAtmosphere('clear');
       
-      // Ramp - using explicit creation here as it's a unique static geometry for this scene
-      const ramp = engine.physicsService.createBox(0, 5, 0, 10, 0.5, 20, 0); // Static
-      engine.physicsService.updateBodyTransform(ramp.handle, {x:0, y:5, z:0}, {x:0.2, y:0, z:0, w:0.98}); // Tilt
-      engine.physicsService.updateBodyMaterial(ramp.handle, {friction: 0.1, restitution: 0});
-      const mesh = engine.sceneService.createMesh(ramp, { materialId: 'mat-metal' });
-      
-      const e = engine.world.createEntity();
-      engine.world.rigidBodies.add(e, {handle: ramp.handle});
-      engine.world.meshes.add(e, {mesh});
-      engine.world.transforms.add(e, {position:{x:0,y:5,z:0}, rotation:{x:0.2,y:0,z:0,w:0.98}, scale:{x:1,y:1,z:1}});
-      engine.world.bodyDefs.add(e, ramp);
-      engine.world.names.add(e, "Ramp");
+      // Ramp
+      const rampRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, 0));
+      this.entityLib.spawnFromTemplate(engine, 'structure-ramp', new THREE.Vector3(0, 5, 0), rampRot);
 
       // Stack
       for(let i=0; i<10; i++) {

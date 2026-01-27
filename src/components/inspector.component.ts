@@ -11,6 +11,9 @@ import { Transform, PhysicsProps } from '../engine/core';
     <div class="h-full flex flex-col text-slate-300">
       <div class="h-9 flex items-center justify-between px-3 border-b border-slate-800 bg-slate-950/50">
         <span class="text-[11px] tracking-wide text-slate-500 font-bold uppercase">Properties</span>
+        @if (!engine.isPaused()) {
+          <span class="text-[10px] font-bold text-emerald-400 animate-pulse border border-emerald-900/50 bg-emerald-950/30 px-1.5 rounded">LIVE</span>
+        }
       </div>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar">

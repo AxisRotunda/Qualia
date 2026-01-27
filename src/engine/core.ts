@@ -50,6 +50,10 @@ export class ComponentStore<T> {
   clear() {
     this.data.clear();
   }
+
+  get size(): number {
+    return this.data.size;
+  }
 }
 
 export class World {
