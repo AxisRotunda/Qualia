@@ -2,6 +2,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { PhysicsService } from './physics.service';
 import { SceneService } from './scene.service';
+import { CameraControlService } from './camera-control.service';
 import { World, Entity } from '../engine/core';
 import * as THREE from 'three';
 
@@ -9,7 +10,9 @@ import * as THREE from 'three';
   providedIn: 'root'
 })
 export class EngineService {
-  private world = new World();
+  // Public world for components to read
+  public world = new World();
+  
   private isRunning = false;
   private lastTime = 0;
   private frameCount = 0;
@@ -19,10 +22,12 @@ export class EngineService {
   fps = signal(0);
   objectCount = signal(0);
   loading = signal(true);
+  selectedEntity = signal<Entity | null>(null);
 
   constructor(
     private physics: PhysicsService,
-    private scene: SceneService
+    private scene: SceneService,
+    private cameraControl: CameraControlService
   ) {}
 
   async init(canvas: HTMLCanvasElement) {
@@ -30,6 +35,8 @@ export class EngineService {
       await this.physics.init();
       this.scene.init(canvas);
       
+      this.cameraControl.setCamera(this.scene.getCamera());
+
       this.loading.set(false);
       this.startLoop();
       
@@ -54,10 +61,13 @@ export class EngineService {
       this.lastTime = time;
       this.updateStats(time);
 
-      // 2. Physics Step
+      // 2. Camera
+      this.cameraControl.update();
+
+      // 3. Physics Step
       this.physics.step();
 
-      // 3. System: Sync Physics -> ECS
+      // 4. System: Sync Physics -> ECS
       this.world.rigidBodies.forEach((rb, entity) => {
         const pose = this.physics.getBodyPose(rb.handle);
         if (pose) {
@@ -69,7 +79,7 @@ export class EngineService {
         }
       });
 
-      // 4. System: Sync ECS -> Render
+      // 5. System: Sync ECS -> Render
       this.world.meshes.forEach((meshRef, entity) => {
         const transform = this.world.transforms.get(entity);
         if (transform) {
@@ -87,7 +97,7 @@ export class EngineService {
         }
       });
 
-      // 5. Render
+      // 6. Render
       this.scene.render();
     };
     
@@ -137,6 +147,7 @@ export class EngineService {
   }
 
   reset() {
+    this.selectedEntity.set(null);
     // 1. Clean Physics
     this.physics.resetWorld();
     

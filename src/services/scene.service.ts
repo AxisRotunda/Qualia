@@ -65,6 +65,10 @@ export class SceneService {
     this.scene.add(grid);
   }
 
+  getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
+
   // Returns the Mesh object for the ECS to store
   createMesh(data: PhysicsBodyDef, color: number): THREE.Mesh {
     let geometry: THREE.BufferGeometry;
