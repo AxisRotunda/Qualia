@@ -22,116 +22,187 @@ import { CommonModule } from '@angular/common';
       StatusBarComponent
   ],
   template: `
-    <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden">
+    <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
       
-      <!-- Top Bar -->
+      <!-- Top Section -->
       <app-menu-bar />
       <app-toolbar 
         (spawnBox)="engine.spawnBox()"
         (spawnSphere)="engine.spawnSphere()"
-        (modeChange)="setMode($event)"
+        (toggleLeftPanel)="togglePanel('left')"
+        (toggleRightPanel)="togglePanel('right')"
+        [leftPanelOpen]="showLeftPanel()"
+        [rightPanelOpen]="showRightPanel()"
       />
 
-      <!-- Main Workspace (Grid) -->
-      <div class="grid flex-grow gap-0.5 p-0.5 bg-slate-950" [class]="layoutClasses()">
+      <!-- Main Layout Area -->
+      <div class="relative flex-grow overflow-hidden flex">
         
-        <!-- LEFT: Scene Tree -->
-        <div class="panel-left overflow-hidden hidden md:block border border-slate-700 rounded bg-slate-900" 
-             style="contain: layout style;">
+        <!-- LEFT DRAWER / PANEL -->
+        <aside class="panel-transition bg-slate-900 border-r border-slate-800 flex flex-col z-20"
+               [class.absolute]="isMobile"
+               [class.h-full]="true"
+               [class.w-64]="true"
+               [class.-translate-x-full]="!showLeftPanel()"
+               [class.translate-x-0]="showLeftPanel()"
+               [class.shadow-2xl]="isMobile">
           <app-scene-tree />
-        </div>
+        </aside>
 
-        <!-- CENTER: Viewport -->
-        <div class="relative w-full h-full bg-slate-900 border border-slate-700 rounded overflow-hidden" 
-             style="contain: layout;"
-             (contextmenu)="onCanvasContextMenu($event)"
-             (mousedown)="onMouseDown($event)"
-             (wheel)="onWheel($event)">
+        <!-- CENTER VIEWPORT -->
+        <main class="relative flex-grow bg-slate-950 overflow-hidden select-none"
+             (contextmenu)="onCanvasContextMenu($event)">
              
           @if (engine.loading()) {
-            <div class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 text-cyan-400">
-              <div class="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
-              <p class="font-mono text-sm tracking-widest animate-pulse">INITIALIZING ECS ENGINE...</p>
+            <div class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 text-cyan-400">
+              <div class="w-12 h-12 border-4 border-cyan-900 border-t-cyan-400 rounded-full animate-spin mb-4"></div>
+              <p class="font-mono text-sm tracking-widest animate-pulse opacity-70">INITIALIZING ENGINE</p>
             </div>
           }
 
-          <canvas #renderCanvas class="block w-full h-full outline-none cursor-move"></canvas>
+          <!-- Overlay when mobile drawer is open to close it on click -->
+          @if (isMobile && (showLeftPanel() || showRightPanel())) {
+             <div class="absolute inset-0 bg-black/50 z-10 backdrop-blur-sm" (click)="closeAllPanels()"></div>
+          }
+
+          <canvas #renderCanvas 
+                  class="block w-full h-full outline-none touch-none"
+                  (pointerdown)="onPointerDown($event)"
+                  (pointerup)="onPointerUp($event)"></canvas>
           
+          <!-- Context Menu -->
           @if (contextMenu()) {
-            <div class="absolute bg-slate-800 border border-slate-600 shadow-xl rounded py-1 z-50 min-w-[120px]"
+            <div class="absolute bg-slate-800 border border-slate-700 shadow-xl rounded-lg py-1 z-50 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
                  [style.top.px]="contextMenu()!.y"
                  [style.left.px]="contextMenu()!.x"
                  (mouseleave)="contextMenu.set(null)">
-               <button class="w-full text-left px-4 py-2 text-xs hover:bg-cyan-900/50 hover:text-cyan-300 transition-colors" 
-                       (click)="selectEntity(contextMenu()!.entity)">Select</button>
-               <button class="w-full text-left px-4 py-2 text-xs hover:bg-cyan-900/50 hover:text-cyan-300 transition-colors"
-                       (click)="duplicateEntity(contextMenu()!.entity)">Duplicate</button>
-               <div class="h-px bg-slate-700 my-1"></div>
-               <button class="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-900/20 transition-colors"
-                       (click)="deleteEntity(contextMenu()!.entity)">Delete</button>
+               <button class="menu-item" (click)="selectEntity(contextMenu()!.entity)">
+                 <span class="material-symbols-outlined icon-xs">check_circle</span> Select
+               </button>
+               <button class="menu-item" (click)="duplicateEntity(contextMenu()!.entity)">
+                 <span class="material-symbols-outlined icon-xs">content_copy</span> Duplicate
+               </button>
+               <div class="h-px bg-slate-700 my-1 mx-2"></div>
+               <button class="menu-item text-red-400 hover:text-red-300 hover:bg-red-900/20" (click)="deleteEntity(contextMenu()!.entity)">
+                 <span class="material-symbols-outlined icon-xs">delete</span> Delete
+               </button>
             </div>
           }
 
-        </div>
+        </main>
 
-        <!-- RIGHT: Inspector -->
-        <div class="panel-right flex flex-col hidden lg:flex border border-slate-700 rounded bg-slate-900 overflow-hidden" 
-             style="contain: layout style;">
+        <!-- RIGHT DRAWER / PANEL -->
+        <aside class="panel-transition bg-slate-900 border-l border-slate-800 flex flex-col z-20"
+               [class.absolute]="isMobile"
+               [class.right-0]="isMobile"
+               [class.h-full]="true"
+               [class.w-72]="true"
+               [class.translate-x-full]="!showRightPanel()"
+               [class.translate-x-0]="showRightPanel()"
+               [class.shadow-2xl]="isMobile">
            <app-inspector />
-        </div>
+        </aside>
+
       </div>
       
       <!-- Bottom Bar -->
       <app-status-bar />
     </div>
-  `
+  `,
+  styles: [`
+    .panel-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .menu-item { @apply w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-700 transition-colors text-slate-200; }
+    .icon-xs { font-size: 16px; }
+  `]
 })
 export class AppComponent implements AfterViewInit {
   @ViewChild('renderCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   
   engine = inject(EngineService);
   cameraControl = inject(CameraControlService);
-  // Inject to activate effect
   selectionHighlight = inject(SelectionHighlightService);
 
-  private isDragging = false;
-  private dragStartX = 0;
-  private dragStartY = 0;
-  private lastMouseX = 0;
-  private lastMouseY = 0;
+  // Layout State
+  showLeftPanel = signal(true);
+  showRightPanel = signal(true);
   
-  private currentMode: 'select' | 'move' | 'rotate' = 'select';
-
+  // Interaction State
+  private pointerDownPos = { x: 0, y: 0 };
+  private pointerDownTime = 0;
+  
   contextMenu = signal<{x: number, y: number, entity: number} | null>(null);
 
-  layoutClasses() {
-    return 'grid-cols-1 md:grid-cols-[220px_1fr] lg:grid-cols-[220px_1fr_280px]';
+  get isMobile(): boolean {
+      return window.innerWidth < 1024;
   }
 
   ngAfterViewInit() {
     this.engine.init(this.canvasRef.nativeElement);
+    this.checkResponsive();
   }
 
   @HostListener('window:resize')
   onResize() {
     this.engine.resize(window.innerWidth, window.innerHeight);
+    this.checkResponsive();
+  }
+
+  private checkResponsive() {
+    if (window.innerWidth < 1024) {
+      // Auto-collapse on mobile
+      this.showLeftPanel.set(false);
+      this.showRightPanel.set(false);
+    } else {
+      // Auto-open on desktop
+      this.showLeftPanel.set(true);
+      this.showRightPanel.set(true);
+    }
+  }
+
+  togglePanel(side: 'left' | 'right') {
+      if (side === 'left') this.showLeftPanel.update(v => !v);
+      if (side === 'right') this.showRightPanel.update(v => !v);
   }
   
-  setMode(mode: 'select' | 'move' | 'rotate') {
-    this.currentMode = mode;
+  closeAllPanels() {
+      if (this.isMobile) {
+          this.showLeftPanel.set(false);
+          this.showRightPanel.set(false);
+      }
   }
 
   // --- Interaction ---
+
+  onPointerDown(event: PointerEvent) {
+      this.pointerDownPos = { x: event.clientX, y: event.clientY };
+      this.pointerDownTime = performance.now();
+      this.contextMenu.set(null);
+  }
+
+  onPointerUp(event: PointerEvent) {
+      // Calculate distance moved to distinguish Click vs Drag
+      const dist = Math.sqrt(
+          Math.pow(event.clientX - this.pointerDownPos.x, 2) + 
+          Math.pow(event.clientY - this.pointerDownPos.y, 2)
+      );
+      
+      const timeDiff = performance.now() - this.pointerDownTime;
+
+      // Threshold: Movement < 5px AND duration < 300ms (standard click definition)
+      if (dist < 5 && timeDiff < 300 && event.button === 0) {
+          const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
+          this.engine.selectedEntity.set(entity);
+      }
+  }
 
   onCanvasContextMenu(event: MouseEvent) {
       event.preventDefault();
       const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
       
       if (entity !== null) {
-          const rect = (event.target as HTMLElement).getBoundingClientRect();
           this.contextMenu.set({
-              x: event.clientX - rect.left,
-              y: event.clientY - rect.top,
+              x: event.clientX,
+              y: event.clientY,
               entity
           });
       } else {
@@ -152,56 +223,5 @@ export class AppComponent implements AfterViewInit {
   deleteEntity(e: number) {
       this.engine.deleteEntity(e);
       this.contextMenu.set(null);
-  }
-
-  // --- Camera Input & Smart Selection ---
-
-  onMouseDown(event: MouseEvent) {
-    if (this.engine.loading()) return;
-    if (event.button !== 0) return; 
-    
-    this.isDragging = true;
-    this.dragStartX = event.clientX;
-    this.dragStartY = event.clientY;
-    this.lastMouseX = event.clientX;
-    this.lastMouseY = event.clientY;
-    
-    this.contextMenu.set(null);
-  }
-
-  @HostListener('window:mousemove', ['$event'])
-  onMouseMove(event: MouseEvent) {
-    if (!this.isDragging) return;
-    
-    const dx = event.clientX - this.lastMouseX;
-    const dy = event.clientY - this.lastMouseY;
-    
-    this.cameraControl.onMouseDrag(dx, dy);
-    
-    this.lastMouseX = event.clientX;
-    this.lastMouseY = event.clientY;
-  }
-
-  @HostListener('window:mouseup', ['$event'])
-  onMouseUp(event: MouseEvent) {
-    if (!this.isDragging) return;
-    this.isDragging = false;
-
-    // Calculate total distance moved
-    const dist = Math.sqrt(
-      Math.pow(event.clientX - this.dragStartX, 2) + 
-      Math.pow(event.clientY - this.dragStartY, 2)
-    );
-
-    // Only select if it was a click (moved less than 4 pixels)
-    if (dist < 4) {
-      const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
-      this.engine.selectedEntity.set(entity);
-    }
-  }
-  
-  onWheel(event: WheelEvent) {
-    if (this.engine.loading()) return;
-    this.cameraControl.onZoom(event.deltaY > 0 ? 1 : -1);
   }
 }

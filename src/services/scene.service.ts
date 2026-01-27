@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { PhysicsBodyDef } from './physics.service';
@@ -73,6 +72,10 @@ export class SceneService {
 
   getCamera(): THREE.PerspectiveCamera {
     return this.camera;
+  }
+
+  getDomElement(): HTMLCanvasElement {
+    return this.renderer.domElement;
   }
 
   setWireframeForAll(enabled: boolean) {

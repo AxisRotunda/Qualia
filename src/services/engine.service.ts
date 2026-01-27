@@ -1,4 +1,3 @@
-
 import { Injectable, signal, computed } from '@angular/core';
 import { PhysicsService } from './physics.service';
 import { SceneService } from './scene.service';
@@ -50,7 +49,8 @@ export class EngineService {
       await this.physicsService.init();
       this.sceneService.init(canvas);
       
-      this.cameraControl.setCamera(this.sceneService.getCamera());
+      // Pass canvas to camera control for event listeners
+      this.cameraControl.init(this.sceneService.getCamera(), canvas);
 
       this.loading.set(false);
       this.startLoop();
@@ -180,7 +180,7 @@ export class EngineService {
       scale: { x: 1, y: 1, z: 1 }
     });
     this.world.bodyDefs.add(entity, bodyDef);
-    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.7 }); // Default match physics service
+    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.7 });
 
     this.updateCount();
   }
@@ -282,8 +282,11 @@ export class EngineService {
   // --- Interaction API ---
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
-    this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+    const rect = this.sceneService.getDomElement().getBoundingClientRect();
+    
+    // Normalized device coordinates (-1 to +1)
+    this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.sceneService.getCamera());
 

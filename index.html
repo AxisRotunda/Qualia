@@ -1,17 +1,17 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Newton's Lab 3D</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Qualia 3D</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #0f172a; }
-      /* Custom scrollbar for control panel if needed */
-      ::-webkit-scrollbar { width: 6px; }
+      body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #020617; }
+      /* Custom scrollbar */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
   <script type="importmap">
 {
@@ -25,10 +25,12 @@
     "@angular/compiler": "https://esm.sh/@angular/compiler@^21.1.1?external=rxjs",
     "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^21.1.1?external=rxjs",
     "@angular/core": "https://esm.sh/@angular/core@^21.1.1?external=rxjs",
-    "three": "https://esm.sh/three@^0.182.0?external=rxjs",
+    "three": "https://esm.sh/three@0.160.0",
+    "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
     "@dimforge/rapier3d-compat": "https://esm.sh/@dimforge/rapier3d-compat@^0.19.3?external=rxjs",
     "@angular/common": "https://esm.sh/@angular/common@^21.1.1?external=rxjs",
-    "@angular/core/rxjs-interop": "https://esm.sh/@angular/core@^21.1.1/rxjs-interop?external=rxjs"
+    "@angular/core/rxjs-interop": "https://esm.sh/@angular/core@^21.1.1/rxjs-interop?external=rxjs",
+    "three/addons/controls/OrbitControls.js": "https://esm.sh/three@^0.182.0/addons/controls/OrbitControls.js?external=rxjs"
   }
 }
 </script>

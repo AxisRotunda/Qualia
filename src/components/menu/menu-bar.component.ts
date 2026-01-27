@@ -10,28 +10,32 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
   standalone: true,
   imports: [MenuDropdownComponent],
   template: `
-    <nav class="flex items-center gap-1 px-2 py-1 bg-slate-950 border-b border-slate-700 select-none"
+    <nav class="flex items-center gap-1 px-3 py-1.5 bg-slate-950 border-b border-slate-800 select-none z-40 relative"
          role="menubar">
       <!-- Brand -->
-      <div class="px-2 font-bold text-cyan-500 mr-2 text-sm tracking-wider">QUALIA</div>
+      <div class="flex items-center gap-2 mr-4">
+         <span class="material-symbols-outlined text-cyan-500 text-[20px]">deployed_code_history</span>
+         <span class="font-bold text-slate-200 text-sm tracking-wide">QUALIA<span class="text-cyan-500">3D</span></span>
+      </div>
 
-      @for (menu of menus; track menu.id) {
-        <app-menu-dropdown 
-          [label]="menu.label"
-          [actions]="menu.children!"
-          [class.bg-slate-800]="activeMenu() === menu.id"
-          (menuOpen)="activeMenu.set(menu.id)"
-          (menuClose)="activeMenu.set(null)" />
-      }
+      <div class="hidden md:flex gap-1">
+          @for (menu of menus; track menu.id) {
+            <app-menu-dropdown 
+              [label]="menu.label"
+              [actions]="menu.children!"
+              [class.bg-slate-800]="activeMenu() === menu.id"
+              (menuOpen)="activeMenu.set(menu.id)"
+              (menuClose)="activeMenu.set(null)" />
+          }
+      </div>
       
       <!-- Spacer -->
       <div class="flex-grow"></div>
       
       <!-- Right-aligned items -->
-      <button class="px-3 py-1 text-xs text-slate-500 hover:text-cyan-400 transition-colors"
-              (click)="showShortcuts()">
-        Keyboard Shortcuts
-      </button>
+      <a href="https://github.com/dimforge/rapier" target="_blank" class="hidden md:flex items-center gap-1 px-2 py-1 text-[10px] text-slate-500 hover:text-cyan-400 transition-colors">
+        <span class="font-bold">Powered by Rapier & Three.js</span>
+      </a>
     </nav>
   `
 })
@@ -102,9 +106,5 @@ export class MenuBarComponent {
 
   constructor() {
     this.keyboard.register(this.menus);
-  }
-
-  showShortcuts() {
-      console.log('Show shortcuts dialog');
   }
 }

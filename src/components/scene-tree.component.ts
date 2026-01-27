@@ -8,31 +8,36 @@ import { Entity } from '../engine/core';
   standalone: true,
   template: `
     <div class="h-full flex flex-col text-slate-300">
-      <div class="p-3 border-b border-slate-700 font-bold text-xs tracking-wide bg-slate-950 text-slate-400">
-        HIERARCHY
+      <div class="h-10 flex items-center px-4 border-b border-slate-800 bg-slate-900 font-bold text-xs tracking-wider text-slate-400 uppercase select-none">
+        Outliner
       </div>
       
-      <div class="flex-1 overflow-y-auto relative custom-scrollbar" (scroll)="onScroll($event)">
+      <div class="flex-1 overflow-y-auto relative custom-scrollbar p-2" (scroll)="onScroll($event)">
         <!-- Virtual Scroll Spacer -->
         <div [style.height.px]="totalHeight()" class="absolute w-full top-0 left-0 z-0"></div>
 
         <!-- Rendered Items -->
-        <div [style.transform]="'translateY(' + scrollOffset() + 'px)'" class="relative z-10">
+        <div [style.transform]="'translateY(' + scrollOffset() + 'px)'" class="relative z-10 space-y-0.5">
           @for (entity of visibleEntities(); track entity) {
             <div 
-              class="flex items-center gap-2 px-3 py-1 text-xs cursor-pointer border-l-2 transition-all select-none group"
-              [class.bg-cyan-900_20]="engine.selectedEntity() === entity"
-              [class.bg-cyan-900-20]="engine.selectedEntity() === entity" 
-              [class.border-cyan-400]="engine.selectedEntity() === entity"
-              [class.border-transparent]="engine.selectedEntity() !== entity"
+              class="flex items-center gap-3 px-3 py-1.5 text-xs cursor-pointer rounded transition-all select-none group border border-transparent"
+              [class.bg-cyan-950_40]="engine.selectedEntity() === entity"
+              [class.border-cyan-900]="engine.selectedEntity() === entity"
               [class.text-cyan-300]="engine.selectedEntity() === entity"
+              [class.text-slate-400]="engine.selectedEntity() !== entity"
               [class.hover:bg-slate-800]="engine.selectedEntity() !== entity"
+              [class.hover:text-slate-200]="engine.selectedEntity() !== entity"
               (click)="select(entity)"
               (contextmenu)="onContextMenu($event, entity)"
             >
-              <span class="material-symbols-outlined text-[10px] opacity-70 group-hover:opacity-100">data_object</span>
-              <span class="font-mono opacity-90">Entity_{{ entity }}</span>
+              <span class="material-symbols-outlined text-[14px] opacity-70 group-hover:opacity-100">
+                  {{ entity % 2 === 0 ? 'deployed_code' : 'circle' }}
+              </span>
+              <span class="font-mono">Entity_{{ entity }}</span>
             </div>
+          }
+          @if (allEntities().length === 0) {
+              <div class="text-center py-8 text-xs text-slate-600 italic">No objects in scene</div>
           }
         </div>
       </div>
@@ -42,16 +47,17 @@ import { Entity } from '../engine/core';
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .bg-cyan-900-20 { background-color: rgb(22 78 99 / 0.3); }
+    .bg-cyan-950-40 { background-color: rgb(8 51 68 / 0.4); }
   `]
 })
 export class SceneTreeComponent {
   engine = inject(EngineService);
 
-  private readonly ROW_HEIGHT = 26;
+  private readonly ROW_HEIGHT = 30; // Increased touch target size
   private scrollTop = signal(0);
   
-  private allEntities = computed(() => {
+  // Computed wrapper to trigger updates when count changes
+  allEntities = computed(() => {
     this.engine.objectCount(); 
     return Array.from(this.engine.world.entities);
   });
@@ -60,7 +66,7 @@ export class SceneTreeComponent {
 
   visibleEntities = computed(() => {
     const start = Math.floor(this.scrollTop() / this.ROW_HEIGHT);
-    const end = start + 40; 
+    const end = start + 30; 
     const all = this.allEntities();
     return all.slice(start, end);
   });
@@ -79,7 +85,6 @@ export class SceneTreeComponent {
 
   onContextMenu(e: MouseEvent, entity: Entity) {
       e.preventDefault();
-      // Basic implementation for now: just select
       this.select(entity);
   }
 }

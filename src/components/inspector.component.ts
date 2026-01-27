@@ -8,181 +8,174 @@ import { Transform, PhysicsProps } from '../engine/core';
   selector: 'app-inspector',
   standalone: true,
   template: `
-    <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700 text-slate-300" style="contain: layout style;">
-      <div class="p-3 border-b border-slate-700 font-bold text-xs tracking-wide bg-slate-950 text-slate-400 flex justify-between items-center">
-        <span>INSPECTOR</span>
-        @if (engine.isPaused()) {
-          <span class="text-[10px] text-amber-500 font-mono px-1 border border-amber-900 bg-amber-900/20 rounded">PAUSED</span>
-        }
+    <div class="h-full flex flex-col text-slate-300">
+      <div class="h-10 flex items-center px-4 border-b border-slate-800 bg-slate-900 font-bold text-xs tracking-wider text-slate-400 uppercase select-none">
+        Properties
       </div>
 
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+      
       @if (engine.selectedEntity() !== null) {
-        <div class="p-4 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-          <div class="flex justify-between items-center">
-             <div class="text-xs font-mono text-cyan-500">ID: {{ engine.selectedEntity() }}</div>
-             <button class="text-[10px] text-red-400 hover:text-red-300" (click)="deleteSelected()">DELETE</button>
+          
+          <!-- Header -->
+          <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+             <div class="flex items-center gap-2">
+                 <span class="material-symbols-outlined text-cyan-500 text-lg">data_object</span>
+                 <span class="font-bold text-slate-200">Entity_{{ engine.selectedEntity() }}</span>
+             </div>
+             <button class="p-1 hover:bg-red-500/10 hover:text-red-400 rounded transition-colors text-slate-500" 
+                     title="Delete"
+                     (click)="deleteSelected()">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+             </button>
           </div>
 
           <!-- Position -->
-          <div class="space-y-3">
-            <h3 class="section-title">Transform</h3>
-            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <span>Position</span>
-              <div class="h-px bg-slate-700 flex-grow"></div>
-            </div>
+          <div class="control-group">
+            <h3 class="group-label">Position</h3>
             @if (transformSnapshot(); as t) {
               <div class="grid grid-cols-3 gap-2">
-                <div class="flex flex-col gap-1">
-                  <label class="text-[9px] text-red-400 text-center font-bold">X</label>
-                  <input type="number" step="0.1"
-                    [value]="t.position.x | number:'1.2-2'" 
-                    (change)="updatePos('x', $event)"
-                    class="input-field">
+                <div class="input-wrapper">
+                  <span class="axis-label text-red-500">X</span>
+                  <input type="number" step="0.1" [value]="t.position.x | number:'1.2-2'" (change)="updatePos('x', $event)">
                 </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[9px] text-green-400 text-center font-bold">Y</label>
-                  <input type="number" step="0.1"
-                    [value]="t.position.y | number:'1.2-2'" 
-                    (change)="updatePos('y', $event)"
-                    class="input-field">
+                <div class="input-wrapper">
+                  <span class="axis-label text-green-500">Y</span>
+                  <input type="number" step="0.1" [value]="t.position.y | number:'1.2-2'" (change)="updatePos('y', $event)">
                 </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[9px] text-blue-400 text-center font-bold">Z</label>
-                  <input type="number" step="0.1"
-                    [value]="t.position.z | number:'1.2-2'" 
-                    (change)="updatePos('z', $event)"
-                    class="input-field">
+                <div class="input-wrapper">
+                  <span class="axis-label text-blue-500">Z</span>
+                  <input type="number" step="0.1" [value]="t.position.z | number:'1.2-2'" (change)="updatePos('z', $event)">
                 </div>
               </div>
             }
           </div>
 
-          <!-- Rotation (Quaternion) -->
-          <div class="space-y-3">
-            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <span>Rotation (Quat)</span>
-              <div class="h-px bg-slate-700 flex-grow"></div>
-            </div>
+          <!-- Rotation -->
+          <div class="control-group">
+            <h3 class="group-label">Rotation (Quaternion)</h3>
             @if (transformSnapshot(); as t) {
-              <div class="grid grid-cols-4 gap-1">
-                <input type="number" step="0.1" [value]="t.rotation.x | number:'1.2-2'" (change)="updateRot('x', $event)" class="input-field text-[10px]">
-                <input type="number" step="0.1" [value]="t.rotation.y | number:'1.2-2'" (change)="updateRot('y', $event)" class="input-field text-[10px]">
-                <input type="number" step="0.1" [value]="t.rotation.z | number:'1.2-2'" (change)="updateRot('z', $event)" class="input-field text-[10px]">
-                <input type="number" step="0.1" [value]="t.rotation.w | number:'1.2-2'" (change)="updateRot('w', $event)" class="input-field text-[10px]">
+              <div class="grid grid-cols-4 gap-2">
+                <div class="input-wrapper"><input type="number" step="0.1" [value]="t.rotation.x | number:'1.2-2'" (change)="updateRot('x', $event)"></div>
+                <div class="input-wrapper"><input type="number" step="0.1" [value]="t.rotation.y | number:'1.2-2'" (change)="updateRot('y', $event)"></div>
+                <div class="input-wrapper"><input type="number" step="0.1" [value]="t.rotation.z | number:'1.2-2'" (change)="updateRot('z', $event)"></div>
+                <div class="input-wrapper"><input type="number" step="0.1" [value]="t.rotation.w | number:'1.2-2'" (change)="updateRot('w', $event)"></div>
               </div>
             }
           </div>
 
           <!-- Scale -->
-          <div class="space-y-3">
-            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <span>Scale</span>
-              <div class="h-px bg-slate-700 flex-grow"></div>
-            </div>
+          <div class="control-group">
+            <h3 class="group-label">Scale</h3>
             @if (transformSnapshot(); as t) {
-               <!-- Uniform Scale slider for simplicity in this version -->
-               <div class="flex items-center gap-2">
-                 <span class="text-[10px] text-slate-400 w-8">Unif</span>
-                 <input type="range" min="0.1" max="5.0" step="0.1" 
+               <div class="flex items-center gap-3 bg-slate-950 p-2 rounded border border-slate-800">
+                 <span class="material-symbols-outlined text-slate-500 text-sm">resize</span>
+                 <input type="range" min="0.1" max="3.0" step="0.1" 
                         [value]="t.scale.x" (input)="updateScaleUniform($event)"
-                        class="flex-grow h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
-                 <span class="text-[10px] font-mono text-cyan-400 w-8 text-right">{{ t.scale.x | number:'1.1-1' }}</span>
+                        class="flex-grow h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                 <span class="font-mono text-xs text-cyan-400 w-8 text-right">{{ t.scale.x | number:'1.1-1' }}</span>
                </div>
             }
           </div>
 
           <!-- Physics Material -->
-          <div class="space-y-3">
-            <h3 class="section-title mt-4">Physics</h3>
-            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <span>Physics Material</span>
-              <div class="h-px bg-slate-700 flex-grow"></div>
-            </div>
+          <div class="control-group">
+            <h3 class="group-label">Physics Material</h3>
             @if (physicsPropsSnapshot(); as p) {
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center text-[10px]">
-                        <span class="text-slate-400">Restitution (Bounce)</span>
-                        <input type="number" min="0" max="1.5" step="0.1" [value]="p.restitution" (change)="updatePhysics('restitution', $event)"
-                               class="w-16 bg-slate-800 border border-slate-700 rounded px-1 text-right focus:border-cyan-500 outline-none">
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-400">Restitution</span>
+                        <div class="flex items-center gap-2">
+                            <input type="range" min="0" max="1.5" step="0.1" [value]="p.restitution" (input)="updatePhysics('restitution', $event)" 
+                                   class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                            <span class="font-mono text-xs w-8 text-right">{{ p.restitution | number:'1.1-1' }}</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center text-[10px]">
-                        <span class="text-slate-400">Friction</span>
-                         <input type="number" min="0" max="2.0" step="0.1" [value]="p.friction" (change)="updatePhysics('friction', $event)"
-                               class="w-16 bg-slate-800 border border-slate-700 rounded px-1 text-right focus:border-cyan-500 outline-none">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-400">Friction</span>
+                        <div class="flex items-center gap-2">
+                             <input type="range" min="0" max="2.0" step="0.1" [value]="p.friction" (input)="updatePhysics('friction', $event)"
+                                   class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                             <span class="font-mono text-xs w-8 text-right">{{ p.friction | number:'1.1-1' }}</span>
+                        </div>
                     </div>
                 </div>
             }
           </div>
 
-        </div>
       } @else {
         <!-- Global Settings -->
-        <div class="p-4 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-          <div class="space-y-3">
-             <h3 class="section-title">World Settings</h3>
-             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <span>Gravity</span>
-              <div class="h-px bg-slate-700 flex-grow"></div>
-            </div>
-
-            <!-- Gravity -->
-            <div class="space-y-2">
-              <div class="flex justify-between text-xs text-slate-400">
-                <span>Gravity Y</span>
-                <span class="font-mono text-cyan-400">{{ engine.gravityY() | number:'1.1-1' }}</span>
-              </div>
-              <input 
-                type="range" 
-                min="-20" 
-                max="0" 
-                step="0.1" 
-                [value]="engine.gravityY()"
-                (input)="updateGravity($event)"
-                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 hover:accent-cyan-400"
-              >
-            </div>
+        <div class="space-y-6">
             
-            <!-- Lights -->
-             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 mt-4">
-              <span>Lighting</span>
-              <div class="h-px bg-slate-700 flex-grow"></div>
-            </div>
-            <div class="space-y-4 pt-2">
-                <div class="flex justify-between text-xs text-slate-400">
-                   <span>Ambient Intensity</span>
-                   <span class="font-mono text-cyan-400">{{ ambientIntensity() | number:'1.1-1' }}</span>
+            <!-- Gravity -->
+            <div class="control-group">
+             <h3 class="group-label flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">public</span> World Gravity
+             </h3>
+             <div class="bg-slate-950 p-3 rounded border border-slate-800 space-y-2">
+                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                    <span>Y-Axis Force</span>
+                    <span class="font-mono text-cyan-400">{{ engine.gravityY() | number:'1.1-1' }}</span>
                 </div>
-                <input type="range" min="0" max="1" step="0.05" [value]="ambientIntensity()" (input)="updateLight('ambient', $event)"
-                       class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
-                
-                <div class="flex justify-between text-xs text-slate-400">
-                   <span>Sun Intensity</span>
-                   <span class="font-mono text-cyan-400">{{ dirIntensity() | number:'1.1-1' }}</span>
-                </div>
-                <input type="range" min="0" max="3" step="0.1" [value]="dirIntensity()" (input)="updateLight('dir', $event)"
-                       class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
-
-                <div class="flex justify-between items-center text-xs text-slate-400">
-                   <span>Sun Color</span>
-                   <input type="color" [value]="dirColor()" (input)="updateLight('color', $event)" class="bg-transparent border-0 w-6 h-6 p-0 cursor-pointer">
-                </div>
+                <input type="range" min="-20" max="0" step="0.5" 
+                    [value]="engine.gravityY()" (input)="updateGravity($event)"
+                    class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+             </div>
             </div>
 
-          </div>
+            <!-- Lighting -->
+            <div class="control-group">
+                <h3 class="group-label flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">light_mode</span> Environment
+                </h3>
+                <div class="bg-slate-950 p-3 rounded border border-slate-800 space-y-4">
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs text-slate-400">
+                        <span>Ambient Light</span>
+                        <span>{{ ambientIntensity() | number:'1.1-1' }}</span>
+                        </div>
+                        <input type="range" min="0" max="1" step="0.1" [value]="ambientIntensity()" (input)="updateLight('ambient', $event)"
+                            class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs text-slate-400">
+                        <span>Sun Intensity</span>
+                        <span>{{ dirIntensity() | number:'1.1-1' }}</span>
+                        </div>
+                        <input type="range" min="0" max="3" step="0.1" [value]="dirIntensity()" (input)="updateLight('dir', $event)"
+                            class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    </div>
+
+                     <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+                        <span>Sun Color</span>
+                        <div class="relative w-6 h-6 rounded-full overflow-hidden ring-1 ring-slate-600">
+                            <input type="color" [value]="dirColor()" (input)="updateLight('color', $event)" 
+                                   class="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] p-0 cursor-pointer border-0">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
       }
+      </div>
     </div>
   `,
   styles: [`
+    .group-label { @apply text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2; }
+    .control-group { @apply mb-2; }
+    .input-wrapper { 
+        @apply relative flex items-center bg-slate-950 rounded border border-slate-800 focus-within:border-cyan-500/50 transition-colors;
+    }
+    .axis-label {
+        @apply absolute left-2 text-[10px] font-bold select-none pointer-events-none;
+    }
+    .input-wrapper input {
+        @apply w-full bg-transparent border-none py-1.5 pl-5 pr-1 text-xs text-right font-mono text-slate-300 focus:outline-none focus:text-cyan-400;
+    }
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .input-field {
-        @apply w-full bg-slate-950 border border-slate-700 rounded px-1 py-1 text-xs text-center focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors;
-    }
-    .section-title {
-        @apply text-sm font-bold text-cyan-400 tracking-wide mb-1;
-    }
   `],
   imports: [DecimalPipe]
 })

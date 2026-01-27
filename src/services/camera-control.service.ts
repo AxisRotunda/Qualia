@@ -1,6 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export type CameraViewPreset = 'top' | 'front' | 'side';
 
@@ -9,67 +10,72 @@ export type CameraViewPreset = 'top' | 'front' | 'side';
 })
 export class CameraControlService {
   private camera: THREE.PerspectiveCamera | null = null;
-  private spherical = new THREE.Spherical(20, Math.PI / 4, 0);
-  private target = new THREE.Vector3(0, 5, 0);
-  private velocity = { theta: 0, phi: 0 }; 
+  private controls: OrbitControls | null = null;
   
-  setCamera(camera: THREE.PerspectiveCamera) {
+  init(camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement) {
     this.camera = camera;
-    this.update();
-  }
-  
-  onMouseDrag(dx: number, dy: number) {
-    this.velocity.phi -= dx * 0.005;   // Azimuth sensitivity
-    this.velocity.theta -= dy * 0.005; // Polar sensitivity
-  }
-
-  onZoom(delta: number) {
-    this.spherical.radius = Math.max(5, Math.min(50, this.spherical.radius + delta * 0.05));
-  }
-
-  focusOn(target: THREE.Vector3) {
-    // Animate target? For now, snap
-    this.target.copy(target);
-    this.spherical.radius = 10; // Zoom in reasonable amount
-    this.update();
-  }
-
-  setPreset(preset: CameraViewPreset) {
-    this.target.set(0, 5, 0); // Reset target to center or keep? Resetting feels more "preset" like.
     
-    switch (preset) {
-        case 'top':
-            this.spherical.set(20, 0.1, 0); // Close to 0 but not exactly to avoid Gimbal lock issues in some controllers
-            break;
-        case 'front':
-            this.spherical.set(20, Math.PI / 2, 0);
-            break;
-        case 'side':
-            this.spherical.set(20, Math.PI / 2, Math.PI / 2);
-            break;
+    // Dispose previous if exists
+    if (this.controls) {
+        this.controls.dispose();
     }
-    this.update();
-  }
-  
-  reset() {
-    this.spherical.set(20, Math.PI / 4, 0);
-    this.target.set(0, 5, 0);
-    this.velocity = { theta: 0, phi: 0 };
-    this.update();
+
+    this.controls = new OrbitControls(camera, canvas);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
+    this.controls.screenSpacePanning = true;
+    
+    // Limits to prevent going under the floor too easily
+    this.controls.maxPolarAngle = Math.PI / 1.95; 
+    this.controls.minDistance = 2;
+    this.controls.maxDistance = 100;
+
+    this.reset();
   }
   
   update() {
-    if (!this.camera) return;
+    if (this.controls) {
+        this.controls.update();
+    }
+  }
 
-    // Apply velocity with exponential decay
-    this.spherical.phi += this.velocity.phi;
-    this.spherical.theta = Math.max(0.1, Math.min(Math.PI - 0.1, 
-      this.spherical.theta + this.velocity.theta));
+  focusOn(target: THREE.Vector3) {
+    if (!this.controls || !this.camera) return;
+
+    // Smooth transition could be added here with Tweening
+    // For now, instant focus
+    this.controls.target.copy(target);
     
-    this.velocity.phi *= 0.92;  // Damping
-    this.velocity.theta *= 0.92;
-    
-    this.camera.position.setFromSpherical(this.spherical).add(this.target);
-    this.camera.lookAt(this.target);
+    // Offset camera slightly if it's too far/close
+    const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize().multiplyScalar(10);
+    this.camera.position.copy(target).add(offset);
+    this.camera.lookAt(target);
+  }
+
+  setPreset(preset: CameraViewPreset) {
+    if (!this.controls || !this.camera) return;
+
+    const dist = this.camera.position.distanceTo(this.controls.target);
+    this.controls.target.set(0, 5, 0);
+
+    switch (preset) {
+        case 'top':
+            this.camera.position.set(0, dist, 0);
+            break;
+        case 'front':
+            this.camera.position.set(0, 5, dist);
+            break;
+        case 'side':
+            this.camera.position.set(dist, 5, 0);
+            break;
+    }
+    this.camera.lookAt(this.controls.target);
+  }
+  
+  reset() {
+    if (!this.controls || !this.camera) return;
+    this.controls.target.set(0, 5, 0);
+    this.camera.position.set(15, 15, 15);
+    this.camera.lookAt(0, 5, 0);
   }
 }
