@@ -1,10 +1,12 @@
 
 import { Component, inject } from '@angular/core';
 import { EngineService } from '../services/engine.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-status-bar',
   standalone: true,
+  imports: [CommonModule],
   template: `
     <div class="flex items-center justify-between px-3 py-1 bg-slate-950 
                 border-t border-slate-800 text-[10px] text-slate-500 font-mono select-none shrink-0 z-20">
@@ -17,6 +19,11 @@ import { EngineService } from '../services/engine.service';
              {{ engine.isPaused() ? 'PAUSED' : 'RUNNING' }}
            </span>
         </span>
+        
+        <span class="text-cyan-600 font-bold border border-cyan-900/50 bg-cyan-950/20 px-1 rounded">
+            {{ engine.mode() | uppercase }}
+        </span>
+
         <span class="hover:text-cyan-400 cursor-default hidden sm:inline">ENTITIES: <span class="text-slate-300">{{ engine.objectCount() }}</span></span>
         <span class="hover:text-cyan-400 cursor-default hidden sm:inline">SELECTED: <span class="text-slate-300">{{ engine.selectedEntity() ?? 'NONE' }}</span></span>
       </div>
@@ -37,3 +44,4 @@ import { EngineService } from '../services/engine.service';
 export class StatusBarComponent {
   engine = inject(EngineService);
 }
+    

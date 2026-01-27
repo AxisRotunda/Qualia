@@ -4,12 +4,13 @@ import RAPIER from '@dimforge/rapier3d-compat';
 
 export interface PhysicsBodyDef {
   handle: number;
-  type: 'box' | 'sphere';
+  type: 'box' | 'sphere' | 'cylinder';
   position: { x: number, y: number, z: number };
   rotation: { x: number, y: number, z: number, w: number };
-  // Original dimensions before scaling
+  // Dimensions
   size?: { w: number, h: number, d: number };
   radius?: number;
+  height?: number; // for cylinder
 }
 
 @Injectable({
@@ -31,7 +32,7 @@ export class PhysicsService {
     // Ground
     const groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
     const groundBody = this.world.createRigidBody(groundBodyDesc);
-    const groundColliderDesc = RAPIER.ColliderDesc.cuboid(50, 0.1, 50);
+    const groundColliderDesc = RAPIER.ColliderDesc.cuboid(100, 0.1, 100);
     this.world.createCollider(groundColliderDesc, groundBody);
 
     this.initialized = true;
@@ -59,16 +60,20 @@ export class PhysicsService {
     bodies.forEach(b => this.world!.removeRigidBody(b));
   }
 
-  createBox(x: number, y: number, z: number): PhysicsBodyDef {
+  createBox(x: number, y: number, z: number, w?: number, h?: number, d?: number, mass?: number): PhysicsBodyDef {
     if (!this.world) throw new Error('Physics not initialized');
 
-    const size = 0.5 + Math.random() * 0.5;
+    const width = w ?? (0.5 + Math.random() * 0.5);
+    const height = h ?? width;
+    const depth = d ?? width;
     
-    const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(x, y, z);
+    const rigidBodyDesc = mass === 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+    rigidBodyDesc.setTranslation(x, y, z);
+    if (mass && mass > 0) rigidBodyDesc.setMass(mass);
+    
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
     
-    const colliderDesc = RAPIER.ColliderDesc.cuboid(size / 2, size / 2, size / 2)
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2)
         .setRestitution(0.7)
         .setFriction(0.5);
     this.world.createCollider(colliderDesc, rigidBody);
@@ -78,17 +83,19 @@ export class PhysicsService {
       type: 'box',
       position: { x, y, z },
       rotation: { x: 0, y: 0, z: 0, w: 1 },
-      size: { w: size, h: size, d: size }
+      size: { w: width, h: height, d: depth }
     };
   }
 
-  createSphere(x: number, y: number, z: number): PhysicsBodyDef {
+  createSphere(x: number, y: number, z: number, r?: number, mass?: number): PhysicsBodyDef {
     if (!this.world) throw new Error('Physics not initialized');
 
-    const radius = 0.3 + Math.random() * 0.4;
+    const radius = r ?? (0.3 + Math.random() * 0.4);
 
-    const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(x, y, z);
+    const rigidBodyDesc = mass === 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+    rigidBodyDesc.setTranslation(x, y, z);
+    if (mass && mass > 0) rigidBodyDesc.setMass(mass);
+
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
 
     const colliderDesc = RAPIER.ColliderDesc.ball(radius)
@@ -103,6 +110,31 @@ export class PhysicsService {
       rotation: { x: 0, y: 0, z: 0, w: 1 },
       radius
     };
+  }
+
+  createCylinder(x: number, y: number, z: number, height: number, radius: number, mass: number = 1): PhysicsBodyDef {
+      if (!this.world) throw new Error('Physics not initialized');
+      
+      const rigidBodyDesc = mass === 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+      rigidBodyDesc.setTranslation(x, y, z);
+      
+      const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+      
+      // Rapier cylinder is defined by half-height and radius
+      const colliderDesc = RAPIER.ColliderDesc.cylinder(height / 2, radius)
+        .setRestitution(0.5)
+        .setFriction(0.5);
+      
+      this.world.createCollider(colliderDesc, rigidBody);
+
+      return {
+          handle: rigidBody.handle,
+          type: 'cylinder',
+          position: { x, y, z },
+          rotation: { x: 0, y: 0, z: 0, w: 1 },
+          height,
+          radius
+      };
   }
 
   getBodyPose(handle: number): { p: RAPIER.Vector, q: RAPIER.Rotation } | null {
@@ -137,7 +169,6 @@ export class PhysicsService {
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
-    // Iterate colliders (usually 1)
     for (let i = 0; i < body.numColliders(); i++) {
         const collider = body.collider(i);
         collider.setFriction(props.friction);
@@ -150,34 +181,30 @@ export class PhysicsService {
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
-    // Rapier doesn't support scaling existing colliders easily, we recreate the collider
-    // Remove existing colliders
     const n = body.numColliders();
     const collidersToRemove: RAPIER.Collider[] = [];
     for(let i=0; i<n; i++) collidersToRemove.push(body.collider(i));
     collidersToRemove.forEach(c => this.world!.removeCollider(c, false));
 
-    // Create new collider with scaled dimensions
     let colliderDesc: RAPIER.ColliderDesc;
 
     if (def.type === 'box' && def.size) {
-        // Box extent is half-size
         const hx = (def.size.w / 2) * scale.x;
         const hy = (def.size.h / 2) * scale.y;
         const hz = (def.size.d / 2) * scale.z;
         colliderDesc = RAPIER.ColliderDesc.cuboid(Math.abs(hx), Math.abs(hy), Math.abs(hz));
     } else if (def.type === 'sphere' && def.radius) {
-        // Uniform scale approximation for sphere
         const s = Math.max(scale.x, Math.max(scale.y, scale.z));
         colliderDesc = RAPIER.ColliderDesc.ball(def.radius * s);
+    } else if (def.type === 'cylinder' && def.height && def.radius) {
+        const h = (def.height / 2) * scale.y;
+        const r = def.radius * Math.max(scale.x, scale.z);
+        colliderDesc = RAPIER.ColliderDesc.cylinder(Math.abs(h), Math.abs(r));
     } else {
-        return; // Unknown
+        return; 
     }
 
-    // Retain material props? We should probably pass them in, but for now defaults
-    // In a real app we'd read them from the old collider before destroying
     colliderDesc.setRestitution(0.7).setFriction(0.5);
-
     this.world.createCollider(colliderDesc, body);
   }
 
@@ -188,3 +215,4 @@ export class PhysicsService {
     }
   }
 }
+    

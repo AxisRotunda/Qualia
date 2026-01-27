@@ -28,11 +28,10 @@ export class SceneService {
 
   init(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f172a);
-    this.scene.fog = new THREE.Fog(0x0f172a, 10, 50);
+    this.setAtmosphere('clear');
 
     this.camera = new THREE.PerspectiveCamera(
-      60, window.innerWidth / window.innerHeight, 0.1, 100
+      60, window.innerWidth / window.innerHeight, 0.1, 500
     );
     this.camera.position.set(0, 10, 20);
     this.camera.lookAt(0, 0, 0);
@@ -51,14 +50,21 @@ export class SceneService {
     this.scene.add(this.ambientLight);
 
     this.dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    this.dirLight.position.set(10, 20, 10);
+    this.dirLight.position.set(20, 50, 20);
     this.dirLight.castShadow = true;
     this.dirLight.shadow.mapSize.width = 2048;
     this.dirLight.shadow.mapSize.height = 2048;
+    this.dirLight.shadow.camera.near = 0.5;
+    this.dirLight.shadow.camera.far = 100;
+    this.dirLight.shadow.camera.left = -50;
+    this.dirLight.shadow.camera.right = 50;
+    this.dirLight.shadow.camera.top = 50;
+    this.dirLight.shadow.camera.bottom = -50;
+    
     this.scene.add(this.dirLight);
 
     // Ground
-    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundGeo = new THREE.PlaneGeometry(200, 200);
     const groundMat = new THREE.MeshStandardMaterial({ 
       color: 0x1e293b, 
       roughness: 0.8,
@@ -72,7 +78,7 @@ export class SceneService {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    const grid = new THREE.GridHelper(100, 50, 0x475569, 0x1e293b);
+    const grid = new THREE.GridHelper(200, 100, 0x475569, 0x1e293b);
     this.scene.add(grid);
 
     // Initialize Gizmo
@@ -81,6 +87,35 @@ export class SceneService {
         this.isDraggingGizmo.set(event.value);
     });
     this.scene.add(this.transformControl);
+  }
+
+  setAtmosphere(preset: 'clear'|'fog'|'night') {
+    switch(preset) {
+      case 'clear':
+        this.scene.fog = new THREE.Fog(0x0f172a, 30, 150);
+        this.scene.background = new THREE.Color(0x0f172a);
+        if(this.ambientLight) this.ambientLight.intensity = 0.4;
+        break;
+      case 'fog':
+        this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
+        this.scene.background = new THREE.Color(0x0f0f1e);
+        if(this.ambientLight) this.ambientLight.intensity = 0.25;
+        if(this.dirLight) this.dirLight.intensity = 0.7;
+        break;
+      case 'night':
+        this.scene.fog = new THREE.FogExp2(0x050510, 0.025);
+        this.scene.background = new THREE.Color(0x000008);
+        if(this.ambientLight) this.ambientLight.intensity = 0.1;
+        if(this.dirLight) {
+            this.dirLight.intensity = 0.5;
+            this.dirLight.color.setHex(0x6688ff);
+        }
+        break;
+    }
+  }
+
+  getScene(): THREE.Scene {
+      return this.scene;
   }
 
   getCamera(): THREE.PerspectiveCamera {
@@ -93,7 +128,6 @@ export class SceneService {
 
   setWireframeForAll(enabled: boolean) {
     this.materials.forEach(mat => {
-        // Cast to any to avoid strict type checks on base Material class
         (mat as any).wireframe = enabled;
     });
   }
@@ -115,6 +149,9 @@ export class SceneService {
     
     if (data.type === 'box') {
       geometry = new THREE.BoxGeometry(data.size!.w, data.size!.h, data.size!.d);
+    } else if (data.type === 'cylinder') {
+      // CylinderGeometry(radiusTop, radiusBottom, height, radialSegments)
+      geometry = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
     } else {
       geometry = new THREE.SphereGeometry(data.radius!, 32, 32);
     }
@@ -125,7 +162,6 @@ export class SceneService {
       color: color,
       roughness: 0.4,
       metalness: 0.5,
-      // Check current wireframe state from ground (hacky but effective for syncing)
       wireframe: (this.materials[0] as any).wireframe || false
     });
     this.materials.push(material);
@@ -154,17 +190,14 @@ export class SceneService {
   }
 
   setSelection(mesh: THREE.Mesh | null) {
-    // Legacy helper removal
     if (this.selectionHelper) {
       this.scene.remove(this.selectionHelper);
       this.selectionHelper.dispose();
       this.selectionHelper = null;
     }
 
-    // Attach Gizmo
     if (mesh) {
       this.transformControl?.attach(mesh);
-      // Optional: Add box helper too for clarity? For now, gizmo is enough visual feedback
       this.selectionHelper = new THREE.BoxHelper(mesh, 0x22d3ee);
       this.scene.add(this.selectionHelper);
     } else {
@@ -194,3 +227,4 @@ export class SceneService {
     this.renderer.render(this.scene, this.camera);
   }
 }
+    

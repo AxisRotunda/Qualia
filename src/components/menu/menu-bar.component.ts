@@ -12,7 +12,6 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
   template: `
     <nav class="flex items-center gap-1 px-3 py-1 bg-slate-950 border-b border-slate-800 select-none z-50 relative shrink-0"
          aria-label="Main Menu">
-      <!-- Brand -->
       <div class="flex items-center gap-2 mr-6">
          <span class="material-symbols-outlined text-cyan-500 text-[18px]">deployed_code_history</span>
          <span class="font-bold text-slate-200 text-xs tracking-wider">QUALIA<span class="text-cyan-500">3D</span></span>
@@ -29,10 +28,8 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
           }
       </div>
       
-      <!-- Spacer -->
       <div class="flex-grow"></div>
       
-      <!-- Right-aligned items -->
       <a href="https://github.com/dimforge/rapier" target="_blank" class="hidden md:flex items-center gap-1 px-2 py-1 text-[10px] text-slate-500 hover:text-cyan-400 transition-colors">
         <span>Rapier & Three.js</span>
       </a>
@@ -48,58 +45,35 @@ export class MenuBarComponent {
 
   menus: MenuAction[] = [
     {
-      id: 'file',
-      label: 'File',
-      execute: () => {},
+      id: 'file', label: 'File', execute: () => {},
       children: [
-        { id: 'new', label: 'New', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
-        { id: 'save', label: 'Save', shortcut: 'Ctrl+S', execute: () => console.log('Save triggered') },
-        { id: 'load', label: 'Open', shortcut: 'Ctrl+O', execute: () => console.log('Load triggered') },
-        { id: 'export', label: 'Export GLTF', execute: () => console.log('Export triggered') }
+        { id: 'new', label: 'New Scene', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
+        { id: 'gen', label: 'Generate City', execute: () => this.engine.generateCity() },
       ]
     },
     {
-      id: 'edit',
-      label: 'Edit',
-      execute: () => {},
+      id: 'edit', label: 'Edit', execute: () => {},
       children: [
-        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', 
-          isDisabled: () => !this.engine.canUndo(), execute: () => this.engine.undo() },
-        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z',
-          isDisabled: () => !this.engine.canRedo(), execute: () => this.engine.redo() },
-        { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D',
-          isDisabled: () => this.engine.selectedEntity() === null,
-          execute: () => {
-              const e = this.engine.selectedEntity();
-              if (e !== null) this.engine.duplicateEntity(e);
-          } },
-        { id: 'delete', label: 'Delete', shortcut: 'Delete',
-          isDisabled: () => this.engine.selectedEntity() === null, 
-          execute: () => {
-              const e = this.engine.selectedEntity();
-              if (e !== null) this.engine.deleteEntity(e);
-          } }
+        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', isDisabled: () => !this.engine.canUndo(), execute: () => this.engine.undo() },
+        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z', isDisabled: () => !this.engine.canRedo(), execute: () => this.engine.redo() },
+        { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D', isDisabled: () => this.engine.selectedEntity() === null, execute: () => { const e = this.engine.selectedEntity(); if (e !== null) this.engine.duplicateEntity(e); } },
+        { id: 'delete', label: 'Delete', shortcut: 'Delete', isDisabled: () => this.engine.selectedEntity() === null, execute: () => { const e = this.engine.selectedEntity(); if (e !== null) this.engine.deleteEntity(e); } }
       ]
     },
     {
-      id: 'simulation',
-      label: 'Simulation',
-      execute: () => {},
+      id: 'simulation', label: 'Simulation', execute: () => {},
       children: [
         { id: 'sim-play',  label: 'Play',  shortcut: 'Space', isDisabled: () => !this.engine.isPaused(), execute: () => this.engine.setPaused(false) },
         { id: 'sim-pause', label: 'Pause', shortcut: 'Space', isDisabled: () => this.engine.isPaused(), execute: () => this.engine.setPaused(true) },
-        { id: 'sim-reset', label: 'Reset', execute: () => this.engine.reset() },
+        { id: 'sim-reset', label: 'Reset Props', execute: () => {} },
       ]
     },
     {
-      id: 'view',
-      label: 'View',
-      execute: () => {},
+      id: 'view', label: 'View', execute: () => {},
       children: [
         { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => this.engine.focusSelectedEntity() },
-        { id: 'camera-top', label: 'Top', execute: () => this.engine.setCameraPreset('top') },
-        { id: 'camera-front', label: 'Front', execute: () => this.engine.setCameraPreset('front') },
-        { id: 'camera-side', label: 'Side', execute: () => this.engine.setCameraPreset('side') }
+        { id: 'camera-top', label: 'Top View', execute: () => this.engine.setCameraPreset('top') },
+        { id: 'camera-front', label: 'Front View', execute: () => this.engine.setCameraPreset('front') }
       ]
     }
   ];
@@ -108,3 +82,4 @@ export class MenuBarComponent {
     this.keyboard.register(this.menus);
   }
 }
+    
