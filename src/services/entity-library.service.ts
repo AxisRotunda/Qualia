@@ -70,14 +70,27 @@ export class EntityLibraryService {
   ];
 
   validateTemplates(sceneService: SceneService) {
+    const texturableMaterials = ['mat-road', 'mat-ground'];
+    
     this.templates.forEach(tpl => {
       // 1. Material Existence
       if (tpl.materialId && !sceneService.hasMaterial(tpl.materialId)) {
         console.warn(`[Validation Warning] Template '${tpl.id}' references missing material '${tpl.materialId}'`);
       }
+      
       // 2. Geometry Support
       if (!['box', 'sphere', 'cylinder'].includes(tpl.geometry)) {
          console.error(`[Validation Error] Template '${tpl.id}' uses unsupported geometry '${tpl.geometry}'`);
+      }
+
+      // 3. Texture Semantic Validation
+      // Ensure small props don't accidentally use heavy terrain textures if we ever assign them
+      if (tpl.materialId && texturableMaterials.includes(tpl.materialId)) {
+          const isTerrain = tpl.tags.includes('terrain');
+          const isLarge = tpl.size.x > 5 || tpl.size.z > 5;
+          if (!isTerrain && !isLarge) {
+              console.warn(`[Validation Warning] Template '${tpl.id}' uses texture-heavy material '${tpl.materialId}' but is not a terrain/large object.`);
+          }
       }
     });
   }

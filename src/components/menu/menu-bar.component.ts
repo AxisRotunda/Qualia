@@ -73,6 +73,7 @@ export class MenuBarComponent {
     {
       id: 'view', label: 'View', execute: () => {},
       children: [
+        { id: 'view-textures', label: 'Toggle Textures', execute: () => this.engine.toggleTextures() },
         { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => this.engine.focusSelectedEntity() },
         { id: 'camera-top', label: 'Top View', execute: () => this.engine.setCameraPreset('top') },
         { id: 'camera-front', label: 'Front View', execute: () => this.engine.setCameraPreset('front') }

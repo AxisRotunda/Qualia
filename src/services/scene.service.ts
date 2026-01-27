@@ -17,7 +17,9 @@ export class SceneService {
   private dirLight!: THREE.DirectionalLight;
 
   // Material Registry
-  private materialRegistry = new Map<string, THREE.Material>();
+  private materialRegistry = new Map<string, THREE.MeshStandardMaterial>();
+  private commonTexture: THREE.Texture | null = null;
+  public texturesEnabled = false;
   
   // Cache for cleanup
   private geometries: THREE.BufferGeometry[] = [];
@@ -66,6 +68,7 @@ export class SceneService {
     this.scene.add(this.dirLight);
 
     // Initialize Material Registry
+    this.initCommonTexture();
     this.initMaterials();
 
     // Ground
@@ -89,41 +92,94 @@ export class SceneService {
     this.scene.add(this.transformControl);
   }
 
+  private initCommonTexture() {
+    // Procedural Noise Texture (Cheap "Asphalt/Concrete")
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(0, 0, size, size);
+        
+        // Simple noise
+        const imgData = ctx.getImageData(0,0, size, size);
+        const data = imgData.data;
+        for(let i=0; i < data.length; i += 4) {
+            const grain = (Math.random() - 0.5) * 30;
+            data[i] = Math.min(255, Math.max(0, data[i] + grain));
+            data[i+1] = Math.min(255, Math.max(0, data[i+1] + grain));
+            data[i+2] = Math.min(255, Math.max(0, data[i+2] + grain));
+        }
+        ctx.putImageData(imgData, 0, 0);
+    }
+    
+    this.commonTexture = new THREE.CanvasTexture(canvas);
+    this.commonTexture.wrapS = THREE.RepeatWrapping;
+    this.commonTexture.wrapT = THREE.RepeatWrapping;
+    this.commonTexture.repeat.set(4, 4);
+    this.commonTexture.colorSpace = THREE.SRGBColorSpace;
+  }
+
   private initMaterials() {
-    // Shared parameters
-    const baseSettings = { roughness: 0.7, metalness: 0.1 };
-
-    this.materialRegistry.set('mat-ground', new THREE.MeshStandardMaterial({ 
-      color: 0x1e293b, roughness: 0.9, metalness: 0.1 
-    }));
+    // Semantic Material Set - Locked down
     
+    // Concrete: Rough, Matte, Mid-Gray
     this.materialRegistry.set('mat-concrete', new THREE.MeshStandardMaterial({ 
-      color: 0x64748b, roughness: 0.9, metalness: 0.1 
+      color: 0x808080, roughness: 0.8, metalness: 0.0 
     }));
     
+    // Metal: Smooth, Metallic, Medium Gray
     this.materialRegistry.set('mat-metal', new THREE.MeshStandardMaterial({ 
-      color: 0x94a3b8, roughness: 0.4, metalness: 0.8 
+      color: 0x94a3b8, roughness: 0.2, metalness: 1.0 
     }));
     
-    this.materialRegistry.set('mat-wood', new THREE.MeshStandardMaterial({ 
-      color: 0xa16207, roughness: 0.9, metalness: 0.0 
-    }));
-
+    // Road: Rough, Matte, Dark Gray
     this.materialRegistry.set('mat-road', new THREE.MeshStandardMaterial({ 
-      color: 0x0f172a, roughness: 0.9, metalness: 0.0 
+      color: 0x333333, roughness: 0.7, metalness: 0.0 
     }));
 
+    // Wood: Warm, Rough, No Metal
+    this.materialRegistry.set('mat-wood', new THREE.MeshStandardMaterial({ 
+      color: 0x8B4513, roughness: 0.6, metalness: 0.0 
+    }));
+
+    // Glass: Smooth, Transparent, High Env
     this.materialRegistry.set('mat-glass', new THREE.MeshStandardMaterial({ 
-      color: 0x22d3ee, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.6 
+      color: 0xa5f3fc, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.6 
     }));
     
+    // Hazard: High Contrast, Mid roughness
     this.materialRegistry.set('mat-hazard', new THREE.MeshStandardMaterial({
-        color: 0xfacc15, roughness: 0.6, metalness: 0.4
+        color: 0xfacc15, roughness: 0.6, metalness: 0.1
     }));
     
-    this.materialRegistry.set('mat-default', new THREE.MeshStandardMaterial({ 
-      color: 0xffffff, ...baseSettings 
+    // Ground (Base)
+    this.materialRegistry.set('mat-ground', new THREE.MeshStandardMaterial({ 
+      color: 0x1e293b, roughness: 0.9, metalness: 0.0
     }));
+
+    // Fallback
+    this.materialRegistry.set('mat-default', new THREE.MeshStandardMaterial({ 
+      color: 0xffffff, roughness: 0.5, metalness: 0.0 
+    }));
+  }
+
+  setTexturesEnabled(enabled: boolean) {
+      this.texturesEnabled = enabled;
+      const map = enabled ? this.commonTexture : null;
+
+      // Only apply texture to specific materials
+      const texturableIds = ['mat-road', 'mat-concrete', 'mat-ground'];
+      
+      texturableIds.forEach(id => {
+          const mat = this.materialRegistry.get(id);
+          if (mat) {
+              mat.map = map;
+              mat.needsUpdate = true;
+          }
+      });
   }
 
   getMaterial(id: string): THREE.Material {
@@ -173,7 +229,7 @@ export class SceneService {
 
   setWireframeForAll(enabled: boolean) {
     this.materialRegistry.forEach(mat => {
-        (mat as any).wireframe = enabled;
+        mat.wireframe = enabled;
     });
   }
 
@@ -208,12 +264,11 @@ export class SceneService {
     if (options.materialId && this.materialRegistry.has(options.materialId)) {
         material = this.materialRegistry.get(options.materialId)!;
     } else if (options.color) {
-        // Only create new material if specific color requested that isn't a preset
-        // This is a "cost" but allows flexibility for dynamic coloring if needed.
+        // Create unique material only if strictly necessary for custom color override
         material = new THREE.MeshStandardMaterial({ 
             color: options.color,
-            roughness: 0.4,
-            metalness: 0.5
+            roughness: 0.5,
+            metalness: 0.1
         });
     } else {
         material = this.materialRegistry.get('mat-default')!;
@@ -238,7 +293,7 @@ export class SceneService {
     
     // Cleanup unique materials
     if (mesh.material) {
-        const isShared = Array.from(this.materialRegistry.values()).includes(mesh.material as THREE.Material);
+        const isShared = Array.from(this.materialRegistry.values()).includes(mesh.material as THREE.MeshStandardMaterial);
         if (!isShared) {
             (mesh.material as THREE.Material).dispose();
         }

@@ -41,6 +41,7 @@ export class EngineService {
   isPaused = signal(false);
   gravityY = signal(-9.81);
   wireframe = signal(false);
+  texturesEnabled = signal(false);
   transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');
   
   mode = signal<'edit' | 'explore'>('edit');
@@ -238,10 +239,6 @@ export class EngineService {
   spawnSphere() {
       // Replaced with template spawn for consistency
       const pos = new THREE.Vector3((Math.random()-0.5)*5, 10 + Math.random()*5, (Math.random()-0.5)*5);
-      // Fallback manual spawn but attempting to stay compliant, actually let's use a dynamic template logic or just strict spawn
-      // The guidelines say "Must spawn via EntityLibraryService only".
-      // I'll assume we can use a generic template or add one. 'prop-glass-block' is similar.
-      // But preserving functionality:
       this.entityLib.spawnFromTemplate(this, 'prop-barrel', pos);
   }
 
@@ -326,8 +323,14 @@ export class EngineService {
     console.group('Debug: Spawn All Templates');
     let x = -10;
     this.entityLib.templates.forEach(tpl => {
-      console.log(`Spawning ${tpl.id} at x=${x}`);
-      this.entityLib.spawnFromTemplate(this, tpl.id, new THREE.Vector3(x, 5, 0));
+      console.log(`Spawning ${tpl.id} [${tpl.materialId}] at x=${x}`);
+      const ent = this.entityLib.spawnFromTemplate(this, tpl.id, new THREE.Vector3(x, 5, 0));
+      // Visual verification of material assignment
+      const meshRef = this.world.meshes.get(ent);
+      if(meshRef) {
+          const mat = meshRef.mesh.material as THREE.MeshStandardMaterial;
+          console.log(` > Assigned Mat: color=${mat.color.getHexString()} rough=${mat.roughness}`);
+      }
       x += 5;
     });
     console.groupEnd();
@@ -341,6 +344,11 @@ export class EngineService {
        const mesh = this.world.meshes.get(e);
        if (!rb) { console.error(`Entity ${e} missing rigid body`); errors++; }
        if (!mesh) { console.error(`Entity ${e} missing mesh`); errors++; }
+       
+       if (mesh) {
+           const mat = mesh.mesh.material as THREE.MeshStandardMaterial;
+           if (!mat) { console.error(`Entity ${e} has no material`); errors++; }
+       }
     });
     console.log(`Validation complete. ${this.world.entities.size} entities. ${errors} errors.`);
     console.groupEnd();
@@ -389,6 +397,7 @@ export class EngineService {
   togglePause() { this.isPaused.update(v => !v); }
   setPaused(val: boolean) { this.isPaused.set(val); }
   toggleWireframe() { this.wireframe.update(v => !v); this.sceneService.setWireframeForAll(this.wireframe()); }
+  toggleTextures() { this.texturesEnabled.update(v => !v); this.sceneService.setTexturesEnabled(this.texturesEnabled()); }
   setTransformMode(mode: 'translate'|'rotate'|'scale') { this.transformMode.set(mode); this.sceneService.setTransformMode(mode); }
   setGravity(val: number) { this.gravityY.set(val); this.physicsService.setGravity(val); }
   
