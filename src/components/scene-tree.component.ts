@@ -35,7 +35,7 @@ import { Entity } from '../engine/core';
               <span class="material-symbols-outlined text-[14px] opacity-70">
                   {{ entity % 2 === 0 ? 'deployed_code' : 'circle' }}
               </span>
-              <span class="font-mono truncate">Entity_{{ entity }}</span>
+              <span class="font-mono truncate">{{ engine.getEntityName(entity) }}</span>
             </div>
           }
           @if (allEntities().length === 0) {

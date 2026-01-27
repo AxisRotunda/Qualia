@@ -1,6 +1,8 @@
-import { Injectable } from '@angular/core';
+
+import { Injectable, signal } from '@angular/core';
 import * as THREE from 'three';
 import { PhysicsBodyDef } from './physics.service';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +21,10 @@ export class SceneService {
   private geometries: THREE.BufferGeometry[] = [];
 
   private selectionHelper: THREE.BoxHelper | null = null;
+  private transformControl: TransformControls | null = null;
+
+  // Signals to notify engine
+  isDraggingGizmo = signal(false);
 
   init(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -68,6 +74,13 @@ export class SceneService {
 
     const grid = new THREE.GridHelper(100, 50, 0x475569, 0x1e293b);
     this.scene.add(grid);
+
+    // Initialize Gizmo
+    this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
+    this.transformControl.addEventListener('dragging-changed', (event: any) => {
+        this.isDraggingGizmo.set(event.value);
+    });
+    this.scene.add(this.transformControl);
   }
 
   getCamera(): THREE.PerspectiveCamera {
@@ -128,6 +141,9 @@ export class SceneService {
 
   removeMesh(mesh: THREE.Mesh) {
     this.scene.remove(mesh);
+    if (this.transformControl?.object === mesh) {
+        this.transformControl.detach();
+    }
     
     if (mesh.geometry) mesh.geometry.dispose();
     if (Array.isArray(mesh.material)) {
@@ -138,16 +154,28 @@ export class SceneService {
   }
 
   setSelection(mesh: THREE.Mesh | null) {
+    // Legacy helper removal
     if (this.selectionHelper) {
       this.scene.remove(this.selectionHelper);
       this.selectionHelper.dispose();
       this.selectionHelper = null;
     }
 
+    // Attach Gizmo
     if (mesh) {
+      this.transformControl?.attach(mesh);
+      // Optional: Add box helper too for clarity? For now, gizmo is enough visual feedback
       this.selectionHelper = new THREE.BoxHelper(mesh, 0x22d3ee);
       this.scene.add(this.selectionHelper);
+    } else {
+      this.transformControl?.detach();
     }
+  }
+
+  setTransformMode(mode: 'translate' | 'rotate' | 'scale') {
+      if (this.transformControl) {
+          this.transformControl.setMode(mode);
+      }
   }
 
   updateSelectionHelper() {

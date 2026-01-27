@@ -20,17 +20,30 @@ import { EngineService } from '../services/engine.service';
         <div class="w-px h-5 bg-slate-800 mx-1 hidden lg:block"></div>
 
         <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50">
-            <button class="tool-btn-sm" (click)="spawnBox.emit()" title="Spawn Cube" aria-label="Spawn Cube">
+            <button class="tool-btn-sm" (click)="spawnBox.emit()" title="Spawn Cube">
               <span class="material-symbols-outlined icon-sm">check_box_outline_blank</span>
             </button>
-            <button class="tool-btn-sm" (click)="spawnSphere.emit()" title="Spawn Sphere" aria-label="Spawn Sphere">
+            <button class="tool-btn-sm" (click)="spawnSphere.emit()" title="Spawn Sphere">
               <span class="material-symbols-outlined icon-sm">circle</span>
             </button>
         </div>
 
         <div class="w-px h-5 bg-slate-800 mx-1"></div>
+        
+        <!-- Gizmo Modes -->
+        <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50">
+            <button class="tool-btn-sm" [class.active]="engine.transformMode() === 'translate'" (click)="engine.setTransformMode('translate')" title="Translate">
+              <span class="material-symbols-outlined icon-sm">open_with</span>
+            </button>
+            <button class="tool-btn-sm" [class.active]="engine.transformMode() === 'rotate'" (click)="engine.setTransformMode('rotate')" title="Rotate">
+              <span class="material-symbols-outlined icon-sm">rotate_right</span>
+            </button>
+            <button class="tool-btn-sm" [class.active]="engine.transformMode() === 'scale'" (click)="engine.setTransformMode('scale')" title="Scale">
+              <span class="material-symbols-outlined icon-sm">aspect_ratio</span>
+            </button>
+        </div>
 
-        <button class="tool-btn" 
+        <button class="tool-btn ml-1" 
                 [disabled]="engine.selectedEntity() === null"
                 [class.opacity-40]="engine.selectedEntity() === null"
                 (click)="engine.focusSelectedEntity()" 
@@ -39,8 +52,8 @@ import { EngineService } from '../services/engine.service';
         </button>
       </div>
 
-      <!-- Center: Playback (Icon Only) -->
-      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+      <!-- Center: Playback -->
+      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1">
         <button class="w-8 h-8 rounded-full flex items-center justify-center transition-all focus-visible:outline-cyan-400"
                 [class.bg-emerald-600]="!engine.isPaused()"
                 [class.text-white]="!engine.isPaused()"
@@ -52,9 +65,17 @@ import { EngineService } from '../services/engine.service';
                 [attr.aria-label]="engine.isPaused() ? 'Play Simulation' : 'Pause Simulation'">
              <span class="material-symbols-outlined icon-md">{{ engine.isPaused() ? 'play_arrow' : 'pause' }}</span>
         </button>
+        
+        @if (engine.isPaused()) {
+            <button class="w-6 h-6 rounded-full flex items-center justify-center bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors"
+                    (click)="engine.stepSimulation()"
+                    title="Step Forward">
+                <span class="material-symbols-outlined text-[16px]">skip_next</span>
+            </button>
+        }
       </div>
       
-      <!-- Right: View Options & Mobile Toggle -->
+      <!-- Right: View Options -->
       <div class="flex items-center gap-1.5">
         <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50 mr-2">
             <button class="tool-btn-sm" [class.active]="showGrid()" (click)="toggleGrid()" title="Toggle Grid">

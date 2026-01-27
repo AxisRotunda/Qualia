@@ -1,6 +1,6 @@
 
 import { Injectable, signal, computed } from '@angular/core';
-import { PhysicsService } from './physics.service';
+import { PhysicsService, PhysicsBodyDef } from './physics.service';
 import { SceneService } from './scene.service';
 import { CameraControlService, CameraViewPreset } from './camera-control.service';
 import { World, Entity } from '../engine/core';
@@ -34,6 +34,7 @@ export class EngineService {
   isPaused = signal(false);
   gravityY = signal(-9.81);
   wireframe = signal(false);
+  transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');
 
   // Undo/Redo stubs
   canUndo = signal(false);
@@ -53,6 +54,19 @@ export class EngineService {
       // Pass canvas to camera control for event listeners
       this.cameraControl.init(this.sceneService.getCamera(), canvas);
 
+      // Effect to disable OrbitControls when Gizmo is dragging
+      const checkDragging = () => {
+          if (this.sceneService.isDraggingGizmo()) {
+              this.cameraControl.setEnabled(false);
+          } else {
+              this.cameraControl.setEnabled(true);
+          }
+      };
+      // We can't use `effect` here easily without injection context, so we poll or use callback in loop
+      // Better: SceneService exposes a signal.
+      // But for now, we'll check it in the loop or use a primitive approach.
+      // Actually, let's just check `isDraggingGizmo` in the update loop or subscription.
+      
       this.loading.set(false);
       this.startLoop();
       
@@ -76,7 +90,14 @@ export class EngineService {
       this.lastTime = time;
       this.updateStats(time);
 
-      // 2. Camera
+      // 1. Camera Control Check
+      if (this.sceneService.isDraggingGizmo()) {
+         this.cameraControl.setEnabled(false);
+      } else {
+         this.cameraControl.setEnabled(true);
+      }
+
+      // 2. Camera Update
       this.cameraControl.update();
 
       // 3. Physics Step
@@ -87,6 +108,9 @@ export class EngineService {
 
         // 4. System: Sync Physics -> ECS
         this.world.rigidBodies.forEach((rb, entity) => {
+          // If we are dragging this entity with gizmo, DO NOT overwrite with physics
+          if (this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) return;
+
           const pose = this.physicsService.getBodyPose(rb.handle);
           if (pose) {
             const transform = this.world.transforms.get(entity);
@@ -99,26 +123,52 @@ export class EngineService {
         });
       }
 
-      // 5. System: Sync ECS -> Render
+      // 5. System: Sync ECS -> Render (AND Sync Gizmo -> Physics)
       this.world.meshes.forEach((meshRef, entity) => {
         const transform = this.world.transforms.get(entity);
         if (transform) {
-          meshRef.mesh.position.set(
-            transform.position.x, 
-            transform.position.y, 
-            transform.position.z
-          );
-          meshRef.mesh.quaternion.set(
-            transform.rotation.x, 
-            transform.rotation.y, 
-            transform.rotation.z, 
-            transform.rotation.w
-          );
-          meshRef.mesh.scale.set(
-              transform.scale.x,
-              transform.scale.y,
-              transform.scale.z
-          );
+            
+          // If dragging gizmo, read FROM mesh TO physics/transform
+          if (this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) {
+              const mesh = meshRef.mesh;
+              
+              // Update Transform Component
+              transform.position = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+              transform.rotation = { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w };
+              transform.scale = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
+              
+              // Force Update Physics Body
+              const rb = this.world.rigidBodies.get(entity);
+              const def = this.world.bodyDefs.get(entity);
+
+              if (rb) {
+                  this.physicsService.updateBodyTransform(rb.handle, transform.position, transform.rotation);
+                  if (def) {
+                      // Only update scale if changed significantly to avoid thrashing collider recreation
+                      // For now, simpler to just do it.
+                      this.physicsService.updateBodyScale(rb.handle, def, transform.scale);
+                  }
+              }
+
+          } else {
+              // Standard Sync: ECS -> Mesh
+              meshRef.mesh.position.set(
+                transform.position.x, 
+                transform.position.y, 
+                transform.position.z
+              );
+              meshRef.mesh.quaternion.set(
+                transform.rotation.x, 
+                transform.rotation.y, 
+                transform.rotation.z, 
+                transform.rotation.w
+              );
+              meshRef.mesh.scale.set(
+                  transform.scale.x,
+                  transform.scale.y,
+                  transform.scale.z
+              );
+          }
         }
       });
       
@@ -134,6 +184,26 @@ export class EngineService {
     };
     
     requestAnimationFrame(loop);
+  }
+
+  stepSimulation() {
+      if (!this.isPaused()) return; // Only step if paused
+      
+      this.physicsService.step();
+      
+      // Sync one frame
+      this.world.rigidBodies.forEach((rb, entity) => {
+          const pose = this.physicsService.getBodyPose(rb.handle);
+          if (pose) {
+            const transform = this.world.transforms.get(entity);
+            if (transform) {
+                transform.position = pose.p;
+                transform.rotation = pose.q;
+            }
+          }
+      });
+      
+      // Render sync happens in loop regardless
   }
 
   // --- Core Lifecycle ---
@@ -172,16 +242,7 @@ export class EngineService {
     const mesh = this.sceneService.createMesh(bodyDef, color);
 
     const entity = this.world.createEntity();
-    this.world.rigidBodies.add(entity, { handle: bodyDef.handle });
-    this.world.meshes.add(entity, { mesh });
-    this.world.transforms.add(entity, {
-      position: bodyDef.position,
-      rotation: bodyDef.rotation,
-      scale: { x: 1, y: 1, z: 1 }
-    });
-    this.world.bodyDefs.add(entity, bodyDef);
-    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.7 });
-
+    this.setupEntity(entity, bodyDef, mesh, 'Box');
     this.updateCount();
   }
 
@@ -195,6 +256,11 @@ export class EngineService {
     const mesh = this.sceneService.createMesh(bodyDef, color);
 
     const entity = this.world.createEntity();
+    this.setupEntity(entity, bodyDef, mesh, 'Sphere');
+    this.updateCount();
+  }
+  
+  private setupEntity(entity: Entity, bodyDef: PhysicsBodyDef, mesh: THREE.Mesh, baseName: string) {
     this.world.rigidBodies.add(entity, { handle: bodyDef.handle });
     this.world.meshes.add(entity, { mesh });
     this.world.transforms.add(entity, {
@@ -203,9 +269,8 @@ export class EngineService {
       scale: { x: 1, y: 1, z: 1 }
     });
     this.world.bodyDefs.add(entity, bodyDef);
-    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.8 });
-
-    this.updateCount();
+    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.7 });
+    this.world.names.add(entity, `${baseName}_${entity}`);
   }
 
   deleteEntity(e: Entity) {
@@ -228,35 +293,31 @@ export class EngineService {
 
       const geo = meshRef.mesh.geometry;
       let bodyDef;
+      let typeName = 'Object';
       
       if (geo instanceof THREE.SphereGeometry) {
          bodyDef = this.physicsService.createSphere(x, y, z);
+         typeName = 'Sphere';
       } else {
          bodyDef = this.physicsService.createBox(x, y, z);
+         typeName = 'Box';
       }
 
       const mesh = this.sceneService.createMesh(bodyDef, color);
       const newEntity = this.world.createEntity();
       
-      this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
-      this.world.meshes.add(newEntity, { mesh });
-      this.world.transforms.add(newEntity, { 
-        position: bodyDef.position, 
-        rotation: bodyDef.rotation,
-        scale: { ...scale } 
-      });
-      this.world.bodyDefs.add(newEntity, bodyDef);
+      this.setupEntity(newEntity, bodyDef, mesh, typeName);
       
-      // Copy physics props if exists
+      // Copy scale/props override defaults
+      const tNew = this.world.transforms.get(newEntity);
+      if(tNew) tNew.scale = {...scale};
+
       const props = this.world.physicsProps.get(e);
       if (props) {
           this.world.physicsProps.add(newEntity, { ...props });
           this.physicsService.updateBodyMaterial(bodyDef.handle, props);
-      } else {
-          this.world.physicsProps.add(newEntity, { friction: 0.5, restitution: 0.7 });
       }
       
-      // Apply scale to new entity if needed
       if (scale.x !== 1 || scale.y !== 1 || scale.z !== 1) {
           this.physicsService.updateBodyScale(bodyDef.handle, bodyDef, scale);
       }
@@ -282,6 +343,9 @@ export class EngineService {
   // --- Interaction API ---
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
+    // If we are dragging gizmo, block raycast selection so we don't accidentally select background
+    if (this.sceneService.isDraggingGizmo()) return this.selectedEntity();
+
     const domEl = this.sceneService.getDomElement();
     if (!domEl) return null;
 
@@ -332,6 +396,11 @@ export class EngineService {
       this.wireframe.update(v => !v);
       this.sceneService.setWireframeForAll(this.wireframe());
   }
+  
+  setTransformMode(mode: 'translate' | 'rotate' | 'scale') {
+      this.transformMode.set(mode);
+      this.sceneService.setTransformMode(mode);
+  }
 
   setGravity(val: number) {
     this.gravityY.set(val);
@@ -348,6 +417,20 @@ export class EngineService {
   
   setCameraPreset(preset: CameraViewPreset) {
       this.cameraControl.setPreset(preset);
+  }
+
+  setEntityName(e: Entity, name: string) {
+      this.world.names.add(e, name);
+      // Force update UI if needed (signal based should handle it if consuming correctly)
+      // Since world.names is a Map, we might need to signal update or rely on computed
+      // The SceneTree uses computed off objectCount, which doesn't change on rename. 
+      // We will add a signal trigger for metadata updates or just refresh the list.
+      // For MVP, just update the map. The UI might need a trigger.
+      this.objectCount.update(c => c); // Hack to trigger computed
+  }
+  
+  getEntityName(e: Entity): string {
+      return this.world.names.get(e) ?? `Entity_${e}`;
   }
 
   // --- Entity Updates from Inspector ---

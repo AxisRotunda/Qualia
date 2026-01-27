@@ -64,6 +64,7 @@ export class World {
   // Data needed for reconstruction/logic
   bodyDefs = new ComponentStore<PhysicsBodyDef>();
   physicsProps = new ComponentStore<PhysicsProps>();
+  names = new ComponentStore<string>();
 
   createEntity(): Entity {
     const id = this.nextId++;
@@ -78,6 +79,7 @@ export class World {
     this.meshes.remove(e);
     this.bodyDefs.remove(e);
     this.physicsProps.remove(e);
+    this.names.remove(e);
   }
 
   clear() {
@@ -87,6 +89,7 @@ export class World {
     this.meshes.clear();
     this.bodyDefs.clear();
     this.physicsProps.clear();
+    this.names.clear();
     this.nextId = 0;
   }
 }

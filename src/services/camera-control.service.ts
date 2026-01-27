@@ -39,6 +39,12 @@ export class CameraControlService {
     }
   }
 
+  setEnabled(enabled: boolean) {
+      if (this.controls) {
+          this.controls.enabled = enabled;
+      }
+  }
+
   focusOn(target: THREE.Vector3) {
     if (!this.controls || !this.camera) return;
 

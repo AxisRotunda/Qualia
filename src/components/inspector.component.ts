@@ -19,19 +19,22 @@ import { Transform, PhysicsProps } from '../engine/core';
           
           <!-- Header / Identity -->
           <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/30">
-             <div class="flex justify-between items-start">
-                 <div>
-                    <div class="text-[10px] text-slate-500 font-bold uppercase mb-1">SELECTED ENTITY</div>
-                    <div class="flex items-center gap-2 text-slate-200 font-mono text-sm">
-                        <span class="material-symbols-outlined text-cyan-500 text-sm">data_object</span>
-                        Entity_{{ engine.selectedEntity() }}
-                    </div>
-                 </div>
+             <div class="flex justify-between items-start mb-2">
+                 <div class="text-[10px] text-slate-500 font-bold uppercase">SELECTED ENTITY</div>
                  <button class="p-1.5 hover:bg-rose-950/30 hover:text-rose-400 rounded transition-colors text-slate-500" 
                          title="Delete Entity"
                          (click)="deleteSelected()">
                     <span class="material-symbols-outlined text-[18px]">delete</span>
                  </button>
+             </div>
+             
+             <!-- Name Input -->
+             <div class="flex items-center bg-slate-950 rounded border border-slate-800 focus-within:border-cyan-500/50 transition-colors">
+                <span class="material-symbols-outlined text-cyan-500 text-sm pl-2">data_object</span>
+                <input type="text" 
+                       [value]="entityName()" 
+                       (change)="updateName($event)"
+                       class="w-full bg-transparent border-none py-1.5 px-2 text-sm font-mono text-slate-200 focus:outline-none">
              </div>
           </div>
 
@@ -203,6 +206,7 @@ export class InspectorComponent {
   
   transformSnapshot = signal<Transform | null>(null);
   physicsPropsSnapshot = signal<PhysicsProps | null>(null);
+  entityName = signal('');
   
   ambientIntensity = signal(0.4);
   dirIntensity = signal(0.8);
@@ -214,6 +218,7 @@ export class InspectorComponent {
        if (id === null) {
          this.transformSnapshot.set(null);
          this.physicsPropsSnapshot.set(null);
+         this.entityName.set('');
          return;
        }
        const t = this.engine.world.transforms.get(id);
@@ -229,7 +234,16 @@ export class InspectorComponent {
        if (p) {
          this.physicsPropsSnapshot.set({ ...p });
        }
+       this.entityName.set(this.engine.getEntityName(id));
     });
+  }
+
+  updateName(e: Event) {
+      const val = (e.target as HTMLInputElement).value;
+      const id = this.engine.selectedEntity();
+      if (id !== null) {
+          this.engine.setEntityName(id, val);
+      }
   }
 
   updatePos(axis: 'x' | 'y' | 'z', e: Event) {
