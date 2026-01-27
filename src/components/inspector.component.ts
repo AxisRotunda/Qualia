@@ -1,7 +1,8 @@
 
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, effect } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { EngineService } from '../services/engine.service';
+import { Transform, PhysicsProps } from '../engine/core';
 
 @Component({
   selector: 'app-inspector',
@@ -24,11 +25,12 @@ import { EngineService } from '../services/engine.service';
 
           <!-- Position -->
           <div class="space-y-3">
+            <h3 class="section-title">Transform</h3>
             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
               <span>Position</span>
               <div class="h-px bg-slate-700 flex-grow"></div>
             </div>
-            @if (transform(); as t) {
+            @if (transformSnapshot(); as t) {
               <div class="grid grid-cols-3 gap-2">
                 <div class="flex flex-col gap-1">
                   <label class="text-[9px] text-red-400 text-center font-bold">X</label>
@@ -61,7 +63,7 @@ import { EngineService } from '../services/engine.service';
               <span>Rotation (Quat)</span>
               <div class="h-px bg-slate-700 flex-grow"></div>
             </div>
-            @if (transform(); as t) {
+            @if (transformSnapshot(); as t) {
               <div class="grid grid-cols-4 gap-1">
                 <input type="number" step="0.1" [value]="t.rotation.x | number:'1.2-2'" (change)="updateRot('x', $event)" class="input-field text-[10px]">
                 <input type="number" step="0.1" [value]="t.rotation.y | number:'1.2-2'" (change)="updateRot('y', $event)" class="input-field text-[10px]">
@@ -77,7 +79,7 @@ import { EngineService } from '../services/engine.service';
               <span>Scale</span>
               <div class="h-px bg-slate-700 flex-grow"></div>
             </div>
-            @if (transform(); as t) {
+            @if (transformSnapshot(); as t) {
                <!-- Uniform Scale slider for simplicity in this version -->
                <div class="flex items-center gap-2">
                  <span class="text-[10px] text-slate-400 w-8">Unif</span>
@@ -91,11 +93,12 @@ import { EngineService } from '../services/engine.service';
 
           <!-- Physics Material -->
           <div class="space-y-3">
+            <h3 class="section-title mt-4">Physics</h3>
             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
               <span>Physics Material</span>
               <div class="h-px bg-slate-700 flex-grow"></div>
             </div>
-            @if (physicsProps(); as p) {
+            @if (physicsPropsSnapshot(); as p) {
                 <div class="space-y-2">
                     <div class="flex justify-between items-center text-[10px]">
                         <span class="text-slate-400">Restitution (Bounce)</span>
@@ -116,8 +119,9 @@ import { EngineService } from '../services/engine.service';
         <!-- Global Settings -->
         <div class="p-4 space-y-6 overflow-y-auto custom-scrollbar flex-1">
           <div class="space-y-3">
+             <h3 class="section-title">World Settings</h3>
              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <span>World Settings</span>
+              <span>Gravity</span>
               <div class="h-px bg-slate-700 flex-grow"></div>
             </div>
 
@@ -139,7 +143,11 @@ import { EngineService } from '../services/engine.service';
             </div>
             
             <!-- Lights -->
-            <div class="space-y-4 pt-4 border-t border-slate-800">
+             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 mt-4">
+              <span>Lighting</span>
+              <div class="h-px bg-slate-700 flex-grow"></div>
+            </div>
+            <div class="space-y-4 pt-2">
                 <div class="flex justify-between text-xs text-slate-400">
                    <span>Ambient Intensity</span>
                    <span class="font-mono text-cyan-400">{{ ambientIntensity() | number:'1.1-1' }}</span>
@@ -172,13 +180,18 @@ import { EngineService } from '../services/engine.service';
     .input-field {
         @apply w-full bg-slate-950 border border-slate-700 rounded px-1 py-1 text-xs text-center focus:border-cyan-500 focus:text-cyan-400 outline-none transition-colors;
     }
+    .section-title {
+        @apply text-sm font-bold text-cyan-400 tracking-wide mb-1;
+    }
   `],
   imports: [DecimalPipe]
 })
 export class InspectorComponent {
   engine = inject(EngineService);
   
-  private frameCounter = signal(0);
+  // Snapshots for stable UI values
+  transformSnapshot = signal<Transform | null>(null);
+  physicsPropsSnapshot = signal<PhysicsProps | null>(null);
   
   // Local state for lights (simple approach)
   ambientIntensity = signal(0.4);
@@ -186,24 +199,30 @@ export class InspectorComponent {
   dirColor = signal('#ffffff');
 
   constructor() {
-    const loop = () => {
-      // Always loop to update stats if visible
-      this.frameCounter.update(v => v + 1);
-      requestAnimationFrame(loop);
-    };
-    requestAnimationFrame(loop);
+    // Update snapshots only when selection changes
+    effect(() => {
+       const id = this.engine.selectedEntity();
+       if (id === null) {
+         this.transformSnapshot.set(null);
+         this.physicsPropsSnapshot.set(null);
+         return;
+       }
+       // Clone data to avoid reference mutations by engine loop
+       const t = this.engine.world.transforms.get(id);
+       const p = this.engine.world.physicsProps.get(id);
+
+       if (t) {
+         this.transformSnapshot.set({
+             position: { ...t.position },
+             rotation: { ...t.rotation },
+             scale: { ...t.scale }
+         });
+       }
+       if (p) {
+         this.physicsPropsSnapshot.set({ ...p });
+       }
+    });
   }
-
-  transform = computed(() => {
-    this.frameCounter(); 
-    const e = this.engine.selectedEntity();
-    return e !== null ? this.engine.world.transforms.get(e) : null;
-  });
-
-  physicsProps = computed(() => {
-      const e = this.engine.selectedEntity();
-      return e !== null ? this.engine.world.physicsProps.get(e) : null;
-  });
 
   updatePos(axis: 'x' | 'y' | 'z', e: Event) {
     const val = parseFloat((e.target as HTMLInputElement).value);
@@ -214,13 +233,19 @@ export class InspectorComponent {
     const t = this.engine.world.transforms.get(id);
     if (!t) return;
     
-    // Create new pos object
+    // Create new pos object for physics
     const newPos = { ...t.position };
     newPos[axis] = val;
     
-    // Accessing handle via service wrapper is cleaner
+    // Update engine
     const rb = this.engine.world.rigidBodies.get(id);
-    if(rb) this.engine.physicsService.updateBodyTransform(rb.handle, newPos);
+    if(rb) this.engine.physicsService.updateBodyTransform(rb.handle, newPos, t.rotation);
+
+    // Update snapshot manually
+    this.transformSnapshot.update(curr => {
+        if (!curr) return null;
+        return { ...curr, position: newPos };
+    });
   }
   
   updateRot(axis: 'x'|'y'|'z'|'w', e: Event) {
@@ -236,16 +261,27 @@ export class InspectorComponent {
       const newRot = { ...t.rotation };
       newRot[axis] = val;
       
-      // We don't normalize here immediately to allow user to type, 
-      // but physics engine usually expects normalized quat.
       this.engine.physicsService.updateBodyTransform(rb.handle, t.position, newRot);
+
+      // Update snapshot manually
+      this.transformSnapshot.update(curr => {
+          if (!curr) return null;
+          return { ...curr, rotation: newRot };
+      });
   }
 
   updateScaleUniform(e: Event) {
       const val = parseFloat((e.target as HTMLInputElement).value);
       const id = this.engine.selectedEntity();
       if(id===null) return;
+      
       this.engine.updateEntityScale(id, {x: val, y: val, z: val});
+
+      // Update snapshot manually
+      this.transformSnapshot.update(curr => {
+          if (!curr) return null;
+          return { ...curr, scale: {x: val, y: val, z: val} };
+      });
   }
 
   updatePhysics(prop: 'friction' | 'restitution', e: Event) {
@@ -258,6 +294,12 @@ export class InspectorComponent {
       
       const newProps = { ...props, [prop]: val };
       this.engine.updateEntityPhysics(id, newProps);
+
+      // Update snapshot manually
+      this.physicsPropsSnapshot.update(curr => {
+          if (!curr) return null;
+          return { ...curr, [prop]: val };
+      });
   }
 
   updateGravity(e: Event) {

@@ -319,6 +319,10 @@ export class EngineService {
     this.isPaused.update(v => !v);
   }
 
+  setPaused(val: boolean) {
+    this.isPaused.set(val);
+  }
+
   toggleWireframe() {
       this.wireframe.update(v => !v);
       this.sceneService.setWireframeForAll(this.wireframe());

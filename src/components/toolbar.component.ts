@@ -36,8 +36,8 @@ import { EngineService } from '../services/engine.service';
       <!-- Actions -->
       <div class="flex gap-1 border-r border-slate-700 pr-2 pl-1">
         <button class="tool-btn" 
-                [disabled]="!engine.selectedEntity() && engine.selectedEntity() !== 0"
-                [class.opacity-50]="!engine.selectedEntity() && engine.selectedEntity() !== 0"
+                [disabled]="engine.selectedEntity() === null"
+                [class.opacity-50]="engine.selectedEntity() === null"
                 (click)="engine.focusSelectedEntity()" 
                 title="Focus Selection (F)">
           <span class="icon">center_focus_strong</span>

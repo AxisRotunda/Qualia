@@ -64,13 +64,13 @@ export class MenuBarComponent {
         { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z',
           isDisabled: () => !this.engine.canRedo(), execute: () => this.engine.redo() },
         { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D',
-          isDisabled: () => !this.engine.selectedEntity() === null,
+          isDisabled: () => this.engine.selectedEntity() === null,
           execute: () => {
               const e = this.engine.selectedEntity();
               if (e !== null) this.engine.duplicateEntity(e);
           } },
         { id: 'delete', label: 'Delete', shortcut: 'Delete',
-          isDisabled: () => !this.engine.selectedEntity() === null, 
+          isDisabled: () => this.engine.selectedEntity() === null, 
           execute: () => {
               const e = this.engine.selectedEntity();
               if (e !== null) this.engine.deleteEntity(e);
@@ -82,7 +82,9 @@ export class MenuBarComponent {
       label: 'Simulation',
       execute: () => {},
       children: [
-          { id: 'pause', label: 'Toggle Pause', shortcut: 'Space', execute: () => this.engine.togglePause() }
+        { id: 'sim-play',  label: 'Play',  shortcut: 'Space', isDisabled: () => !this.engine.isPaused(), execute: () => this.engine.setPaused(false) },
+        { id: 'sim-pause', label: 'Pause', shortcut: 'Space', isDisabled: () => this.engine.isPaused(), execute: () => this.engine.setPaused(true) },
+        { id: 'sim-reset', label: 'Reset Scene', execute: () => this.engine.reset() },
       ]
     },
     {
