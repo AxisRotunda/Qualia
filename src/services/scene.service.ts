@@ -90,8 +90,6 @@ export class SceneService {
   }
 
   private initMaterials() {
-    const loader = new THREE.TextureLoader(); // Prepare for textures if needed later
-    
     // Shared parameters
     const baseSettings = { roughness: 0.7, metalness: 0.1 };
 
@@ -202,17 +200,19 @@ export class SceneService {
 
     let material: THREE.Material;
     
+    // Priority: Material ID -> Fallback Default shared -> Unique (legacy/color override)
     if (options.materialId && this.materialRegistry.has(options.materialId)) {
         material = this.materialRegistry.get(options.materialId)!;
-    } else {
-        // Fallback or unique color
+    } else if (options.color) {
+        // Only create new material if specific color requested that isn't a preset
+        // This is a "cost" but allows flexibility for dynamic coloring if needed.
         material = new THREE.MeshStandardMaterial({ 
-            color: options.color ?? 0xffffff,
+            color: options.color,
             roughness: 0.4,
             metalness: 0.5
         });
-        // We don't cache unique materials in registry to avoid pollution, 
-        // but we should track them if we want to dispose them properly.
+    } else {
+        material = this.materialRegistry.get('mat-default')!;
     }
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -231,7 +231,8 @@ export class SceneService {
     }
     
     if (mesh.geometry) mesh.geometry.dispose();
-    // Do not dispose material if it's in the registry
+    
+    // Cleanup unique materials
     if (mesh.material) {
         const isShared = Array.from(this.materialRegistry.values()).includes(mesh.material as THREE.Material);
         if (!isShared) {

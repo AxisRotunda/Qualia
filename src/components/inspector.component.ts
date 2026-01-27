@@ -38,26 +38,29 @@ import { Transform, PhysicsProps } from '../engine/core';
              </div>
           </div>
 
-          <!-- Transform Section -->
+          <!-- Transform Section (READ ONLY) -->
           <section class="p-4 border-b border-slate-800/50">
-            <h3 class="section-title">Transform</h3>
+            <h3 class="section-title flex justify-between">
+                <span>Transform</span>
+                <span class="text-[9px] text-slate-600 bg-slate-900 px-1 rounded border border-slate-800">READ ONLY</span>
+            </h3>
             
             @if (transformSnapshot(); as t) {
               <!-- Position -->
               <div class="control-row">
                 <label class="control-label">Position</label>
                 <div class="grid grid-cols-3 gap-1">
-                  <div class="input-group">
+                  <div class="input-group disabled">
                     <span class="axis-tag text-rose-500">X</span>
-                    <input type="number" step="0.1" [value]="t.position.x | number:'1.2-2'" (change)="updatePos('x', $event)">
+                    <input type="number" [value]="t.position.x | number:'1.2-2'" disabled readonly>
                   </div>
-                  <div class="input-group">
+                  <div class="input-group disabled">
                     <span class="axis-tag text-emerald-500">Y</span>
-                    <input type="number" step="0.1" [value]="t.position.y | number:'1.2-2'" (change)="updatePos('y', $event)">
+                    <input type="number" [value]="t.position.y | number:'1.2-2'" disabled readonly>
                   </div>
-                  <div class="input-group">
+                  <div class="input-group disabled">
                     <span class="axis-tag text-blue-500">Z</span>
-                    <input type="number" step="0.1" [value]="t.position.z | number:'1.2-2'" (change)="updatePos('z', $event)">
+                    <input type="number" [value]="t.position.z | number:'1.2-2'" disabled readonly>
                   </div>
                 </div>
               </div>
@@ -65,29 +68,29 @@ import { Transform, PhysicsProps } from '../engine/core';
               <!-- Scale -->
                <div class="control-row mt-3">
                  <label class="control-label">Scale (Uniform)</label>
-                 <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded border border-slate-800">
+                 <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded border border-slate-800 opacity-60">
                     <span class="material-symbols-outlined text-slate-600 text-xs">open_in_full</span>
                     <input type="range" min="0.1" max="5.0" step="0.1" 
-                           [value]="t.scale.x" (input)="updateScaleUniform($event)"
-                           class="range-slider">
-                    <span class="font-mono text-[10px] text-cyan-400 w-6 text-right">{{ t.scale.x | number:'1.1-1' }}</span>
+                           [value]="t.scale.x" disabled
+                           class="range-slider cursor-not-allowed">
+                    <span class="font-mono text-[10px] text-slate-500 w-6 text-right">{{ t.scale.x | number:'1.1-1' }}</span>
                  </div>
                </div>
 
-               <!-- Rotation (Read Only for now or Quaternion raw) -->
+               <!-- Rotation -->
                <div class="control-row mt-3">
                   <label class="control-label">Rotation (Quaternion)</label>
-                  <div class="grid grid-cols-4 gap-1 opacity-75">
-                    <div class="input-group"><input type="number" step="0.1" [value]="t.rotation.x | number:'1.2-2'" (change)="updateRot('x', $event)"></div>
-                    <div class="input-group"><input type="number" step="0.1" [value]="t.rotation.y | number:'1.2-2'" (change)="updateRot('y', $event)"></div>
-                    <div class="input-group"><input type="number" step="0.1" [value]="t.rotation.z | number:'1.2-2'" (change)="updateRot('z', $event)"></div>
-                    <div class="input-group"><input type="number" step="0.1" [value]="t.rotation.w | number:'1.2-2'" (change)="updateRot('w', $event)"></div>
+                  <div class="grid grid-cols-4 gap-1 opacity-60">
+                    <div class="input-group disabled"><input type="number" [value]="t.rotation.x | number:'1.2-2'" disabled readonly></div>
+                    <div class="input-group disabled"><input type="number" [value]="t.rotation.y | number:'1.2-2'" disabled readonly></div>
+                    <div class="input-group disabled"><input type="number" [value]="t.rotation.z | number:'1.2-2'" disabled readonly></div>
+                    <div class="input-group disabled"><input type="number" [value]="t.rotation.w | number:'1.2-2'" disabled readonly></div>
                   </div>
                </div>
             }
           </section>
 
-          <!-- Physics Section -->
+          <!-- Physics Section (EDITABLE) -->
           <section class="p-4">
             <h3 class="section-title">Physics Material</h3>
             @if (physicsPropsSnapshot(); as p) {
@@ -179,8 +182,11 @@ import { Transform, PhysicsProps } from '../engine/core';
     .control-row { @apply mb-2; }
     
     .input-group { 
-        @apply relative flex items-center bg-slate-950 rounded border border-slate-800 focus-within:border-cyan-500/50 transition-colors overflow-hidden;
+        @apply relative flex items-center bg-slate-950 rounded border border-slate-800 transition-colors overflow-hidden;
     }
+    .input-group:not(.disabled) { @apply focus-within:border-cyan-500/50; }
+    .input-group.disabled { @apply bg-slate-900/50 opacity-70 cursor-not-allowed border-slate-800; }
+
     .axis-tag {
         @apply absolute left-1.5 text-[9px] font-bold select-none pointer-events-none opacity-80;
     }
@@ -188,6 +194,8 @@ import { Transform, PhysicsProps } from '../engine/core';
         @apply w-full bg-transparent border-none py-1.5 pl-4 pr-1 text-[11px] text-center font-mono text-slate-300 focus:outline-none focus:text-cyan-400;
         -moz-appearance: textfield;
     }
+    .input-group.disabled input { @apply text-slate-500 cursor-not-allowed; }
+    
     .input-group input::-webkit-outer-spin-button,
     .input-group input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -221,6 +229,17 @@ export class InspectorComponent {
          this.entityName.set('');
          return;
        }
+       // We can subscribe to the transform directly or poll it. 
+       // Since the engine loop updates transforms, this effect might not trigger on every frame unless we use a signal updated by the loop.
+       // However, for the inspector, just reading the store when selection changes or strictly when signal updates is fine.
+       // NOTE: Real-time inspector updates during physics would require a signal-based store or polling. 
+       // Given the constraints, we update snapshot on selection.
+       this.refreshSnapshot(id);
+    });
+  }
+  
+  // Helper to refresh data (could be called on loop if we wanted live updates, but keeping it simple)
+  refreshSnapshot(id: number) {
        const t = this.engine.world.transforms.get(id);
        const p = this.engine.world.physicsProps.get(id);
 
@@ -235,7 +254,6 @@ export class InspectorComponent {
          this.physicsPropsSnapshot.set({ ...p });
        }
        this.entityName.set(this.engine.getEntityName(id));
-    });
   }
 
   updateName(e: Event) {
@@ -246,51 +264,7 @@ export class InspectorComponent {
       }
   }
 
-  updatePos(axis: 'x' | 'y' | 'z', e: Event) {
-    const val = parseFloat((e.target as HTMLInputElement).value);
-    if (isNaN(val)) return;
-    const id = this.engine.selectedEntity();
-    if (id === null) return;
-    
-    const t = this.engine.world.transforms.get(id);
-    if (!t) return;
-    
-    const newPos = { ...t.position };
-    newPos[axis] = val;
-    
-    const rb = this.engine.world.rigidBodies.get(id);
-    if(rb) this.engine.physicsService.updateBodyTransform(rb.handle, newPos, t.rotation);
-
-    this.transformSnapshot.update(curr => curr ? ({ ...curr, position: newPos }) : null);
-  }
-  
-  updateRot(axis: 'x'|'y'|'z'|'w', e: Event) {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if(isNaN(val)) return;
-      const id = this.engine.selectedEntity();
-      if(id===null) return;
-      
-      const t = this.engine.world.transforms.get(id);
-      const rb = this.engine.world.rigidBodies.get(id);
-      if(!t || !rb) return;
-      
-      const newRot = { ...t.rotation };
-      newRot[axis] = val;
-      
-      this.engine.physicsService.updateBodyTransform(rb.handle, t.position, newRot);
-
-      this.transformSnapshot.update(curr => curr ? ({ ...curr, rotation: newRot }) : null);
-  }
-
-  updateScaleUniform(e: Event) {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      const id = this.engine.selectedEntity();
-      if(id===null) return;
-      
-      this.engine.updateEntityScale(id, {x: val, y: val, z: val});
-
-      this.transformSnapshot.update(curr => curr ? ({ ...curr, scale: {x: val, y: val, z: val} }) : null);
-  }
+  // NOTE: Transform updates removed as per guidelines (Read-only)
 
   updatePhysics(prop: 'friction' | 'restitution', e: Event) {
       const val = parseFloat((e.target as HTMLInputElement).value);
