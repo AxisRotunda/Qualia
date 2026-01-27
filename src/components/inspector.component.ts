@@ -1,216 +1,148 @@
 
-import { Component, inject, computed, signal, effect } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { EngineService } from '../services/engine.service';
 import { Transform, PhysicsProps } from '../engine/core';
+import { UiPanelComponent } from './ui-panel.component';
 
 @Component({
   selector: 'app-inspector',
   standalone: true,
+  imports: [DecimalPipe, UiPanelComponent],
   template: `
-    <div class="h-full flex flex-col text-slate-300">
-      <div class="h-9 flex items-center justify-between px-3 border-b border-slate-800 bg-slate-950/50">
-        <span class="text-[11px] tracking-wide text-slate-500 font-bold uppercase">Properties</span>
-        @if (!engine.isPaused()) {
-          <span class="text-[10px] font-bold text-emerald-400 animate-pulse border border-emerald-900/50 bg-emerald-950/30 px-1.5 rounded">LIVE</span>
-        }
-      </div>
-
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+    <div class="h-full flex flex-col gap-2 p-2 bg-slate-950/50">
       
-      @if (engine.selectedEntity() !== null) {
+      <!-- Panel 1: Selection Inspector -->
+      <div class="flex-1 min-h-0">
+        <app-ui-panel [title]="selectionTitle()">
           
-          <!-- Header / Identity -->
-          <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/30">
-             <div class="flex justify-between items-start mb-2">
-                 <div class="text-[10px] text-slate-500 font-bold uppercase">SELECTED ENTITY</div>
-                 <button class="p-1.5 hover:bg-rose-950/30 hover:text-rose-400 rounded transition-colors text-slate-500" 
+          @if (engine.selectedEntity() !== null) {
+            
+            <div class="space-y-4">
+              <!-- Identity -->
+              <div class="flex gap-2">
+                 <div class="relative flex-1">
+                    <span class="absolute left-2 top-1.5 material-symbols-outlined text-cyan-500 text-sm">data_object</span>
+                    <input type="text" 
+                           [value]="entityName()" 
+                           (change)="updateName($event)"
+                           class="w-full bg-slate-950 border border-slate-800 rounded py-1 pl-7 pr-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50 transition-colors">
+                 </div>
+                 <button class="px-2 bg-rose-950/30 border border-rose-900/50 hover:bg-rose-900/50 text-rose-400 rounded transition-colors" 
                          title="Delete Entity"
                          (click)="deleteSelected()">
                     <span class="material-symbols-outlined text-[18px]">delete</span>
                  </button>
-             </div>
-             
-             <!-- Name Input -->
-             <div class="flex items-center bg-slate-950 rounded border border-slate-800 focus-within:border-cyan-500/50 transition-colors">
-                <span class="material-symbols-outlined text-cyan-500 text-sm pl-2">data_object</span>
-                <input type="text" 
-                       [value]="entityName()" 
-                       (change)="updateName($event)"
-                       class="w-full bg-transparent border-none py-1.5 px-2 text-sm font-mono text-slate-200 focus:outline-none">
-             </div>
-          </div>
-
-          <!-- Transform Section (READ ONLY) -->
-          <section class="p-4 border-b border-slate-800/50">
-            <h3 class="section-title flex justify-between">
-                <span>Transform</span>
-                <span class="text-[9px] text-slate-600 bg-slate-900 px-1 rounded border border-slate-800">READ ONLY</span>
-            </h3>
-            
-            @if (transformSnapshot(); as t) {
-              <!-- Position -->
-              <div class="control-row">
-                <label class="control-label">Position</label>
-                <div class="grid grid-cols-3 gap-1">
-                  <div class="input-group disabled">
-                    <span class="axis-tag text-rose-500">X</span>
-                    <input type="number" [value]="t.position.x | number:'1.2-2'" disabled readonly>
-                  </div>
-                  <div class="input-group disabled">
-                    <span class="axis-tag text-emerald-500">Y</span>
-                    <input type="number" [value]="t.position.y | number:'1.2-2'" disabled readonly>
-                  </div>
-                  <div class="input-group disabled">
-                    <span class="axis-tag text-blue-500">Z</span>
-                    <input type="number" [value]="t.position.z | number:'1.2-2'" disabled readonly>
-                  </div>
-                </div>
               </div>
 
-              <!-- Scale -->
-               <div class="control-row mt-3">
-                 <label class="control-label">Scale (Uniform)</label>
-                 <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded border border-slate-800 opacity-60">
-                    <span class="material-symbols-outlined text-slate-600 text-xs">open_in_full</span>
-                    <input type="range" min="0.1" max="5.0" step="0.1" 
-                           [value]="t.scale.x" disabled
-                           class="range-slider cursor-not-allowed">
-                    <span class="font-mono text-[10px] text-slate-500 w-6 text-right">{{ t.scale.x | number:'1.1-1' }}</span>
-                 </div>
-               </div>
+              <!-- Transform (Read Only) -->
+              <section>
+                 <h3 class="control-label mb-2">Transform <span class="text-[9px] opacity-50 ml-1">(READ ONLY)</span></h3>
+                 @if (transformSnapshot(); as t) {
+                    <div class="grid grid-cols-1 gap-2">
+                       <!-- Position -->
+                       <div class="grid grid-cols-3 gap-1">
+                          <div class="prop-readout"><span class="text-rose-500">X</span> {{ t.position.x | number:'1.2-2' }}</div>
+                          <div class="prop-readout"><span class="text-emerald-500">Y</span> {{ t.position.y | number:'1.2-2' }}</div>
+                          <div class="prop-readout"><span class="text-blue-500">Z</span> {{ t.position.z | number:'1.2-2' }}</div>
+                       </div>
+                       <!-- Rot/Scale Compact -->
+                       <div class="grid grid-cols-2 gap-2">
+                           <div class="bg-slate-950/50 p-1.5 rounded border border-slate-800/50 text-[10px] text-slate-400 flex justify-between">
+                              <span>Scale</span> <span class="font-mono text-slate-200">{{ t.scale.x | number:'1.1-1' }}</span>
+                           </div>
+                           <div class="bg-slate-950/50 p-1.5 rounded border border-slate-800/50 text-[10px] text-slate-400 flex justify-between">
+                              <span>Rot Y</span> <span class="font-mono text-slate-200">{{ t.rotation.y | number:'1.2-2' }}</span>
+                           </div>
+                       </div>
+                    </div>
+                 }
+              </section>
 
-               <!-- Rotation -->
-               <div class="control-row mt-3">
-                  <label class="control-label">Rotation (Quaternion)</label>
-                  <div class="grid grid-cols-4 gap-1 opacity-60">
-                    <div class="input-group disabled"><input type="number" [value]="t.rotation.x | number:'1.2-2'" disabled readonly></div>
-                    <div class="input-group disabled"><input type="number" [value]="t.rotation.y | number:'1.2-2'" disabled readonly></div>
-                    <div class="input-group disabled"><input type="number" [value]="t.rotation.z | number:'1.2-2'" disabled readonly></div>
-                    <div class="input-group disabled"><input type="number" [value]="t.rotation.w | number:'1.2-2'" disabled readonly></div>
-                  </div>
-               </div>
-            }
-          </section>
+              <hr class="border-slate-800/50">
 
-          <!-- Physics Section (EDITABLE) -->
-          <section class="p-4">
-            <h3 class="section-title">Physics Material</h3>
-            @if (physicsPropsSnapshot(); as p) {
-                <div class="space-y-4">
-                    <div class="flex flex-col gap-1">
-                        <div class="flex justify-between text-[10px] text-slate-400">
-                           <span>Restitution (Bounciness)</span>
-                           <span class="font-mono text-slate-300">{{ p.restitution | number:'1.1-1' }}</span>
+              <!-- Physics (Editable) -->
+              <section>
+                 <h3 class="control-label mb-2">Physics Properties</h3>
+                 @if (physicsPropsSnapshot(); as p) {
+                    <div class="space-y-3">
+                        <div class="control-group">
+                           <div class="flex justify-between text-[10px] mb-1">
+                              <span class="text-slate-400">Restitution</span>
+                              <span class="font-mono text-cyan-300">{{ p.restitution | number:'1.1-1' }}</span>
+                           </div>
+                           <input type="range" min="0" max="1.5" step="0.1" [value]="p.restitution" (input)="updatePhysics('restitution', $event)" 
+                                  class="range-slider">
                         </div>
-                        <input type="range" min="0" max="1.5" step="0.1" [value]="p.restitution" (input)="updatePhysics('restitution', $event)" 
-                               class="range-slider w-full">
-                    </div>
-                    
-                    <div class="flex flex-col gap-1">
-                        <div class="flex justify-between text-[10px] text-slate-400">
-                           <span>Friction</span>
-                           <span class="font-mono text-slate-300">{{ p.friction | number:'1.1-1' }}</span>
+                        
+                        <div class="control-group">
+                           <div class="flex justify-between text-[10px] mb-1">
+                              <span class="text-slate-400">Friction</span>
+                              <span class="font-mono text-cyan-300">{{ p.friction | number:'1.1-1' }}</span>
+                           </div>
+                           <input type="range" min="0" max="2.0" step="0.1" [value]="p.friction" (input)="updatePhysics('friction', $event)"
+                                  class="range-slider">
                         </div>
-                        <input type="range" min="0" max="2.0" step="0.1" [value]="p.friction" (input)="updatePhysics('friction', $event)"
-                               class="range-slider w-full">
                     </div>
-                </div>
-            }
-          </section>
+                 }
+              </section>
+            </div>
 
-      } @else {
-        <!-- Global Settings -->
-        <div class="p-4 space-y-6">
-            
-            <!-- Gravity -->
-            <section>
-             <h3 class="section-title flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">public</span> World Settings
-             </h3>
-             <div class="bg-slate-900/50 p-3 rounded border border-slate-800 space-y-3 mt-2">
-                <div class="flex flex-col gap-1">
-                    <div class="flex justify-between text-[10px] text-slate-400">
-                        <span>Gravity Y</span>
-                        <span class="font-mono text-cyan-400">{{ engine.gravityY() | number:'1.1-1' }}</span>
-                    </div>
-                    <input type="range" min="-20" max="0" step="0.5" 
-                        [value]="engine.gravityY()" (input)="updateGravity($event)"
-                        class="range-slider w-full">
-                </div>
+          } @else {
+             <div class="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 opacity-60">
+                <span class="material-symbols-outlined text-4xl">ads_click</span>
+                <span class="text-xs text-center px-4">Select an entity to inspect properties</span>
              </div>
-            </section>
-
-            <!-- Lighting -->
-            <section>
-                <h3 class="section-title flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">light_mode</span> Environment
-                </h3>
-                <div class="bg-slate-900/50 p-3 rounded border border-slate-800 space-y-4 mt-2">
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-[10px] text-slate-400">
-                        <span>Ambient Intensity</span>
-                        <span>{{ ambientIntensity() | number:'1.1-1' }}</span>
-                        </div>
-                        <input type="range" min="0" max="1" step="0.1" [value]="ambientIntensity()" (input)="updateLight('ambient', $event)"
-                            class="range-slider w-full">
-                    </div>
-                    
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-[10px] text-slate-400">
-                        <span>Sun Intensity</span>
-                        <span>{{ dirIntensity() | number:'1.1-1' }}</span>
-                        </div>
-                        <input type="range" min="0" max="3" step="0.1" [value]="dirIntensity()" (input)="updateLight('dir', $event)"
-                            class="range-slider w-full">
-                    </div>
-
-                     <div class="flex justify-between items-center text-[10px] text-slate-400 pt-1">
-                        <span>Sun Color</span>
-                        <div class="relative w-12 h-6 rounded overflow-hidden ring-1 ring-slate-700">
-                            <input type="color" [value]="dirColor()" (input)="updateLight('color', $event)" 
-                                   class="absolute -top-2 -left-2 w-[200%] h-[200%] p-0 cursor-pointer border-0">
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-      }
+          }
+        </app-ui-panel>
       </div>
+
+      <!-- Panel 2: World Settings -->
+      <div class="shrink-0 h-auto">
+        <app-ui-panel title="World Settings">
+           <div class="space-y-4">
+              
+              <!-- Gravity -->
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-400 mb-1">
+                   <span>Gravity Y</span>
+                   <span class="font-mono text-cyan-400">{{ engine.gravityY() | number:'1.1-1' }}</span>
+                </div>
+                <input type="range" min="-20" max="0" step="0.5" 
+                       [value]="engine.gravityY()" (input)="updateGravity($event)"
+                       class="range-slider">
+              </div>
+
+              <!-- Lighting -->
+              <div class="space-y-2">
+                 <div class="text-[10px] font-bold text-slate-500 uppercase">Atmosphere</div>
+                 
+                 <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                       <label class="text-[9px] text-slate-500">Sun Intensity</label>
+                       <input type="range" min="0" max="3" step="0.1" [value]="dirIntensity()" (input)="updateLight('dir', $event)"
+                              class="range-slider-sm">
+                    </div>
+                    <div class="space-y-1">
+                       <label class="text-[9px] text-slate-500">Ambient</label>
+                       <input type="range" min="0" max="1" step="0.1" [value]="ambientIntensity()" (input)="updateLight('ambient', $event)"
+                              class="range-slider-sm">
+                    </div>
+                 </div>
+              </div>
+
+           </div>
+        </app-ui-panel>
+      </div>
+
     </div>
   `,
   styles: [`
-    .section-title { @apply text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2; }
-    .control-label { @apply block text-[10px] text-slate-400 mb-1; }
-    .control-row { @apply mb-2; }
-    
-    .input-group { 
-        @apply relative flex items-center bg-slate-950 rounded border border-slate-800 transition-colors overflow-hidden;
-    }
-    .input-group:not(.disabled) { @apply focus-within:border-cyan-500/50; }
-    .input-group.disabled { @apply bg-slate-900/50 opacity-70 cursor-not-allowed border-slate-800; }
-
-    .axis-tag {
-        @apply absolute left-1.5 text-[9px] font-bold select-none pointer-events-none opacity-80;
-    }
-    .input-group input {
-        @apply w-full bg-transparent border-none py-1.5 pl-4 pr-1 text-[11px] text-center font-mono text-slate-300 focus:outline-none focus:text-cyan-400;
-        -moz-appearance: textfield;
-    }
-    .input-group.disabled input { @apply text-slate-500 cursor-not-allowed; }
-    
-    .input-group input::-webkit-outer-spin-button,
-    .input-group input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-    .range-slider {
-        @apply flex-grow h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500;
-    }
-    
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-  `],
-  imports: [DecimalPipe]
+    .control-label { @apply text-[10px] font-bold text-slate-500 uppercase tracking-wide; }
+    .prop-readout { @apply bg-slate-950 rounded border border-slate-800 py-1.5 px-2 text-[10px] font-mono text-slate-300 flex items-center gap-2; }
+    .range-slider { @apply w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500; }
+    .range-slider-sm { @apply w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 block; }
+  `]
 })
 export class InspectorComponent {
   engine = inject(EngineService);
@@ -223,25 +155,25 @@ export class InspectorComponent {
   dirIntensity = signal(0.8);
   dirColor = signal('#ffffff');
 
+  // Computed title
+  selectionTitle = signal('No Selection');
+
   constructor() {
     effect(() => {
        const id = this.engine.selectedEntity();
        if (id === null) {
+         this.selectionTitle.set('No Selection');
          this.transformSnapshot.set(null);
          this.physicsPropsSnapshot.set(null);
          this.entityName.set('');
          return;
        }
-       // We can subscribe to the transform directly or poll it. 
-       // Since the engine loop updates transforms, this effect might not trigger on every frame unless we use a signal updated by the loop.
-       // However, for the inspector, just reading the store when selection changes or strictly when signal updates is fine.
-       // NOTE: Real-time inspector updates during physics would require a signal-based store or polling. 
-       // Given the constraints, we update snapshot on selection.
+       
        this.refreshSnapshot(id);
+       this.selectionTitle.set(this.engine.getEntityName(id) || `Entity ${id}`);
     });
   }
   
-  // Helper to refresh data (could be called on loop if we wanted live updates, but keeping it simple)
   refreshSnapshot(id: number) {
        const t = this.engine.world.transforms.get(id);
        const p = this.engine.world.physicsProps.get(id);
@@ -264,10 +196,9 @@ export class InspectorComponent {
       const id = this.engine.selectedEntity();
       if (id !== null) {
           this.engine.setEntityName(id, val);
+          this.selectionTitle.set(val);
       }
   }
-
-  // NOTE: Transform updates removed as per guidelines (Read-only)
 
   updatePhysics(prop: 'friction' | 'restitution', e: Event) {
       const val = parseFloat((e.target as HTMLInputElement).value);

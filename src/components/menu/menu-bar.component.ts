@@ -1,5 +1,5 @@
 
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, HostListener, ElementRef } from '@angular/core';
 import { EngineService } from '../../services/engine.service';
 import { CameraControlService } from '../../services/camera-control.service';
 import { KeyboardService, MenuAction } from '../../services/keyboard.service';
@@ -12,7 +12,7 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
   template: `
     <nav class="flex items-center gap-1 px-3 py-1 bg-slate-950 border-b border-slate-800 select-none z-50 relative shrink-0"
          aria-label="Main Menu">
-      <div class="flex items-center gap-2 mr-6 cursor-pointer" (click)="engine.mainMenuVisible.set(true)">
+      <div class="flex items-center gap-2 mr-6 cursor-pointer hover:opacity-80 transition-opacity" (click)="engine.mainMenuVisible.set(true)">
          <span class="material-symbols-outlined text-cyan-500 text-[18px]">deployed_code_history</span>
          <span class="font-bold text-slate-200 text-xs tracking-wider">QUALIA<span class="text-cyan-500">3D</span></span>
       </div>
@@ -22,26 +22,32 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
             <app-menu-dropdown 
               [label]="menu.label"
               [actions]="menu.children!"
-              [class.bg-slate-800]="activeMenu() === menu.id"
-              (menuOpen)="activeMenu.set(menu.id)"
-              (menuClose)="activeMenu.set(null)" />
+              [class.bg-slate-800]="openMenuId() === menu.id"
+              [isOpen]="openMenuId() === menu.id"
+              (menuOpen)="setOpen(menu.id)"
+              (menuClose)="setOpen(null)" />
           }
       </div>
       
       <div class="flex-grow"></div>
       
-      <a href="https://github.com/dimforge/rapier" target="_blank" class="hidden md:flex items-center gap-1 px-2 py-1 text-[10px] text-slate-500 hover:text-cyan-400 transition-colors">
-        <span>Rapier & Three.js</span>
-      </a>
+      <div class="hidden md:flex items-center gap-3 px-2">
+         <a href="#" class="text-[10px] text-slate-500 hover:text-cyan-400 transition-colors">Documentation</a>
+         <a href="https://github.com/dimforge/rapier" target="_blank" class="flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-400 transition-colors">
+            <span>Rapier Physics</span>
+         </a>
+      </div>
     </nav>
   `
 })
 export class MenuBarComponent {
-  activeMenu = signal<string | null>(null);
+  openMenuId = signal<string | null>(null);
   
   engine = inject(EngineService);
   camera = inject(CameraControlService);
   keyboard = inject(KeyboardService);
+  
+  private el = inject(ElementRef);
 
   menus: MenuAction[] = [
     {
@@ -86,5 +92,17 @@ export class MenuBarComponent {
 
   constructor() {
     this.keyboard.register(this.menus);
+  }
+
+  setOpen(id: string | null) {
+      this.openMenuId.set(id);
+  }
+
+  // Close menus when clicking outside
+  @HostListener('document:click', ['$event'])
+  onClick(event: MouseEvent) {
+      if (!this.el.nativeElement.contains(event.target)) {
+          this.setOpen(null);
+      }
   }
 }
