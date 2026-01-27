@@ -11,11 +11,14 @@ export class SceneService {
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   
-  // Cache for cleanup
+  // Lights
+  private ambientLight!: THREE.AmbientLight;
+  private dirLight!: THREE.DirectionalLight;
+
+  // Cache for cleanup and bulk updates
   private materials: THREE.Material[] = [];
   private geometries: THREE.BufferGeometry[] = [];
 
-  // Highlight helper
   private selectionHelper: THREE.BoxHelper | null = null;
 
   init(canvas: HTMLCanvasElement) {
@@ -39,15 +42,15 @@ export class SceneService {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    this.scene.add(this.ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    this.scene.add(dirLight);
+    this.dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    this.dirLight.position.set(10, 20, 10);
+    this.dirLight.castShadow = true;
+    this.dirLight.shadow.mapSize.width = 2048;
+    this.dirLight.shadow.mapSize.height = 2048;
+    this.scene.add(this.dirLight);
 
     // Ground
     const groundGeo = new THREE.PlaneGeometry(100, 100);
@@ -72,7 +75,25 @@ export class SceneService {
     return this.camera;
   }
 
-  // Returns the Mesh object for the ECS to store
+  setWireframeForAll(enabled: boolean) {
+    this.materials.forEach(mat => {
+        // Cast to any to avoid strict type checks on base Material class
+        (mat as any).wireframe = enabled;
+    });
+  }
+
+  setLightSettings(settings: { ambientIntensity?: number; dirIntensity?: number; dirColor?: string }) {
+    if (settings.ambientIntensity !== undefined) {
+      this.ambientLight.intensity = settings.ambientIntensity;
+    }
+    if (settings.dirIntensity !== undefined) {
+      this.dirLight.intensity = settings.dirIntensity;
+    }
+    if (settings.dirColor !== undefined) {
+      this.dirLight.color.set(settings.dirColor);
+    }
+  }
+
   createMesh(data: PhysicsBodyDef, color: number): THREE.Mesh {
     let geometry: THREE.BufferGeometry;
     
@@ -87,7 +108,9 @@ export class SceneService {
     const material = new THREE.MeshStandardMaterial({ 
       color: color,
       roughness: 0.4,
-      metalness: 0.5
+      metalness: 0.5,
+      // Check current wireframe state from ground (hacky but effective for syncing)
+      wireframe: (this.materials[0] as any).wireframe || false
     });
     this.materials.push(material);
 
@@ -103,7 +126,6 @@ export class SceneService {
   removeMesh(mesh: THREE.Mesh) {
     this.scene.remove(mesh);
     
-    // Dispose geometry/material to prevent leaks
     if (mesh.geometry) mesh.geometry.dispose();
     if (Array.isArray(mesh.material)) {
       mesh.material.forEach(m => m.dispose());
@@ -113,7 +135,6 @@ export class SceneService {
   }
 
   setSelection(mesh: THREE.Mesh | null) {
-    // Clean up old helper
     if (this.selectionHelper) {
       this.scene.remove(this.selectionHelper);
       this.selectionHelper.dispose();
@@ -121,7 +142,7 @@ export class SceneService {
     }
 
     if (mesh) {
-      this.selectionHelper = new THREE.BoxHelper(mesh, 0x22d3ee); // Cyan-400
+      this.selectionHelper = new THREE.BoxHelper(mesh, 0x22d3ee);
       this.scene.add(this.selectionHelper);
     }
   }

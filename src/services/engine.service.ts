@@ -2,7 +2,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { PhysicsService } from './physics.service';
 import { SceneService } from './scene.service';
-import { CameraControlService } from './camera-control.service';
+import { CameraControlService, CameraViewPreset } from './camera-control.service';
 import { World, Entity } from '../engine/core';
 import * as THREE from 'three';
 
@@ -33,6 +33,7 @@ export class EngineService {
   // Simulation State
   isPaused = signal(false);
   gravityY = signal(-9.81);
+  wireframe = signal(false);
 
   // Undo/Redo stubs
   canUndo = signal(false);
@@ -55,7 +56,7 @@ export class EngineService {
       this.startLoop();
       
       // Initial Spawn
-      this.reset(); // Use reset to ensure clean slate
+      this.reset();
       this.spawnBox();
       this.spawnSphere();
       this.spawnBox();
@@ -77,7 +78,7 @@ export class EngineService {
       // 2. Camera
       this.cameraControl.update();
 
-      // 3. Physics Step (Only if not paused)
+      // 3. Physics Step
       if (!this.isPaused()) {
         const pStart = performance.now();
         this.physicsService.step();
@@ -87,16 +88,17 @@ export class EngineService {
         this.world.rigidBodies.forEach((rb, entity) => {
           const pose = this.physicsService.getBodyPose(rb.handle);
           if (pose) {
-            // Update ECS Transform
-            this.world.transforms.add(entity, {
-              position: pose.p,
-              rotation: pose.q
-            });
+            const transform = this.world.transforms.get(entity);
+            if (transform) {
+                // Update position/rotation, preserve scale
+                transform.position = pose.p;
+                transform.rotation = pose.q;
+            }
           }
         });
       }
 
-      // 5. System: Sync ECS -> Render (Always, so we can see updates even when paused if modified via inspector)
+      // 5. System: Sync ECS -> Render
       this.world.meshes.forEach((meshRef, entity) => {
         const transform = this.world.transforms.get(entity);
         if (transform) {
@@ -111,10 +113,15 @@ export class EngineService {
             transform.rotation.z, 
             transform.rotation.w
           );
+          meshRef.mesh.scale.set(
+              transform.scale.x,
+              transform.scale.y,
+              transform.scale.z
+          );
         }
       });
       
-      // Update selection visual if moving
+      // Update selection visual
       if (!this.isPaused() || this.selectedEntity() !== null) {
         this.sceneService.updateSelectionHelper();
       }
@@ -135,27 +142,31 @@ export class EngineService {
       this.selectedEntity.set(null);
     }
 
-    // 1. Remove from Physics
     const rb = this.world.rigidBodies.get(e);
     if (rb) {
       this.physicsService.removeBody(rb.handle);
     }
 
-    // 2. Remove from Scene
     const meshRef = this.world.meshes.get(e);
     if (meshRef) {
       this.sceneService.removeMesh(meshRef.mesh);
     }
 
-    // 3. Remove from ECS (clears all component stores)
     this.world.destroyEntity(e);
+  }
+
+  private generateRandomColor(): number {
+      const color = new THREE.Color();
+      // Generate vibrant colors: H 0-1, S 0.5-0.9, L 0.4-0.6
+      color.setHSL(Math.random(), 0.6 + Math.random() * 0.3, 0.4 + Math.random() * 0.2);
+      return color.getHex();
   }
 
   spawnBox() {
     const x = (Math.random() - 0.5) * 5;
     const y = 10 + Math.random() * 5;
     const z = (Math.random() - 0.5) * 5;
-    const color = Math.random() * 0xffffff;
+    const color = this.generateRandomColor();
 
     const bodyDef = this.physicsService.createBox(x, y, z);
     const mesh = this.sceneService.createMesh(bodyDef, color);
@@ -165,8 +176,11 @@ export class EngineService {
     this.world.meshes.add(entity, { mesh });
     this.world.transforms.add(entity, {
       position: bodyDef.position,
-      rotation: bodyDef.rotation
+      rotation: bodyDef.rotation,
+      scale: { x: 1, y: 1, z: 1 }
     });
+    this.world.bodyDefs.add(entity, bodyDef);
+    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.7 }); // Default match physics service
 
     this.updateCount();
   }
@@ -175,7 +189,7 @@ export class EngineService {
     const x = (Math.random() - 0.5) * 5;
     const y = 10 + Math.random() * 5;
     const z = (Math.random() - 0.5) * 5;
-    const color = Math.random() * 0xffffff;
+    const color = this.generateRandomColor();
 
     const bodyDef = this.physicsService.createSphere(x, y, z);
     const mesh = this.sceneService.createMesh(bodyDef, color);
@@ -185,8 +199,11 @@ export class EngineService {
     this.world.meshes.add(entity, { mesh });
     this.world.transforms.add(entity, {
       position: bodyDef.position,
-      rotation: bodyDef.rotation
+      rotation: bodyDef.rotation,
+      scale: { x: 1, y: 1, z: 1 }
     });
+    this.world.bodyDefs.add(entity, bodyDef);
+    this.world.physicsProps.add(entity, { friction: 0.5, restitution: 0.8 });
 
     this.updateCount();
   }
@@ -199,9 +216,9 @@ export class EngineService {
   duplicateEntity(e: Entity) {
     const t = this.world.transforms.get(e);
     const meshRef = this.world.meshes.get(e);
+    const scale = t?.scale ?? { x: 1, y: 1, z: 1 };
     
     if (t && meshRef) {
-      // Offset slightly
       const x = t.position.x + 1;
       const y = t.position.y;
       const z = t.position.z;
@@ -209,7 +226,6 @@ export class EngineService {
       const material = meshRef.mesh.material as THREE.MeshStandardMaterial;
       const color = material.color.getHex();
 
-      // Determine type via geometry (heuristic)
       const geo = meshRef.mesh.geometry;
       let bodyDef;
       
@@ -226,28 +242,38 @@ export class EngineService {
       this.world.meshes.add(newEntity, { mesh });
       this.world.transforms.add(newEntity, { 
         position: bodyDef.position, 
-        rotation: bodyDef.rotation 
+        rotation: bodyDef.rotation,
+        scale: { ...scale } 
       });
+      this.world.bodyDefs.add(newEntity, bodyDef);
+      
+      // Copy physics props if exists
+      const props = this.world.physicsProps.get(e);
+      if (props) {
+          this.world.physicsProps.add(newEntity, { ...props });
+          this.physicsService.updateBodyMaterial(bodyDef.handle, props);
+      } else {
+          this.world.physicsProps.add(newEntity, { friction: 0.5, restitution: 0.7 });
+      }
+      
+      // Apply scale to new entity if needed
+      if (scale.x !== 1 || scale.y !== 1 || scale.z !== 1) {
+          this.physicsService.updateBodyScale(bodyDef.handle, bodyDef, scale);
+      }
 
       this.updateCount();
     }
   }
 
   reset() {
-    // 1. Clear State
     this.selectedEntity.set(null);
     this.isPaused.set(false);
     this.setGravity(-9.81);
     
-    // 2. Destroy all entities safely
-    // We iterate a copy of keys because we're modifying the Set during iteration
     const allEntities = Array.from(this.world.entities);
     allEntities.forEach(e => this.destroyEntityInternal(e));
     
-    // 3. Reset Physics World completely (double safety)
     this.physicsService.resetWorld();
-    
-    // 4. Reset Camera (Optional, good for UX)
     this.cameraControl.reset();
 
     this.updateCount();
@@ -256,13 +282,11 @@ export class EngineService {
   // --- Interaction API ---
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
-    // Convert to Normalized Device Coordinates
     this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.sceneService.getCamera());
 
-    // We can iterate over our known meshes instead of converting Map to Array every frame
     const meshes: THREE.Object3D[] = [];
     const meshToEntity = new Map<number, Entity>();
 
@@ -280,15 +304,62 @@ export class EngineService {
     return null;
   }
 
+  focusSelectedEntity() {
+      const e = this.selectedEntity();
+      if (e === null) return;
+      const t = this.world.transforms.get(e);
+      if (!t) return;
+      // Convert to THREE Vector for camera service
+      this.cameraControl.focusOn(new THREE.Vector3(t.position.x, t.position.y, t.position.z));
+  }
+
   // --- Controls ---
 
   togglePause() {
     this.isPaused.update(v => !v);
   }
 
+  toggleWireframe() {
+      this.wireframe.update(v => !v);
+      this.sceneService.setWireframeForAll(this.wireframe());
+  }
+
   setGravity(val: number) {
     this.gravityY.set(val);
     this.physicsService.setGravity(val);
+  }
+  
+  setLightSettings(settings: { ambient: number, directional: number, color: string }) {
+      this.sceneService.setLightSettings({
+          ambientIntensity: settings.ambient,
+          dirIntensity: settings.directional,
+          dirColor: settings.color
+      });
+  }
+  
+  setCameraPreset(preset: CameraViewPreset) {
+      this.cameraControl.setPreset(preset);
+  }
+
+  // --- Entity Updates from Inspector ---
+
+  updateEntityScale(e: Entity, scale: { x: number, y: number, z: number }) {
+      const t = this.world.transforms.get(e);
+      const def = this.world.bodyDefs.get(e);
+      const rb = this.world.rigidBodies.get(e);
+
+      if (t && def && rb) {
+          t.scale = scale; // Update visual scale (synced in loop)
+          this.physicsService.updateBodyScale(rb.handle, def, scale);
+      }
+  }
+
+  updateEntityPhysics(e: Entity, props: { friction: number, restitution: number }) {
+      const rb = this.world.rigidBodies.get(e);
+      if (rb) {
+          this.physicsService.updateBodyMaterial(rb.handle, props);
+          this.world.physicsProps.add(e, props);
+      }
   }
 
   undo() { console.log('Undo triggered'); }

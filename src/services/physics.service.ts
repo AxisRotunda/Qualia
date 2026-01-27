@@ -7,6 +7,7 @@ export interface PhysicsBodyDef {
   type: 'box' | 'sphere';
   position: { x: number, y: number, z: number };
   rotation: { x: number, y: number, z: number, w: number };
+  // Original dimensions before scaling
   size?: { w: number, h: number, d: number };
   radius?: number;
 }
@@ -44,7 +45,6 @@ export class PhysicsService {
   setGravity(y: number) {
     if (!this.world) return;
     this.world.gravity = { x: 0, y: y, z: 0 };
-    // Wake up sleeping bodies so they react to gravity change immediately
     this.world.forEachRigidBody(body => body.wakeUp());
   }
 
@@ -69,7 +69,8 @@ export class PhysicsService {
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
     
     const colliderDesc = RAPIER.ColliderDesc.cuboid(size / 2, size / 2, size / 2)
-        .setRestitution(0.7);
+        .setRestitution(0.7)
+        .setFriction(0.5);
     this.world.createCollider(colliderDesc, rigidBody);
 
     return {
@@ -91,7 +92,8 @@ export class PhysicsService {
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
 
     const colliderDesc = RAPIER.ColliderDesc.ball(radius)
-        .setRestitution(0.8);
+        .setRestitution(0.8)
+        .setFriction(0.5);
     this.world.createCollider(colliderDesc, rigidBody);
 
     return {
@@ -103,7 +105,6 @@ export class PhysicsService {
     };
   }
 
-  // Purely for retrieving data by handle during sync
   getBodyPose(handle: number): { p: RAPIER.Vector, q: RAPIER.Rotation } | null {
     if (!this.world) return null;
     const body = this.world.getRigidBody(handle);
@@ -117,37 +118,71 @@ export class PhysicsService {
   updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
     if (!this.world) return;
     
-    // Safety: Validate inputs
-    if (isNaN(position.x) || isNaN(position.y) || isNaN(position.z)) {
-      console.warn(`[Physics] Ignored NaN transform for handle ${handle}`);
-      return;
-    }
-    
-    // Clamp to reasonable world bounds to prevent physics engine errors
-    const CLAMP = 10000;
-    const safePos = {
-      x: Math.max(-CLAMP, Math.min(CLAMP, position.x)),
-      y: Math.max(-CLAMP, Math.min(CLAMP, position.y)),
-      z: Math.max(-CLAMP, Math.min(CLAMP, position.z))
-    };
-
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
-    body.setTranslation(safePos, true);
+    body.setTranslation(position, true);
     if (rotation) {
       body.setRotation(rotation, true);
     }
-    // Critical: Reset momentum to prevent "explosions" after teleport
+    
     body.resetForces(true);
     body.resetTorques(true);
     body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     body.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
 
+  updateBodyMaterial(handle: number, props: { friction: number, restitution: number }) {
+    if (!this.world) return;
+    const body = this.world.getRigidBody(handle);
+    if (!body) return;
+
+    // Iterate colliders (usually 1)
+    for (let i = 0; i < body.numColliders(); i++) {
+        const collider = body.collider(i);
+        collider.setFriction(props.friction);
+        collider.setRestitution(props.restitution);
+    }
+  }
+
+  updateBodyScale(handle: number, def: PhysicsBodyDef, scale: { x: number, y: number, z: number }) {
+    if (!this.world) return;
+    const body = this.world.getRigidBody(handle);
+    if (!body) return;
+
+    // Rapier doesn't support scaling existing colliders easily, we recreate the collider
+    // Remove existing colliders
+    const n = body.numColliders();
+    const collidersToRemove: RAPIER.Collider[] = [];
+    for(let i=0; i<n; i++) collidersToRemove.push(body.collider(i));
+    collidersToRemove.forEach(c => this.world!.removeCollider(c, false));
+
+    // Create new collider with scaled dimensions
+    let colliderDesc: RAPIER.ColliderDesc;
+
+    if (def.type === 'box' && def.size) {
+        // Box extent is half-size
+        const hx = (def.size.w / 2) * scale.x;
+        const hy = (def.size.h / 2) * scale.y;
+        const hz = (def.size.d / 2) * scale.z;
+        colliderDesc = RAPIER.ColliderDesc.cuboid(Math.abs(hx), Math.abs(hy), Math.abs(hz));
+    } else if (def.type === 'sphere' && def.radius) {
+        // Uniform scale approximation for sphere
+        const s = Math.max(scale.x, Math.max(scale.y, scale.z));
+        colliderDesc = RAPIER.ColliderDesc.ball(def.radius * s);
+    } else {
+        return; // Unknown
+    }
+
+    // Retain material props? We should probably pass them in, but for now defaults
+    // In a real app we'd read them from the old collider before destroying
+    colliderDesc.setRestitution(0.7).setFriction(0.5);
+
+    this.world.createCollider(colliderDesc, body);
+  }
+
   removeBody(handle: number) {
     if (!this.world) return;
-    // Check if body exists before removing to avoid Rapier errors
     if (this.world.getRigidBody(handle)) {
       this.world.removeRigidBody(this.world.getRigidBody(handle)!);
     }

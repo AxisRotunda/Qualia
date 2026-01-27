@@ -64,13 +64,13 @@ export class MenuBarComponent {
         { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z',
           isDisabled: () => !this.engine.canRedo(), execute: () => this.engine.redo() },
         { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D',
-          isDisabled: () => !this.engine.selectedEntity(),
+          isDisabled: () => !this.engine.selectedEntity() === null,
           execute: () => {
               const e = this.engine.selectedEntity();
               if (e !== null) this.engine.duplicateEntity(e);
           } },
         { id: 'delete', label: 'Delete', shortcut: 'Delete',
-          isDisabled: () => !this.engine.selectedEntity(), 
+          isDisabled: () => !this.engine.selectedEntity() === null, 
           execute: () => {
               const e = this.engine.selectedEntity();
               if (e !== null) this.engine.deleteEntity(e);
@@ -90,7 +90,10 @@ export class MenuBarComponent {
       label: 'View',
       execute: () => {},
       children: [
-        { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => console.log('Focus') }
+        { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => this.engine.focusSelectedEntity() },
+        { id: 'camera-top', label: 'Top View', execute: () => this.engine.setCameraPreset('top') },
+        { id: 'camera-front', label: 'Front View', execute: () => this.engine.setCameraPreset('front') },
+        { id: 'camera-side', label: 'Side View', execute: () => this.engine.setCameraPreset('side') }
       ]
     }
   ];

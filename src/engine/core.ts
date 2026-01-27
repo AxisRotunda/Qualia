@@ -1,11 +1,18 @@
 
 import * as THREE from 'three';
+import { PhysicsBodyDef } from '../services/physics.service';
 
 export type Entity = number;
 
 export interface Transform {
   position: { x: number, y: number, z: number };
   rotation: { x: number, y: number, z: number, w: number };
+  scale: { x: number, y: number, z: number };
+}
+
+export interface PhysicsProps {
+  friction: number;
+  restitution: number;
 }
 
 export interface RigidBodyRef {
@@ -53,6 +60,10 @@ export class World {
   transforms = new ComponentStore<Transform>();
   rigidBodies = new ComponentStore<RigidBodyRef>();
   meshes = new ComponentStore<MeshRef>();
+  
+  // Data needed for reconstruction/logic
+  bodyDefs = new ComponentStore<PhysicsBodyDef>();
+  physicsProps = new ComponentStore<PhysicsProps>();
 
   createEntity(): Entity {
     const id = this.nextId++;
@@ -65,6 +76,8 @@ export class World {
     this.transforms.remove(e);
     this.rigidBodies.remove(e);
     this.meshes.remove(e);
+    this.bodyDefs.remove(e);
+    this.physicsProps.remove(e);
   }
 
   clear() {
@@ -72,6 +85,8 @@ export class World {
     this.transforms.clear();
     this.rigidBodies.clear();
     this.meshes.clear();
+    this.bodyDefs.clear();
+    this.physicsProps.clear();
     this.nextId = 0;
   }
 }

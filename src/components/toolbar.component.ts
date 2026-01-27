@@ -33,6 +33,17 @@ import { EngineService } from '../services/engine.service';
         </button>
       </div>
       
+      <!-- Actions -->
+      <div class="flex gap-1 border-r border-slate-700 pr-2 pl-1">
+        <button class="tool-btn" 
+                [disabled]="!engine.selectedEntity() && engine.selectedEntity() !== 0"
+                [class.opacity-50]="!engine.selectedEntity() && engine.selectedEntity() !== 0"
+                (click)="engine.focusSelectedEntity()" 
+                title="Focus Selection (F)">
+          <span class="icon">center_focus_strong</span>
+        </button>
+      </div>
+
       <!-- Playback Controls -->
       <div class="flex gap-1 border-r border-slate-700 pr-2 pl-1">
         <button class="tool-btn" 
@@ -48,10 +59,10 @@ import { EngineService } from '../services/engine.service';
       <div class="flex gap-1 pl-1">
         <button class="tool-btn" [class.active]="showGrid()"
                 (click)="toggleGrid()" title="Toggle Grid (G)">
-          <span class="icon">#</span>
+          <span class="icon">grid_3x3</span>
         </button>
-         <button class="tool-btn" [class.active]="showWireframe()"
-                (click)="toggleWireframe()" title="Toggle Wireframe">
+         <button class="tool-btn" [class.active]="engine.wireframe()"
+                (click)="engine.toggleWireframe()" title="Toggle Wireframe">
           <span class="icon">deployed_code</span>
         </button>
       </div>
@@ -78,7 +89,6 @@ export class ToolbarComponent {
   
   mode = signal<'select' | 'move' | 'rotate'>('select');
   showGrid = signal(true);
-  showWireframe = signal(false);
   
   modeChange = output<'select' | 'move' | 'rotate'>();
   spawnBox = output<void>();
@@ -91,9 +101,5 @@ export class ToolbarComponent {
 
   toggleGrid() {
     this.showGrid.update(v => !v);
-  }
-
-  toggleWireframe() {
-    this.showWireframe.update(v => !v);
   }
 }
