@@ -16,6 +16,20 @@ export interface DebugState {
     singleUpdate: string | null;
 }
 
+export interface SavedScene {
+  version: number;
+  entities: {
+    tplId: string;
+    position: {x:number, y:number, z:number};
+    rotation: {x:number, y:number, z:number, w:number};
+    scale: {x:number, y:number, z:number};
+  }[];
+  engine: {
+    gravityY: number;
+    texturesEnabled: boolean;
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -48,6 +62,10 @@ export class EngineService {
   
   canUndo = signal(false);
   canRedo = signal(false);
+
+  // UI State Signals
+  mainMenuVisible = signal(true);
+  showDebugOverlay = signal(true);
 
   // Invariant Monitor Signal
   debugInfo = signal<DebugState>({ paused: false, bodyCount: 0, singleUpdate: null });
@@ -83,7 +101,7 @@ export class EngineService {
       this.loading.set(false);
       this.startLoop();
       
-      // Default initial scene
+      // Initialize with City scene behind menu
       this.sceneRegistry.loadScene(this, 'city');
     } catch (err) {
       console.error("Engine Init Failed", err);
@@ -127,14 +145,17 @@ export class EngineService {
       } else {
           // Disable orbit controls if dragging gizmo
           const dragging = this.sceneService.isDraggingGizmo();
-          this.cameraControl.setEnabled(!dragging);
+          this.cameraControl.setEnabled(!dragging && !this.mainMenuVisible());
           this.cameraControl.update();
       }
       
       this.particleService.update(dt);
 
       // 2. State Invariants
-      if (!this.isPaused()) {
+      // Pause physics if menu is open or paused explicitly
+      const physicsPaused = this.isPaused() || this.mainMenuVisible();
+
+      if (!physicsPaused) {
         // --- RUNNING STATE: Physics -> Mesh (O(N)) ---
         const pStart = performance.now();
         this.physicsService.step();
@@ -178,7 +199,7 @@ export class EngineService {
 
       // Update Invariant Monitor
       this.debugInfo.set({
-          paused: this.isPaused(),
+          paused: physicsPaused,
           bodyCount: this.world.rigidBodies.size, // Accessing internal map size (O(1))
           singleUpdate: singleUpdateTarget
       });
@@ -249,6 +270,7 @@ export class EngineService {
   
   loadScene(id: string) {
       this.sceneRegistry.loadScene(this, id);
+      this.mainMenuVisible.set(false);
   }
 
   deleteEntity(e: Entity) {
@@ -260,6 +282,8 @@ export class EngineService {
       const t = this.world.transforms.get(e);
       const meshRef = this.world.meshes.get(e);
       const oldDef = this.world.bodyDefs.get(e);
+      const tplId = this.world.templateIds.get(e);
+
       const scale = t?.scale ?? { x: 1, y: 1, z: 1 };
       
       if (t && meshRef && oldDef) {
@@ -291,6 +315,7 @@ export class EngineService {
         this.world.bodyDefs.add(newEntity, bodyDef);
         this.world.physicsProps.add(newEntity, { friction: 0.5, restitution: 0.5 });
         this.world.names.add(newEntity, `${typeName}_${newEntity}`);
+        if (tplId) this.world.templateIds.add(newEntity, tplId);
         
         const tNew = this.world.transforms.get(newEntity)!;
         tNew.scale = {...scale};
@@ -314,6 +339,87 @@ export class EngineService {
     if (this.mode() === 'explore') this.toggleMode();
 
     this.updateCount();
+  }
+
+  // --- Persistence & Main Menu ---
+
+  exportScene(): SavedScene {
+    const entities: SavedScene['entities'] = [];
+    this.world.entities.forEach(e => {
+        const tplId = this.world.templateIds.get(e);
+        const t = this.world.transforms.get(e);
+        if (tplId && t) {
+            entities.push({
+                tplId,
+                position: { ...t.position },
+                rotation: { ...t.rotation },
+                scale: { ...t.scale }
+            });
+        }
+    });
+
+    return {
+        version: 1,
+        entities,
+        engine: {
+            gravityY: this.gravityY(),
+            texturesEnabled: this.texturesEnabled()
+        }
+    };
+  }
+
+  importScene(data: SavedScene) {
+      this.reset();
+      this.setGravity(data.engine.gravityY);
+      if (this.texturesEnabled() !== data.engine.texturesEnabled) {
+          this.toggleTextures();
+      }
+
+      data.entities.forEach(e => {
+          const pos = new THREE.Vector3(e.position.x, e.position.y, e.position.z);
+          const rot = new THREE.Quaternion(e.rotation.x, e.rotation.y, e.rotation.z, e.rotation.w);
+          
+          try {
+              const ent = this.entityLib.spawnFromTemplate(this, e.tplId, pos, rot);
+              
+              if (e.scale.x !== 1 || e.scale.y !== 1 || e.scale.z !== 1) {
+                  const t = this.world.transforms.get(ent);
+                  const def = this.world.bodyDefs.get(ent);
+                  const rb = this.world.rigidBodies.get(ent);
+                  
+                  if (t && def && rb) {
+                      t.scale = { ...e.scale };
+                      this.physicsService.updateBodyScale(rb.handle, def, t.scale);
+                  }
+              }
+          } catch(err) {
+              console.warn(`Failed to spawn entity ${e.tplId}`, err);
+          }
+      });
+      
+      this.mainMenuVisible.set(false);
+  }
+
+  quickSave() {
+      const data = this.exportScene();
+      localStorage.setItem('qualia_quick_save', JSON.stringify(data));
+      // Could show a toast notification here
+  }
+
+  quickLoad() {
+      const raw = localStorage.getItem('qualia_quick_save');
+      if (raw) {
+          try {
+              const data = JSON.parse(raw);
+              this.importScene(data);
+          } catch(e) {
+              console.error("Failed to load save", e);
+          }
+      }
+  }
+
+  hasSavedState(): boolean {
+      return !!localStorage.getItem('qualia_quick_save');
   }
 
   // --- Debug / Regression Helpers ---
@@ -358,6 +464,7 @@ export class EngineService {
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
     if (this.mode() === 'explore') return null;
+    if (this.mainMenuVisible()) return null;
     if (this.sceneService.isDraggingGizmo()) return this.selectedEntity();
 
     const domEl = this.sceneService.getDomElement();
@@ -398,6 +505,8 @@ export class EngineService {
   setPaused(val: boolean) { this.isPaused.set(val); }
   toggleWireframe() { this.wireframe.update(v => !v); this.sceneService.setWireframeForAll(this.wireframe()); }
   toggleTextures() { this.texturesEnabled.update(v => !v); this.sceneService.setTexturesEnabled(this.texturesEnabled()); }
+  setDebugOverlayVisible(val: boolean) { this.showDebugOverlay.set(val); }
+  
   setTransformMode(mode: 'translate'|'rotate'|'scale') { this.transformMode.set(mode); this.sceneService.setTransformMode(mode); }
   setGravity(val: number) { this.gravityY.set(val); this.physicsService.setGravity(val); }
   

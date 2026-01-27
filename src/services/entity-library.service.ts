@@ -132,6 +132,7 @@ export class EntityLibraryService {
     engine.world.bodyDefs.add(entity, bodyDef);
     engine.world.physicsProps.add(entity, { friction: tpl.friction, restitution: tpl.restitution });
     engine.world.names.add(entity, tpl.label);
+    engine.world.templateIds.add(entity, tpl.id);
 
     engine.objectCount.update(c => c + 1);
 

@@ -69,6 +69,7 @@ export class World {
   bodyDefs = new ComponentStore<PhysicsBodyDef>();
   physicsProps = new ComponentStore<PhysicsProps>();
   names = new ComponentStore<string>();
+  templateIds = new ComponentStore<string>();
 
   createEntity(): Entity {
     const id = this.nextId++;
@@ -84,6 +85,7 @@ export class World {
     this.bodyDefs.remove(e);
     this.physicsProps.remove(e);
     this.names.remove(e);
+    this.templateIds.remove(e);
   }
 
   clear() {
@@ -94,6 +96,7 @@ export class World {
     this.bodyDefs.clear();
     this.physicsProps.clear();
     this.names.clear();
+    this.templateIds.clear();
     this.nextId = 0;
   }
 }

@@ -9,6 +9,7 @@ import { MenuBarComponent } from './components/menu/menu-bar.component';
 import { ToolbarComponent } from './components/toolbar.component';
 import { StatusBarComponent } from './components/status-bar.component';
 import { DebugOverlayComponent } from './components/debug-overlay.component';
+import { MainMenuComponent } from './components/main-menu.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -21,7 +22,8 @@ import { CommonModule } from '@angular/common';
       MenuBarComponent, 
       ToolbarComponent, 
       StatusBarComponent,
-      DebugOverlayComponent
+      DebugOverlayComponent,
+      MainMenuComponent
   ],
   template: `
     <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
@@ -40,6 +42,11 @@ import { CommonModule } from '@angular/common';
       <!-- Main Layout Area -->
       <div class="flex flex-1 overflow-hidden relative">
         
+        <!-- Main Menu Overlay -->
+        @if (engine.mainMenuVisible()) {
+           <app-main-menu />
+        }
+
         <!-- Desktop Left Panel -->
         @if (leftPanelOpen() && !isMobile()) {
           <aside class="flex flex-col w-64 bg-slate-950/95 border-r border-slate-800 z-10" aria-label="Outliner">
@@ -165,29 +172,28 @@ export class AppComponent implements AfterViewInit {
   }
 
   private checkResponsive() {
-    // Optional: Auto-collapse logic could go here, but strictly relying on user preference + mobile override is cleaner
     if (this.isMobile()) {
-       // ensure panels don't default open on small screens if logic requires
-       // currently keeping user state but rendering as overlay
+       // logic for mobile responsiveness
     }
   }
 
   // --- Interaction ---
 
   onPointerDown(event: PointerEvent) {
+      if (this.engine.mainMenuVisible()) return;
       this.pointerDownPos = { x: event.clientX, y: event.clientY };
       this.pointerDownTime = performance.now();
       this.contextMenu.set(null);
   }
 
   onPointerUp(event: PointerEvent) {
+      if (this.engine.mainMenuVisible()) return;
       const dx = event.clientX - this.pointerDownPos.x;
       const dy = event.clientY - this.pointerDownPos.y;
       const distSq = dx*dx + dy*dy;
       const dt = performance.now() - this.pointerDownTime;
 
       // Tight threshold: < 16px sq (4px linear) AND < 200ms
-      // This prevents accidental selection while orbiting
       const isClick = distSq < 16 && dt < 200;
 
       if (isClick && event.button === 0) {
@@ -198,6 +204,8 @@ export class AppComponent implements AfterViewInit {
 
   onCanvasContextMenu(event: MouseEvent) {
       event.preventDefault();
+      if (this.engine.mainMenuVisible()) return;
+
       const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
       
       if (entity !== null) {

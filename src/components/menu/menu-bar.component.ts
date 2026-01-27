@@ -12,7 +12,7 @@ import { MenuDropdownComponent } from './menu-dropdown.component';
   template: `
     <nav class="flex items-center gap-1 px-3 py-1 bg-slate-950 border-b border-slate-800 select-none z-50 relative shrink-0"
          aria-label="Main Menu">
-      <div class="flex items-center gap-2 mr-6">
+      <div class="flex items-center gap-2 mr-6 cursor-pointer" (click)="engine.mainMenuVisible.set(true)">
          <span class="material-symbols-outlined text-cyan-500 text-[18px]">deployed_code_history</span>
          <span class="font-bold text-slate-200 text-xs tracking-wider">QUALIA<span class="text-cyan-500">3D</span></span>
       </div>
@@ -48,9 +48,9 @@ export class MenuBarComponent {
       id: 'file', label: 'File', execute: () => {},
       children: [
         { id: 'new', label: 'New Empty', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
-        { id: 'scene-city', label: 'Load City Slice', execute: () => this.engine.loadScene('city') },
-        { id: 'scene-stacks', label: 'Load Stacks & Ramps', execute: () => this.engine.loadScene('stacks') },
-        { id: 'scene-particles', label: 'Load Pillars & Particles', execute: () => this.engine.loadScene('particles') },
+        { id: 'qsave', label: 'Quick Save', shortcut: 'Ctrl+S', execute: () => this.engine.quickSave() },
+        { id: 'qload', label: 'Quick Load', shortcut: 'Ctrl+L', execute: () => this.engine.quickLoad() },
+        { id: 'main-menu', label: 'Exit to Main Menu', execute: () => this.engine.mainMenuVisible.set(true) },
       ]
     },
     {
@@ -67,13 +67,16 @@ export class MenuBarComponent {
       children: [
         { id: 'sim-play',  label: 'Play',  shortcut: 'Space', isDisabled: () => !this.engine.isPaused(), execute: () => this.engine.setPaused(false) },
         { id: 'sim-pause', label: 'Pause', shortcut: 'Space', isDisabled: () => this.engine.isPaused(), execute: () => this.engine.setPaused(true) },
-        { id: 'sim-reset', label: 'Reset Props', execute: () => {} },
+        { id: 'sim-grav-moon', label: 'Gravity: Moon', execute: () => this.engine.setGravity(-1.62) },
+        { id: 'sim-grav-earth', label: 'Gravity: Earth', execute: () => this.engine.setGravity(-9.81) },
+        { id: 'sim-grav-zero', label: 'Gravity: Zero', execute: () => this.engine.setGravity(0) },
       ]
     },
     {
       id: 'view', label: 'View', execute: () => {},
       children: [
         { id: 'view-textures', label: 'Toggle Textures', execute: () => this.engine.toggleTextures() },
+        { id: 'view-debug', label: 'Toggle Debug Overlay', execute: () => this.engine.setDebugOverlayVisible(!this.engine.showDebugOverlay()) },
         { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => this.engine.focusSelectedEntity() },
         { id: 'camera-top', label: 'Top View', execute: () => this.engine.setCameraPreset('top') },
         { id: 'camera-front', label: 'Front View', execute: () => this.engine.setCameraPreset('front') }
