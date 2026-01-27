@@ -16,8 +16,10 @@ export class SceneService {
   private ambientLight!: THREE.AmbientLight;
   private dirLight!: THREE.DirectionalLight;
 
-  // Cache for cleanup and bulk updates
-  private materials: THREE.Material[] = [];
+  // Material Registry
+  private materialRegistry = new Map<string, THREE.Material>();
+  
+  // Cache for cleanup
   private geometries: THREE.BufferGeometry[] = [];
 
   private selectionHelper: THREE.BoxHelper | null = null;
@@ -63,14 +65,12 @@ export class SceneService {
     
     this.scene.add(this.dirLight);
 
+    // Initialize Material Registry
+    this.initMaterials();
+
     // Ground
     const groundGeo = new THREE.PlaneGeometry(200, 200);
-    const groundMat = new THREE.MeshStandardMaterial({ 
-      color: 0x1e293b, 
-      roughness: 0.8,
-      metalness: 0.2
-    });
-    this.materials.push(groundMat);
+    const groundMat = this.getMaterial('mat-ground');
     this.geometries.push(groundGeo);
 
     const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -87,6 +87,49 @@ export class SceneService {
         this.isDraggingGizmo.set(event.value);
     });
     this.scene.add(this.transformControl);
+  }
+
+  private initMaterials() {
+    const loader = new THREE.TextureLoader(); // Prepare for textures if needed later
+    
+    // Shared parameters
+    const baseSettings = { roughness: 0.7, metalness: 0.1 };
+
+    this.materialRegistry.set('mat-ground', new THREE.MeshStandardMaterial({ 
+      color: 0x1e293b, roughness: 0.9, metalness: 0.1 
+    }));
+    
+    this.materialRegistry.set('mat-concrete', new THREE.MeshStandardMaterial({ 
+      color: 0x64748b, roughness: 0.9, metalness: 0.1 
+    }));
+    
+    this.materialRegistry.set('mat-metal', new THREE.MeshStandardMaterial({ 
+      color: 0x94a3b8, roughness: 0.4, metalness: 0.8 
+    }));
+    
+    this.materialRegistry.set('mat-wood', new THREE.MeshStandardMaterial({ 
+      color: 0xa16207, roughness: 0.9, metalness: 0.0 
+    }));
+
+    this.materialRegistry.set('mat-road', new THREE.MeshStandardMaterial({ 
+      color: 0x0f172a, roughness: 0.9, metalness: 0.0 
+    }));
+
+    this.materialRegistry.set('mat-glass', new THREE.MeshStandardMaterial({ 
+      color: 0x22d3ee, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.6 
+    }));
+    
+    this.materialRegistry.set('mat-hazard', new THREE.MeshStandardMaterial({
+        color: 0xfacc15, roughness: 0.6, metalness: 0.4
+    }));
+    
+    this.materialRegistry.set('mat-default', new THREE.MeshStandardMaterial({ 
+      color: 0xffffff, ...baseSettings 
+    }));
+  }
+
+  getMaterial(id: string): THREE.Material {
+      return this.materialRegistry.get(id) || this.materialRegistry.get('mat-default')!;
   }
 
   setAtmosphere(preset: 'clear'|'fog'|'night') {
@@ -127,7 +170,7 @@ export class SceneService {
   }
 
   setWireframeForAll(enabled: boolean) {
-    this.materials.forEach(mat => {
+    this.materialRegistry.forEach(mat => {
         (mat as any).wireframe = enabled;
     });
   }
@@ -144,13 +187,12 @@ export class SceneService {
     }
   }
 
-  createMesh(data: PhysicsBodyDef, color: number): THREE.Mesh {
+  createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string }): THREE.Mesh {
     let geometry: THREE.BufferGeometry;
     
     if (data.type === 'box') {
       geometry = new THREE.BoxGeometry(data.size!.w, data.size!.h, data.size!.d);
     } else if (data.type === 'cylinder') {
-      // CylinderGeometry(radiusTop, radiusBottom, height, radialSegments)
       geometry = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
     } else {
       geometry = new THREE.SphereGeometry(data.radius!, 32, 32);
@@ -158,13 +200,20 @@ export class SceneService {
     
     this.geometries.push(geometry);
 
-    const material = new THREE.MeshStandardMaterial({ 
-      color: color,
-      roughness: 0.4,
-      metalness: 0.5,
-      wireframe: (this.materials[0] as any).wireframe || false
-    });
-    this.materials.push(material);
+    let material: THREE.Material;
+    
+    if (options.materialId && this.materialRegistry.has(options.materialId)) {
+        material = this.materialRegistry.get(options.materialId)!;
+    } else {
+        // Fallback or unique color
+        material = new THREE.MeshStandardMaterial({ 
+            color: options.color ?? 0xffffff,
+            roughness: 0.4,
+            metalness: 0.5
+        });
+        // We don't cache unique materials in registry to avoid pollution, 
+        // but we should track them if we want to dispose them properly.
+    }
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(data.position.x, data.position.y, data.position.z);
@@ -182,10 +231,12 @@ export class SceneService {
     }
     
     if (mesh.geometry) mesh.geometry.dispose();
-    if (Array.isArray(mesh.material)) {
-      mesh.material.forEach(m => m.dispose());
-    } else if (mesh.material) {
-      mesh.material.dispose();
+    // Do not dispose material if it's in the registry
+    if (mesh.material) {
+        const isShared = Array.from(this.materialRegistry.values()).includes(mesh.material as THREE.Material);
+        if (!isShared) {
+            (mesh.material as THREE.Material).dispose();
+        }
     }
   }
 
@@ -227,4 +278,3 @@ export class SceneService {
     this.renderer.render(this.scene, this.camera);
   }
 }
-    

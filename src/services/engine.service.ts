@@ -1,11 +1,11 @@
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { PhysicsService, PhysicsBodyDef } from './physics.service';
 import { SceneService } from './scene.service';
 import { CameraControlService, CameraViewPreset } from './camera-control.service';
 import { FlyControlsService } from './fly-controls.service';
 import { EntityLibraryService } from './entity-library.service';
-import { SceneGeneratorService } from './scene-generator.service';
+import { SceneRegistryService } from './scene-registry.service';
 import { ParticleService } from './particle.service';
 import { World, Entity } from '../engine/core';
 import * as THREE from 'three';
@@ -42,32 +42,30 @@ export class EngineService {
   canUndo = signal(false);
   canRedo = signal(false);
 
+  private sceneRegistry = inject(SceneRegistryService);
+
   constructor(
     public physicsService: PhysicsService,
     public sceneService: SceneService,
     private cameraControl: CameraControlService,
     private flyControls: FlyControlsService,
     public entityLib: EntityLibraryService,
-    private sceneGen: SceneGeneratorService,
     private particleService: ParticleService
   ) {}
 
   async init(canvas: HTMLCanvasElement) {
     try {
-      // Deterministic init order
       await this.physicsService.init();
       this.sceneService.init(canvas);
       
       this.cameraControl.init(this.sceneService.getCamera(), canvas);
       this.flyControls.init(this.sceneService.getCamera(), canvas);
-      this.particleService.init(this.sceneService.getScene());
 
       this.loading.set(false);
       this.startLoop();
       
       // Default initial scene
-      this.reset();
-      this.spawnBox();
+      this.sceneRegistry.loadScene(this, 'city');
     } catch (err) {
       console.error("Engine Init Failed", err);
     }
@@ -81,20 +79,13 @@ export class EngineService {
           this.mode.set('explore');
           this.cameraControl.setEnabled(false);
           this.flyControls.enable();
-          this.selectedEntity.set(null); // Deselect
-          
+          this.selectedEntity.set(null); 
           canvas.requestPointerLock();
-          
-          this.sceneService.setAtmosphere('fog');
-          this.particleService.init(this.sceneService.getScene());
       } else {
           this.mode.set('edit');
           this.flyControls.disable();
           this.cameraControl.setEnabled(true);
-          
           document.exitPointerLock();
-          
-          this.sceneService.setAtmosphere('clear');
       }
   }
 
@@ -113,7 +104,6 @@ export class EngineService {
       if (this.mode() === 'explore') {
           this.flyControls.update(dt);
       } else {
-          // Edit mode controls
           if (this.sceneService.isDraggingGizmo()) {
             this.cameraControl.setEnabled(false);
           } else {
@@ -122,29 +112,27 @@ export class EngineService {
           this.cameraControl.update();
       }
       
-      // Particles
       this.particleService.update(dt);
 
-      // Physics & Transform Sync
       if (!this.isPaused()) {
+        // --- RUNNING STATE (O(N) Sync) ---
         const pStart = performance.now();
         this.physicsService.step();
         this.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
 
-        // Single pass: Sync Physics -> ECS -> Mesh
         this.world.rigidBodies.forEach((rb, entity) => {
-          // Skip if being dragged by gizmo
+          // Skip selected if dragging (gizmo has control)
           if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) return;
 
           const pose = this.physicsService.getBodyPose(rb.handle);
           if (pose) {
             const transform = this.world.transforms.get(entity);
             if (transform) {
-                // 1. Physics -> ECS
+                // Physics -> ECS
                 transform.position = pose.p;
                 transform.rotation = pose.q;
 
-                // 2. ECS -> Mesh
+                // ECS -> Mesh
                 const meshRef = this.world.meshes.get(entity);
                 if (meshRef) {
                     meshRef.mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
@@ -154,38 +142,37 @@ export class EngineService {
             }
           }
         });
+
       } else {
-          // Paused State: Handle Gizmo updates or static sync
-          this.world.meshes.forEach((meshRef, entity) => {
-             // Only strictly necessary if we allow manipulation while paused (we do)
-             const transform = this.world.transforms.get(entity);
-             if (transform) {
-                 // Gizmo dragging updates the ECS transform directly in the loop below
-                 if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo() && this.selectedEntity() === entity) {
+          // --- PAUSED STATE (O(1) Edit Sync) ---
+          // Only update the single selected entity if we are dragging it
+          if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo()) {
+              const entity = this.selectedEntity();
+              if (entity !== null) {
+                  const meshRef = this.world.meshes.get(entity);
+                  const transform = this.world.transforms.get(entity);
+                  
+                  if (meshRef && transform) {
+                      // 1. Mesh (Modified by Gizmo) -> ECS
                       const mesh = meshRef.mesh;
-                      // Mesh -> ECS
                       transform.position = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
                       transform.rotation = { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w };
                       transform.scale = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
                       
+                      // 2. ECS -> Physics
                       const rb = this.world.rigidBodies.get(entity);
                       const def = this.world.bodyDefs.get(entity);
-
                       if (rb) {
                           this.physicsService.updateBodyTransform(rb.handle, transform.position, transform.rotation);
                           if (def) this.physicsService.updateBodyScale(rb.handle, def, transform.scale);
                       }
-                 } else {
-                      // ECS -> Mesh (for consistency)
-                      meshRef.mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
-                      meshRef.mesh.quaternion.set(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
-                      meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
-                 }
-             }
-          });
+                  }
+              }
+          }
       }
       
-      if (!this.isPaused() || this.selectedEntity() !== null) {
+      // Update Gizmo visual
+      if (this.selectedEntity() !== null) {
         this.sceneService.updateSelectionHelper();
       }
 
@@ -195,27 +182,6 @@ export class EngineService {
     };
     
     requestAnimationFrame(loop);
-  }
-
-  stepSimulation() {
-      if (!this.isPaused()) return;
-      this.physicsService.step();
-      
-      this.world.rigidBodies.forEach((rb, entity) => {
-          const pose = this.physicsService.getBodyPose(rb.handle);
-          if (pose) {
-              const transform = this.world.transforms.get(entity);
-              const meshRef = this.world.meshes.get(entity);
-              if (transform) {
-                  transform.position = pose.p;
-                  transform.rotation = pose.q;
-                  if (meshRef) {
-                      meshRef.mesh.position.set(pose.p.x, pose.p.y, pose.p.z);
-                      meshRef.mesh.quaternion.set(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-                  }
-              }
-          }
-      });
   }
 
   // --- Entity Management ---
@@ -235,13 +201,9 @@ export class EngineService {
   }
 
   spawnSphere() {
-      // Manual sphere spawn using normalized helpers
-      const x = (Math.random() - 0.5) * 5;
-      const y = 10 + Math.random() * 5;
-      const z = (Math.random() - 0.5) * 5;
-      
-      const bodyDef = this.physicsService.createSphere(x, y, z, 0.5, 1.0); // radius 0.5, mass 1
-      const mesh = this.sceneService.createMesh(bodyDef, 0xff0000);
+      const pos = new THREE.Vector3((Math.random()-0.5)*5, 10 + Math.random()*5, (Math.random()-0.5)*5);
+      const bodyDef = this.physicsService.createSphere(pos.x, pos.y, pos.z, 0.5, 1.0);
+      const mesh = this.sceneService.createMesh(bodyDef, { color: 0xff0000 });
       
       const entity = this.world.createEntity();
       this.world.rigidBodies.add(entity, { handle: bodyDef.handle });
@@ -263,7 +225,11 @@ export class EngineService {
   }
   
   generateCity() {
-      this.sceneGen.generateCityBlock(this);
+      this.sceneRegistry.loadScene(this, 'city');
+  }
+  
+  loadScene(id: 'city'|'stacks'|'particles') {
+      this.sceneRegistry.loadScene(this, id);
   }
 
   deleteEntity(e: Entity) {
@@ -286,7 +252,6 @@ export class EngineService {
         let bodyDef;
         let typeName = 'Object';
 
-        // Use the stored BodyDef to faithfully recreate physics
         if (oldDef.type === 'sphere') {
            bodyDef = this.physicsService.createSphere(x, y, z, oldDef.radius, oldDef.mass);
            typeName = 'Sphere';
@@ -294,12 +259,11 @@ export class EngineService {
             bodyDef = this.physicsService.createCylinder(x, y, z, oldDef.height!, oldDef.radius!, oldDef.mass);
             typeName = 'Cylinder';
         } else {
-           // Box
            bodyDef = this.physicsService.createBox(x, y, z, oldDef.size?.w, oldDef.size?.h, oldDef.size?.d, oldDef.mass);
            typeName = 'Box';
         }
 
-        const mesh = this.sceneService.createMesh(bodyDef, color);
+        const mesh = this.sceneService.createMesh(bodyDef, { color }); // Clone retains basic material creation for now
         const newEntity = this.world.createEntity();
         
         this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
@@ -309,7 +273,6 @@ export class EngineService {
         this.world.physicsProps.add(newEntity, { friction: 0.5, restitution: 0.5 });
         this.world.names.add(newEntity, `${typeName}_${newEntity}`);
         
-        // Apply scale/props
         const tNew = this.world.transforms.get(newEntity)!;
         tNew.scale = {...scale};
         this.physicsService.updateBodyScale(bodyDef.handle, bodyDef, scale);
@@ -329,7 +292,6 @@ export class EngineService {
     this.physicsService.resetWorld();
     this.cameraControl.reset();
     
-    // Ensure mode is reset to Edit
     if (this.mode() === 'explore') this.toggleMode();
 
     this.updateCount();
@@ -362,7 +324,6 @@ export class EngineService {
   }
   
   raycastGround(): THREE.Vector3 | null {
-      // Raycast against infinite plane at y=0
       this.raycaster.setFromCamera(new THREE.Vector2(0,0), this.sceneService.getCamera());
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       const target = new THREE.Vector3();

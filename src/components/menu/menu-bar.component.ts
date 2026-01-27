@@ -47,8 +47,10 @@ export class MenuBarComponent {
     {
       id: 'file', label: 'File', execute: () => {},
       children: [
-        { id: 'new', label: 'New Scene', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
-        { id: 'gen', label: 'Generate City', execute: () => this.engine.generateCity() },
+        { id: 'new', label: 'New Empty', shortcut: 'Ctrl+N', execute: () => this.engine.reset() },
+        { id: 'scene-city', label: 'Load City Slice', execute: () => this.engine.loadScene('city') },
+        { id: 'scene-stacks', label: 'Load Stacks & Ramps', execute: () => this.engine.loadScene('stacks') },
+        { id: 'scene-particles', label: 'Load Pillars & Particles', execute: () => this.engine.loadScene('particles') },
       ]
     },
     {
@@ -82,4 +84,3 @@ export class MenuBarComponent {
     this.keyboard.register(this.menus);
   }
 }
-    
