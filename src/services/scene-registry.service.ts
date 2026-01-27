@@ -35,6 +35,10 @@ export class SceneRegistryService {
       return Array.from(this.scenes.values());
   }
 
+  getPreset(id: string): ScenePreset | undefined {
+      return this.scenes.get(id);
+  }
+
   getLabel(id: string): string {
       return this.scenes.get(id)?.label ?? 'Unknown Scene';
   }
@@ -55,7 +59,7 @@ export class SceneRegistryService {
     this.registerScene({
       id: 'city',
       label: 'City Slice',
-      description: 'A grid of buildings, roads, and glass blocks in a clear atmosphere.',
+      description: 'Concrete canyons and stacked crates in a neutral atmosphere.',
       theme: 'city',
       previewColor: 'from-blue-600 to-indigo-900',
       load: (engine) => this.loadCitySlice(engine)
@@ -64,7 +68,7 @@ export class SceneRegistryService {
     this.registerScene({
       id: 'forest',
       label: 'Deep Forest',
-      description: 'Dense trees, logs, and rough terrain with a warm, foggy atmosphere.',
+      description: 'Dense logs and trees with heavy friction on rough terrain.',
       theme: 'forest',
       previewColor: 'from-emerald-700 to-green-900',
       load: (engine) => this.loadForest(engine)
@@ -73,7 +77,7 @@ export class SceneRegistryService {
     this.registerScene({
       id: 'ice',
       label: 'Glacial Plain',
-      description: 'Slippery ice blocks and platforms in a bright, cold environment.',
+      description: 'Slippery ice planes and bouncing blocks in bright glare.',
       theme: 'ice',
       previewColor: 'from-cyan-400 to-blue-200',
       load: (engine) => this.loadIce(engine)
@@ -82,7 +86,7 @@ export class SceneRegistryService {
     this.registerScene({
       id: 'stacks',
       label: 'Stacks & Ramps',
-      description: 'A physics playground with precariously stacked crates and ramps.',
+      description: 'Precariously stacked crates and ramps for stability testing.',
       theme: 'default',
       previewColor: 'from-amber-600 to-orange-800',
       load: (engine) => this.loadStacksAndRamps(engine)
@@ -91,7 +95,7 @@ export class SceneRegistryService {
     this.registerScene({
       id: 'particles',
       label: 'Pillars & Particles',
-      description: 'A night scene with glowing particles and tall monoliths.',
+      description: 'Glowing particles and monoliths in a dark void.',
       theme: 'default',
       previewColor: 'from-violet-600 to-purple-900',
       load: (engine) => this.loadPillarsAndParticles(engine)

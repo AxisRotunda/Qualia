@@ -390,19 +390,20 @@ export class EngineService {
           this.toggleTextures();
       }
       
-      // If we know the source scene ID, we can try to restore its environment/atmosphere first
-      // But we don't want to reload the entities, just the mood. 
-      // For now, simpler: if sceneId exists, maybe load that scene to set atmosphere, then clear entities?
-      // Or just assume the saved state captures the entities.
-      // Ideally, we'd save the atmosphere setting too. For now, we'll just restore the ID state.
+      // Restore Scene ID and Atmosphere
       if (data.meta.sceneId) {
-          // hack to restore atmosphere if we had a dedicated method
-          // this.sceneRegistry.loadScene(this, data.meta.sceneId) --> would spawn default entities
-          // So we skip that and just set ID for UI consistency
           this.currentSceneId.set(data.meta.sceneId);
-          // Manually attempt to set atmosphere if scene is known (optional refinement)
+          // Restore atmosphere based on ID
+          const preset = this.sceneRegistry.getPreset(data.meta.sceneId);
+          if (preset) {
+              if (preset.theme === 'city') this.sceneService.setAtmosphere('clear');
+              else if (preset.theme === 'forest') this.sceneService.setAtmosphere('forest');
+              else if (preset.theme === 'ice') this.sceneService.setAtmosphere('ice');
+              else this.sceneService.setAtmosphere('clear');
+          }
       } else {
           this.currentSceneId.set(null);
+          this.sceneService.setAtmosphere('clear');
       }
 
       data.entities.forEach(e => {
@@ -538,7 +539,30 @@ export class EngineService {
       const e = this.selectedEntity();
       if (e === null) return;
       const t = this.world.transforms.get(e);
-      if (t) this.cameraControl.focusOn(new THREE.Vector3(t.position.x, t.position.y, t.position.z));
+      const def = this.world.bodyDefs.get(e);
+      
+      if (t) {
+          const pos = new THREE.Vector3(t.position.x, t.position.y, t.position.z);
+          
+          // Calculate intelligent zoom distance based on object size
+          let size = 1;
+          if (def) {
+              const sx = t.scale.x;
+              const sy = t.scale.y;
+              const sz = t.scale.z;
+              
+              if (def.type === 'box' && def.size) {
+                  size = Math.max(def.size.w * sx, def.size.h * sy, def.size.d * sz);
+              } else if (def.type === 'cylinder' && def.height && def.radius) {
+                  size = Math.max(def.height * sy, def.radius * 2 * Math.max(sx, sz));
+              } else if (def.type === 'sphere' && def.radius) {
+                  size = def.radius * 2 * Math.max(sx, sy, sz);
+              }
+          }
+          
+          // Focus with appropriate distance
+          this.cameraControl.focusOn(pos, size * 2.5 + 5);
+      }
   }
 
   togglePause() { this.isPaused.update(v => !v); }

@@ -212,15 +212,20 @@ export class SceneService {
 
     switch(preset) {
       case 'clear':
-        this.scene.fog = new THREE.Fog(0x0f172a, 30, 150);
+        // City/Default: Neutral, decent visibility but not infinite
+        this.scene.fog = new THREE.Fog(0x0f172a, 40, 200);
         this.scene.background = new THREE.Color(0x0f172a);
+        if(this.ambientLight) this.ambientLight.intensity = 0.5;
+        if(this.dirLight) this.dirLight.intensity = 0.8;
         break;
+        
       case 'fog':
         this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
         this.scene.background = new THREE.Color(0x0f0f1e);
         if(this.ambientLight) this.ambientLight.intensity = 0.25;
         if(this.dirLight) this.dirLight.intensity = 0.7;
         break;
+        
       case 'night':
         this.scene.fog = new THREE.FogExp2(0x050510, 0.025);
         this.scene.background = new THREE.Color(0x000008);
@@ -230,20 +235,27 @@ export class SceneService {
             this.dirLight.color.setHex(0x6688ff);
         }
         break;
+        
       case 'forest':
-        this.scene.fog = new THREE.FogExp2(0x1a2e1a, 0.02);
+        // Dense, warm, cozy
+        this.scene.fog = new THREE.FogExp2(0x1a2e1a, 0.035);
         this.scene.background = new THREE.Color(0x0f1a0f);
-        if (this.ambientLight) this.ambientLight.intensity = 0.5;
+        if (this.ambientLight) this.ambientLight.intensity = 0.4;
         if (this.dirLight) {
-            this.dirLight.intensity = 0.6;
+            this.dirLight.intensity = 0.5;
             this.dirLight.color.setHex(0xffecc7); // Warm sunlight
         }
         break;
+        
       case 'ice':
-        this.scene.fog = new THREE.Fog(0xcceeff, 20, 100);
+        // Bright, glare, open distances
+        this.scene.fog = new THREE.Fog(0xe0f7ff, 30, 300);
         this.scene.background = new THREE.Color(0xbae6fd);
-        if (this.ambientLight) this.ambientLight.intensity = 0.7;
-        if (this.dirLight) this.dirLight.intensity = 0.9;
+        if (this.ambientLight) this.ambientLight.intensity = 0.6;
+        if (this.dirLight) {
+            this.dirLight.intensity = 1.1; // High glare
+            this.dirLight.color.setHex(0xf0faff);
+        }
         break;
     }
   }

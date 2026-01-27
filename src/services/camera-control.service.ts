@@ -45,15 +45,19 @@ export class CameraControlService {
       }
   }
 
-  focusOn(target: THREE.Vector3) {
+  focusOn(target: THREE.Vector3, distance: number = 10) {
     if (!this.controls || !this.camera) return;
 
     // Smooth transition could be added here with Tweening
-    // For now, instant focus
+    // For now, instant focus with smart distance
     this.controls.target.copy(target);
     
-    // Offset camera slightly if it's too far/close
-    const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize().multiplyScalar(10);
+    // Offset camera
+    const currentOffset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize();
+    // If offset is degenerate (target = position), use default
+    if (currentOffset.lengthSq() < 0.1) currentOffset.set(0, 0.5, 1).normalize();
+    
+    const offset = currentOffset.multiplyScalar(distance);
     this.camera.position.copy(target).add(offset);
     this.camera.lookAt(target);
   }
