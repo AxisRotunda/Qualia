@@ -8,8 +8,10 @@ import { Entity } from '../engine/core';
 export interface EntityTemplate {
   id: string;
   label: string;
-  geometry: 'box' | 'cylinder' | 'sphere';
-  size: THREE.Vector3; // For cylinder: x=radiusTop, y=height
+  geometry: 'box' | 'cylinder' | 'sphere' | 'mesh';
+  meshId?: string; // ID for AssetService
+  physicsShape?: 'box' | 'cylinder' | 'capsule' | 'sphere'; 
+  size: THREE.Vector3; // For cylinder: x=radiusTop, y=height; For Capsule: x=radius, y=height
   materialId?: string;
   color?: number; // Fallback
   mass: number;
@@ -73,8 +75,8 @@ export class EntityLibraryService {
       size: new THREE.Vector3(2, 2, 2), materialId: 'mat-glass',
       mass: 10, friction: 0.2, restitution: 0.4, tags: ['prop', 'dynamic'] },
 
-    // Forest Props - High friction to "settle"
-    { id: 'prop-tree', label: 'Tree', geometry: 'cylinder',
+    // Forest Props
+    { id: 'prop-tree', label: 'Tree (Simple)', geometry: 'cylinder',
       size: new THREE.Vector3(0.8, 8, 0.8), materialId: 'mat-forest',
       mass: 0, friction: 1.0, restitution: 0.0, tags: ['prop', 'static', 'forest'] },
 
@@ -82,14 +84,29 @@ export class EntityLibraryService {
       size: new THREE.Vector3(0.6, 4, 0.6), materialId: 'mat-wood',
       mass: 15, friction: 0.9, restitution: 0.05, tags: ['prop', 'dynamic', 'forest'] },
 
-    // Ice Props - Very slippery
     { id: 'prop-ice-block', label: 'Ice Cube', geometry: 'box',
       size: new THREE.Vector3(2, 2, 2), materialId: 'mat-ice',
-      mass: 10, friction: 0.02, restitution: 0.3, tags: ['prop', 'dynamic', 'ice'] }
+      mass: 10, friction: 0.02, restitution: 0.3, tags: ['prop', 'dynamic', 'ice'] },
+
+    // --- Hero Meshes ---
+    { id: 'hero-tree', label: 'Oak Tree', geometry: 'mesh', meshId: 'tree-01', 
+      physicsShape: 'capsule', size: new THREE.Vector3(0.4, 4, 0), // r, h
+      mass: 0, friction: 1.0, restitution: 0.0, tags: ['forest', 'hero'] 
+    },
+    { id: 'hero-rock', label: 'Granite Rock', geometry: 'mesh', meshId: 'rock-01', 
+      physicsShape: 'sphere', size: new THREE.Vector3(1.2, 0, 0), // r
+      materialId: 'mat-rock',
+      mass: 500, friction: 0.8, restitution: 0.1, tags: ['prop', 'hero'] 
+    },
+    { id: 'hero-ice-chunk', label: 'Ice Chunk', geometry: 'mesh', meshId: 'ice-01', 
+      physicsShape: 'cylinder', size: new THREE.Vector3(1, 2, 0), // r, h
+      materialId: 'mat-ice',
+      mass: 100, friction: 0.1, restitution: 0.4, tags: ['prop', 'hero'] 
+    }
   ];
 
   validateTemplates(sceneService: SceneService) {
-    const texturableMaterials = ['mat-road', 'mat-ground', 'mat-forest'];
+    const texturableMaterials = ['mat-road', 'mat-ground', 'mat-forest', 'mat-bark', 'mat-rock'];
     
     this.templates.forEach(tpl => {
       // 1. Material Existence
@@ -98,18 +115,8 @@ export class EntityLibraryService {
       }
       
       // 2. Geometry Support
-      if (!['box', 'sphere', 'cylinder'].includes(tpl.geometry)) {
+      if (!['box', 'sphere', 'cylinder', 'mesh'].includes(tpl.geometry)) {
          console.error(`[Validation Error] Template '${tpl.id}' uses unsupported geometry '${tpl.geometry}'`);
-      }
-
-      // 3. Texture Semantic Validation
-      // Ensure small props don't accidentally use heavy terrain textures if we ever assign them
-      if (tpl.materialId && texturableMaterials.includes(tpl.materialId)) {
-          const isTerrain = tpl.tags.includes('terrain');
-          const isLarge = tpl.size.x > 5 || tpl.size.z > 5;
-          if (!isTerrain && !isLarge) {
-              console.warn(`[Validation Warning] Template '${tpl.id}' uses texture-heavy material '${tpl.materialId}' but is not a terrain/large object.`);
-          }
       }
     });
   }
@@ -119,25 +126,50 @@ export class EntityLibraryService {
     if (!tpl) throw new Error(`Template ${templateId} not found`);
 
     let bodyDef;
-    if (tpl.geometry === 'box') {
-      bodyDef = engine.physicsService.createBox(position.x, position.y, position.z, tpl.size.x, tpl.size.y, tpl.size.z, tpl.mass);
-    } else if (tpl.geometry === 'cylinder') {
-      bodyDef = engine.physicsService.createCylinder(position.x, position.y, position.z, tpl.size.y, tpl.size.x, tpl.mass);
+    
+    // Physics Body Creation
+    if (tpl.geometry === 'mesh') {
+        // Proxy Collider
+        if (tpl.physicsShape === 'capsule' || tpl.physicsShape === 'cylinder') {
+             bodyDef = engine.physicsService.createCylinder(
+                 position.x, position.y + (tpl.size.y/2), position.z, 
+                 tpl.size.y, tpl.size.x, tpl.mass
+             ); // Note: Capsule in this physics helper is usually mapped to Cylinder or implemented specifically. Using Cylinder helper for now which works fine for static trees.
+        } else if (tpl.physicsShape === 'sphere') {
+             bodyDef = engine.physicsService.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
+        } else {
+             bodyDef = engine.physicsService.createBox(position.x, position.y, position.z, 1, 1, 1, tpl.mass);
+        }
     } else {
-       bodyDef = engine.physicsService.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
+        // Primitive
+        if (tpl.geometry === 'box') {
+          bodyDef = engine.physicsService.createBox(position.x, position.y, position.z, tpl.size.x, tpl.size.y, tpl.size.z, tpl.mass);
+        } else if (tpl.geometry === 'cylinder') {
+          bodyDef = engine.physicsService.createCylinder(position.x, position.y, position.z, tpl.size.y, tpl.size.x, tpl.mass);
+        } else {
+          bodyDef = engine.physicsService.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
+        }
     }
 
     if (rotation) {
-        // Apply rotation to physics body
         engine.physicsService.updateBodyTransform(bodyDef.handle, bodyDef.position, {x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w});
-        // Update bodyDef rotation for consistency (though bodyDef is mostly for creation record)
         bodyDef.rotation = {x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w};
     }
 
     engine.physicsService.updateBodyMaterial(bodyDef.handle, { friction: tpl.friction, restitution: tpl.restitution });
 
-    const mesh = engine.sceneService.createMesh(bodyDef, { color: tpl.color, materialId: tpl.materialId });
-    // Mesh rotation will be synced by engine loop or set here
+    // Visual Mesh Creation
+    const mesh = engine.sceneService.createMesh(bodyDef, { 
+        color: tpl.color, 
+        materialId: tpl.materialId, 
+        meshId: tpl.meshId 
+    });
+
+    // For Meshes, we might need to adjust visual offset if origin differs from physics
+    // But since our procedural generation assumes Y-up from 0, and physics usually centers,
+    // we let them sync naturally. 
+    
+    // Sync Initial rotation
     mesh.quaternion.copy(rotation || new THREE.Quaternion());
     
     const entity = engine.world.createEntity();

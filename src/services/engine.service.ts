@@ -147,8 +147,7 @@ export class EngineService {
           this.selectedEntity.set(null);
           // Spawn character at current camera position (projected to ground preferably, or just current pos)
           const camPos = this.sceneService.getCamera().position.clone();
-          // Raycast down to find ground to spawn safely?
-          const spawnPos = camPos; // For now, just spawn where camera is
+          const spawnPos = camPos; 
           this.charController.init(spawnPos);
           this.gameInput.requestPointerLock(canvas);
       }
@@ -329,7 +328,7 @@ export class EngineService {
         const x = t.position.x + 1;
         const y = t.position.y;
         const z = t.position.z;
-        const color = (meshRef.mesh.material as THREE.MeshStandardMaterial).color.getHex();
+        const color = (meshRef.mesh.material as THREE.MeshStandardMaterial).color?.getHex() ?? 0xffffff;
         
         let bodyDef;
         let typeName = 'Object';
@@ -344,7 +343,19 @@ export class EngineService {
            bodyDef = this.physicsService.createBox(x, y, z, oldDef.size?.w, oldDef.size?.h, oldDef.size?.d, oldDef.mass);
            typeName = 'Box';
         }
+        
+        // Note: Duplicating a Mesh-type entity using primitive fallbacks for now is simpler,
+        // unless we store the meshId in BodyDef. For this implementation, we rely on template spawning or primitive fallback.
+        // If it was a template spawn, we can just respawn from template but we lose custom props.
+        // Better: Check if tplId exists and respawn from that.
+        
+        if (tplId) {
+             this.entityLib.spawnFromTemplate(this, tplId, new THREE.Vector3(x, y, z), new THREE.Quaternion(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w));
+             // We return here to avoid double creation logic
+             return; 
+        }
 
+        // Fallback for non-template entities
         const mesh = this.sceneService.createMesh(bodyDef, { color }); 
         const newEntity = this.world.createEntity();
         
@@ -354,7 +365,6 @@ export class EngineService {
         this.world.bodyDefs.add(newEntity, bodyDef);
         this.world.physicsProps.add(newEntity, { friction: 0.5, restitution: 0.5 });
         this.world.names.add(newEntity, `${typeName}_${newEntity}`);
-        if (tplId) this.world.templateIds.add(newEntity, tplId);
         
         const tNew = this.world.transforms.get(newEntity)!;
         tNew.scale = {...scale};
@@ -500,16 +510,10 @@ export class EngineService {
   debugSpawnAllTemplates() {
     this.reset();
     console.group('Debug: Spawn All Templates');
-    let x = -10;
+    let x = -15;
     this.entityLib.templates.forEach(tpl => {
       console.log(`Spawning ${tpl.id} [${tpl.materialId}] at x=${x}`);
       const ent = this.entityLib.spawnFromTemplate(this, tpl.id, new THREE.Vector3(x, 5, 0));
-      // Visual verification of material assignment
-      const meshRef = this.world.meshes.get(ent);
-      if(meshRef) {
-          const mat = meshRef.mesh.material as THREE.MeshStandardMaterial;
-          console.log(` > Assigned Mat: color=${mat.color.getHexString()} rough=${mat.roughness}`);
-      }
       x += 5;
     });
     console.groupEnd();
@@ -525,7 +529,8 @@ export class EngineService {
        if (!mesh) { console.error(`Entity ${e} missing mesh`); errors++; }
        
        if (mesh) {
-           const mat = mesh.mesh.material as THREE.MeshStandardMaterial;
+           // We might have array materials now
+           const mat = mesh.mesh.material;
            if (!mat) { console.error(`Entity ${e} has no material`); errors++; }
        }
     });

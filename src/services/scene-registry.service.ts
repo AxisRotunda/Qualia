@@ -53,6 +53,11 @@ export class SceneRegistryService {
     // Uniform Lifecycle: Reset -> Atmosphere -> Spawn -> Camera
     engine.reset();
     preset.load(engine);
+    
+    // Enable textures by default for organic scenes
+    if (preset.theme === 'forest' || preset.theme === 'ice') {
+        if (!engine.texturesEnabled()) engine.toggleTextures();
+    }
   }
 
   private registerScenes() {
@@ -135,26 +140,39 @@ export class SceneRegistryService {
   private loadForest(engine: EngineService) {
       engine.sceneService.setAtmosphere('forest');
       
-      // Random trees and logs
-      for(let i=0; i<30; i++) {
-          const x = (Math.random() - 0.5) * 80;
-          const z = (Math.random() - 0.5) * 80;
+      // Hero Zone: Detailed trees near origin
+      for(let i=0; i<8; i++) {
+          const angle = (i/8) * Math.PI * 2;
+          const radius = 5 + Math.random() * 5;
+          const x = Math.cos(angle) * radius;
+          const z = Math.sin(angle) * radius;
+          const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random()*Math.PI, 0));
+          this.entityLib.spawnFromTemplate(engine, 'hero-tree', new THREE.Vector3(x, 0, z), rot);
+      }
+
+      // Hero Rocks
+      for(let i=0; i<5; i++) {
+          const x = (Math.random() - 0.5) * 15;
+          const z = (Math.random() - 0.5) * 15;
+          const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random(), Math.random(), Math.random()));
+          this.entityLib.spawnFromTemplate(engine, 'hero-rock', new THREE.Vector3(x, 1, z), rot);
+      }
+
+      // Distant Forest (Low Poly Primitives)
+      for(let i=0; i<40; i++) {
+          const dist = 20 + Math.random() * 60;
+          const angle = Math.random() * Math.PI * 2;
+          const x = Math.cos(angle) * dist;
+          const z = Math.sin(angle) * dist;
           this.entityLib.spawnFromTemplate(engine, 'prop-tree', new THREE.Vector3(x, 4, z));
       }
 
-      // Fallen logs (dynamic)
+      // Fallen logs
       for(let i=0; i<10; i++) {
           const x = (Math.random() - 0.5) * 60;
           const z = (Math.random() - 0.5) * 60;
           const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random(), Math.random(), Math.random()));
           this.entityLib.spawnFromTemplate(engine, 'prop-log', new THREE.Vector3(x, 5, z), rot);
-      }
-
-      // Some rocks (using simple spheres or crates for now, mapped to generic prop)
-      for(let i=0; i<15; i++) {
-         const x = (Math.random() - 0.5) * 60;
-         const z = (Math.random() - 0.5) * 60;
-         this.entityLib.spawnFromTemplate(engine, 'prop-crate', new THREE.Vector3(x, 1, z));
       }
 
       engine.setCameraPreset('side');
@@ -170,8 +188,16 @@ export class SceneRegistryService {
           }
       }
 
-      // Slippery platforms and blocks
-      for(let i=0; i<20; i++) {
+      // Hero Ice Chunks
+      for(let i=0; i<10; i++) {
+          const x = (Math.random() - 0.5) * 30;
+          const z = (Math.random() - 0.5) * 30;
+          const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random(), 0));
+          this.entityLib.spawnFromTemplate(engine, 'hero-ice-chunk', new THREE.Vector3(x, 1, z), rot);
+      }
+
+      // Slippery platforms
+      for(let i=0; i<15; i++) {
           const x = (Math.random() - 0.5) * 40;
           const z = (Math.random() - 0.5) * 40;
           this.entityLib.spawnFromTemplate(engine, 'prop-ice-block', new THREE.Vector3(x, 5 + i*2, z));
