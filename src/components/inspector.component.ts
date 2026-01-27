@@ -1,5 +1,5 @@
 
-import { Component, inject, computed, signal, effect, ElementRef } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { EngineService } from '../services/engine.service';
 
@@ -7,13 +7,13 @@ import { EngineService } from '../services/engine.service';
   selector: 'app-inspector',
   standalone: true,
   template: `
-    <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700 text-slate-300">
+    <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700 text-slate-300" style="contain: layout style;">
       <div class="p-3 border-b border-slate-700 font-bold text-xs tracking-wide bg-slate-950 text-slate-400">
         INSPECTOR
       </div>
 
       @if (engine.selectedEntity() !== null) {
-        <div class="p-4 space-y-6 overflow-y-auto">
+        <div class="p-4 space-y-6 overflow-y-auto custom-scrollbar flex-1">
           <div class="flex justify-between items-center">
              <div class="text-xs font-mono text-cyan-500">ID: {{ engine.selectedEntity() }}</div>
              <button class="text-[10px] text-red-400 hover:text-red-300" (click)="deleteSelected()">DELETE</button>
@@ -67,6 +67,11 @@ import { EngineService } from '../services/engine.service';
       }
     </div>
   `,
+  styles: [`
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  `],
   imports: [DecimalPipe]
 })
 export class InspectorComponent {
@@ -93,7 +98,15 @@ export class InspectorComponent {
   });
 
   updatePos(axis: 'x' | 'y' | 'z', e: Event) {
-    const val = parseFloat((e.target as HTMLInputElement).value);
+    const input = e.target as HTMLInputElement;
+    const val = parseFloat(input.value);
+    
+    // Validation
+    if (isNaN(val)) {
+        // Reset to valid value if possible or just ignore
+        return; 
+    }
+
     const id = this.engine.selectedEntity();
     if (id === null) return;
 

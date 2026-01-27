@@ -2,7 +2,6 @@
 import { Component, ElementRef, ViewChild, AfterViewInit, HostListener, inject, signal } from '@angular/core';
 import { EngineService } from './services/engine.service';
 import { CameraControlService } from './services/camera-control.service';
-import { UiPanelComponent } from './components/ui-panel.component';
 import { SceneTreeComponent } from './components/scene-tree.component';
 import { InspectorComponent } from './components/inspector.component';
 import { MenuBarComponent } from './components/menu/menu-bar.component';
@@ -15,7 +14,6 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [
       CommonModule, 
-      UiPanelComponent, 
       SceneTreeComponent, 
       InspectorComponent, 
       MenuBarComponent, 
@@ -30,13 +28,15 @@ import { CommonModule } from '@angular/common';
       <app-toolbar 
         (spawnBox)="engine.spawnBox()"
         (spawnSphere)="engine.spawnSphere()"
+        (modeChange)="setMode($event)"
       />
 
       <!-- Main Workspace (Grid) -->
       <div class="grid flex-grow gap-0.5 p-0.5 bg-slate-950" [class]="layoutClasses()">
         
         <!-- LEFT: Scene Tree -->
-        <div class="panel-left overflow-hidden hidden md:block border border-slate-700 rounded bg-slate-900" style="contain: layout style;">
+        <div class="panel-left overflow-hidden hidden md:block border border-slate-700 rounded bg-slate-900" 
+             style="contain: layout style;">
           <app-scene-tree />
         </div>
 
@@ -61,12 +61,12 @@ import { CommonModule } from '@angular/common';
                  [style.top.px]="contextMenu()!.y"
                  [style.left.px]="contextMenu()!.x"
                  (mouseleave)="contextMenu.set(null)">
-               <button class="w-full text-left px-4 py-2 text-xs hover:bg-cyan-900/50 hover:text-cyan-300" 
+               <button class="w-full text-left px-4 py-2 text-xs hover:bg-cyan-900/50 hover:text-cyan-300 transition-colors" 
                        (click)="selectEntity(contextMenu()!.entity)">Select</button>
-               <button class="w-full text-left px-4 py-2 text-xs hover:bg-cyan-900/50 hover:text-cyan-300"
+               <button class="w-full text-left px-4 py-2 text-xs hover:bg-cyan-900/50 hover:text-cyan-300 transition-colors"
                        (click)="duplicateEntity(contextMenu()!.entity)">Duplicate</button>
                <div class="h-px bg-slate-700 my-1"></div>
-               <button class="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-900/20"
+               <button class="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-900/20 transition-colors"
                        (click)="deleteEntity(contextMenu()!.entity)">Delete</button>
             </div>
           }
@@ -74,7 +74,8 @@ import { CommonModule } from '@angular/common';
         </div>
 
         <!-- RIGHT: Inspector -->
-        <div class="panel-right flex flex-col hidden lg:flex border border-slate-700 rounded bg-slate-900 overflow-hidden" style="contain: layout style;">
+        <div class="panel-right flex flex-col hidden lg:flex border border-slate-700 rounded bg-slate-900 overflow-hidden" 
+             style="contain: layout style;">
            <app-inspector />
         </div>
       </div>
@@ -93,6 +94,9 @@ export class AppComponent implements AfterViewInit {
   private isDragging = false;
   private lastMouseX = 0;
   private lastMouseY = 0;
+  
+  // Track tool mode for future gizmo integration
+  private currentMode: 'select' | 'move' | 'rotate' = 'select';
 
   contextMenu = signal<{x: number, y: number, entity: number} | null>(null);
 
@@ -108,6 +112,11 @@ export class AppComponent implements AfterViewInit {
   onResize() {
     this.engine.resize(window.innerWidth, window.innerHeight);
   }
+  
+  setMode(mode: 'select' | 'move' | 'rotate') {
+    this.currentMode = mode;
+    // In future: enable/disable Three.js TransformControls here
+  }
 
   // --- Interaction ---
 
@@ -117,10 +126,6 @@ export class AppComponent implements AfterViewInit {
       const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
       
       if (entity !== null) {
-          // Adjust coordinates to be relative to the container if needed, 
-          // but for absolute fixed overlay, client coordinates usually work if container is relative.
-          // Since canvas container is relative, we might need offsetX/Y. 
-          // Simplest is to check target.
           const rect = (event.target as HTMLElement).getBoundingClientRect();
           this.contextMenu.set({
               x: event.clientX - rect.left,
@@ -150,14 +155,15 @@ export class AppComponent implements AfterViewInit {
   // --- Camera Input ---
 
   onMouseDown(event: MouseEvent) {
+    if (this.engine.loading()) return;
     if (event.button !== 0) return; // Only left click for camera
+    
     this.isDragging = true;
     this.lastMouseX = event.clientX;
     this.lastMouseY = event.clientY;
     this.contextMenu.set(null); // Close menu on click
     
-    // Also try to select if single click? 
-    // For now simple selection logic
+    // Selection logic
     const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
     this.engine.selectedEntity.set(entity);
   }
@@ -169,7 +175,10 @@ export class AppComponent implements AfterViewInit {
     const dx = event.clientX - this.lastMouseX;
     const dy = event.clientY - this.lastMouseY;
     
-    this.cameraControl.onMouseDrag(dx, dy);
+    // Add small threshold to avoid jitter clicks becoming drags
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+       this.cameraControl.onMouseDrag(dx, dy);
+    }
     
     this.lastMouseX = event.clientX;
     this.lastMouseY = event.clientY;
@@ -181,6 +190,7 @@ export class AppComponent implements AfterViewInit {
   }
   
   onWheel(event: WheelEvent) {
+    if (this.engine.loading()) return;
     this.cameraControl.onZoom(event.deltaY > 0 ? 1 : -1);
   }
 }

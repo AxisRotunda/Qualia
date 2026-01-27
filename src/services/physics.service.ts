@@ -114,10 +114,22 @@ export class PhysicsService {
 
   updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
     if (!this.world) return;
+    
+    // Safety: Validate inputs
+    if (isNaN(position.x) || isNaN(position.y) || isNaN(position.z)) return;
+    
+    // Clamp to reasonable world bounds to prevent physics engine errors
+    const CLAMP = 10000;
+    const safePos = {
+      x: Math.max(-CLAMP, Math.min(CLAMP, position.x)),
+      y: Math.max(-CLAMP, Math.min(CLAMP, position.y)),
+      z: Math.max(-CLAMP, Math.min(CLAMP, position.z))
+    };
+
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
-    body.setTranslation(position, true);
+    body.setTranslation(safePos, true);
     if (rotation) {
       body.setRotation(rotation, true);
     }

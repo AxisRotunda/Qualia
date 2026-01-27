@@ -9,15 +9,15 @@ import { Component, signal, output } from '@angular/core';
       <!-- Transform Mode -->
       <div class="flex gap-1 border-r border-slate-700 pr-2">
         <button class="tool-btn" [class.active]="mode() === 'select'"
-                (click)="mode.set('select')" title="Select (Q)">
+                (click)="setMode('select')" title="Select (Q)">
           <span class="icon">◎</span>
         </button>
         <button class="tool-btn" [class.active]="mode() === 'move'"
-                (click)="mode.set('move')" title="Move (W)">
+                (click)="setMode('move')" title="Move (W)">
           <span class="icon">↔</span>
         </button>
         <button class="tool-btn" [class.active]="mode() === 'rotate'"
-                (click)="mode.set('rotate')" title="Rotate (E)">
+                (click)="setMode('rotate')" title="Rotate (E)">
           <span class="icon">↻</span>
         </button>
       </div>
@@ -35,8 +35,12 @@ import { Component, signal, output } from '@angular/core';
       <!-- View Options -->
       <div class="flex gap-1 pl-1">
         <button class="tool-btn" [class.active]="showGrid()"
-                (click)="toggleGrid()" title="Grid (G)">
+                (click)="toggleGrid()" title="Toggle Grid (G)">
           <span class="icon">#</span>
+        </button>
+         <button class="tool-btn" [class.active]="showWireframe()"
+                (click)="toggleWireframe()" title="Toggle Wireframe">
+          <span class="icon">deployed_code</span>
         </button>
       </div>
     </div>
@@ -45,21 +49,38 @@ import { Component, signal, output } from '@angular/core';
     .tool-btn {
       @apply w-7 h-7 flex items-center justify-center rounded
              text-slate-400 hover:text-slate-200 hover:bg-slate-800
-             transition-colors text-lg leading-none;
+             transition-colors text-lg leading-none select-none;
     }
     .tool-btn.active {
       @apply bg-cyan-900/40 text-cyan-400 ring-1 ring-cyan-500/30;
     }
+    .icon {
+      font-family: 'Material Symbols Outlined';
+      font-size: 18px;
+    }
   `]
 })
 export class ToolbarComponent {
-  mode = signal<'select' | 'move' | 'rotate' | 'scale'>('select');
+  mode = signal<'select' | 'move' | 'rotate'>('select');
   showGrid = signal(true);
+  showWireframe = signal(false);
   
+  modeChange = output<'select' | 'move' | 'rotate'>();
   spawnBox = output<void>();
   spawnSphere = output<void>();
 
+  setMode(m: 'select' | 'move' | 'rotate') {
+    this.mode.set(m);
+    this.modeChange.emit(m);
+  }
+
   toggleGrid() {
     this.showGrid.update(v => !v);
+    // Future: emit grid toggle
+  }
+
+  toggleWireframe() {
+    this.showWireframe.update(v => !v);
+    // Future: emit wireframe toggle
   }
 }

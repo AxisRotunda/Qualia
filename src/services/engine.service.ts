@@ -24,6 +24,8 @@ export class EngineService {
 
   // Signals for UI
   fps = signal(0);
+  physicsTime = signal(0);
+  renderTime = signal(0);
   objectCount = signal(0);
   loading = signal(true);
   selectedEntity = signal<Entity | null>(null);
@@ -64,8 +66,6 @@ export class EngineService {
       if (!this.isRunning) return;
       requestAnimationFrame(loop);
 
-      // 1. Time & Stats
-      // const deltaTime = (time - this.lastTime) / 1000;
       this.lastTime = time;
       this.updateStats(time);
 
@@ -73,7 +73,9 @@ export class EngineService {
       this.cameraControl.update();
 
       // 3. Physics Step
+      const pStart = performance.now();
       this.physicsService.step();
+      this.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
 
       // 4. System: Sync Physics -> ECS
       this.world.rigidBodies.forEach((rb, entity) => {
@@ -106,7 +108,9 @@ export class EngineService {
       });
 
       // 6. Render
+      const rStart = performance.now();
       this.sceneService.render();
+      this.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);
     };
     
     requestAnimationFrame(loop);
@@ -155,6 +159,10 @@ export class EngineService {
   }
 
   deleteEntity(e: Entity) {
+    if (this.selectedEntity() === e) {
+      this.selectedEntity.set(null);
+    }
+
     // 1. Remove from Physics
     const rb = this.world.rigidBodies.get(e);
     if (rb) {
@@ -167,13 +175,9 @@ export class EngineService {
       this.sceneService.removeMesh(meshRef.mesh);
     }
 
-    // 3. Remove from ECS
+    // 3. Remove from ECS (clears all component stores)
     this.world.destroyEntity(e);
     
-    // 4. Update UI
-    if (this.selectedEntity() === e) {
-      this.selectedEntity.set(null);
-    }
     this.updateCount();
   }
 
@@ -186,26 +190,30 @@ export class EngineService {
       const x = t.position.x + 1;
       const y = t.position.y;
       const z = t.position.z;
+      
+      const material = meshRef.mesh.material as THREE.MeshStandardMaterial;
+      const color = material.color.getHex();
 
-      // Determine type via geometry (heuristic for now)
+      // Determine type via geometry (heuristic)
       const geo = meshRef.mesh.geometry;
+      let bodyDef;
+      
       if (geo instanceof THREE.SphereGeometry) {
-         // Create Sphere
-         const bodyDef = this.physicsService.createSphere(x, y, z);
-         const mesh = this.sceneService.createMesh(bodyDef, (meshRef.mesh.material as THREE.MeshStandardMaterial).color.getHex());
-         const newEntity = this.world.createEntity();
-         this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
-         this.world.meshes.add(newEntity, { mesh });
-         this.world.transforms.add(newEntity, { position: bodyDef.position, rotation: bodyDef.rotation });
+         bodyDef = this.physicsService.createSphere(x, y, z);
       } else {
-         // Default to Box
-         const bodyDef = this.physicsService.createBox(x, y, z);
-         const mesh = this.sceneService.createMesh(bodyDef, (meshRef.mesh.material as THREE.MeshStandardMaterial).color.getHex());
-         const newEntity = this.world.createEntity();
-         this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
-         this.world.meshes.add(newEntity, { mesh });
-         this.world.transforms.add(newEntity, { position: bodyDef.position, rotation: bodyDef.rotation });
+         bodyDef = this.physicsService.createBox(x, y, z);
       }
+
+      const mesh = this.sceneService.createMesh(bodyDef, color);
+      const newEntity = this.world.createEntity();
+      
+      this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
+      this.world.meshes.add(newEntity, { mesh });
+      this.world.transforms.add(newEntity, { 
+        position: bodyDef.position, 
+        rotation: bodyDef.rotation 
+      });
+
       this.updateCount();
     }
   }
@@ -217,7 +225,7 @@ export class EngineService {
 
     this.raycaster.setFromCamera(this.mouse, this.sceneService.getCamera());
 
-    // Collect meshes
+    // We can iterate over our known meshes instead of converting Map to Array every frame
     const meshes: THREE.Object3D[] = [];
     const meshToEntity = new Map<number, Entity>();
 
@@ -226,7 +234,7 @@ export class EngineService {
       meshToEntity.set(ref.mesh.id, entity);
     });
 
-    const intersects = this.raycaster.intersectObjects(meshes);
+    const intersects = this.raycaster.intersectObjects(meshes, false);
 
     if (intersects.length > 0) {
       const hit = intersects[0].object;
@@ -237,6 +245,7 @@ export class EngineService {
 
   reset() {
     this.selectedEntity.set(null);
+    
     // 1. Clean Physics
     this.physicsService.resetWorld();
     
@@ -248,8 +257,14 @@ export class EngineService {
   }
 
   // Stub actions for Menu
-  undo() { console.log('Undo not implemented'); }
-  redo() { console.log('Redo not implemented'); }
+  undo() { 
+    // TODO: Implement Command History
+    console.log('Undo triggered'); 
+  }
+  
+  redo() { 
+    console.log('Redo triggered'); 
+  }
 
   setGravity(val: number) {
     this.physicsService.setGravity(val);
