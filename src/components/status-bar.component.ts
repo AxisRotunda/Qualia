@@ -24,8 +24,12 @@ import { CommonModule } from '@angular/common';
             {{ engine.mode() | uppercase }}
         </span>
 
-        <span class="hover:text-cyan-400 cursor-default hidden sm:inline">ENTITIES: <span class="text-slate-300">{{ engine.objectCount() }}</span></span>
-        <span class="hover:text-cyan-400 cursor-default hidden sm:inline">SELECTED: <span class="text-slate-300">{{ engine.selectedEntity() ?? 'NONE' }}</span></span>
+        @if (engine.mode() === 'walk') {
+            <span class="text-slate-500 hidden sm:inline">WASD to Move, SPACE to Jump, SHIFT to Run</span>
+        } @else {
+            <span class="hover:text-cyan-400 cursor-default hidden sm:inline">ENTITIES: <span class="text-slate-300">{{ engine.objectCount() }}</span></span>
+            <span class="hover:text-cyan-400 cursor-default hidden sm:inline">SELECTED: <span class="text-slate-300">{{ engine.selectedEntity() ?? 'NONE' }}</span></span>
+        }
       </div>
       
       <div class="flex gap-4 items-center">
@@ -44,4 +48,3 @@ import { CommonModule } from '@angular/common';
 export class StatusBarComponent {
   engine = inject(EngineService);
 }
-    

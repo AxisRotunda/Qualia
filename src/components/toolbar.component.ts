@@ -20,10 +20,10 @@ import { CommonModule } from '@angular/common';
         </button>
 
         <!-- Mode Switcher -->
-        <button class="flex items-center gap-2 px-3 py-1 rounded bg-indigo-950/50 hover:bg-indigo-900/50 border border-indigo-500/30 text-indigo-200 text-xs font-bold transition-all ml-1 mr-2"
+        <button class="flex items-center gap-2 px-3 py-1 rounded bg-indigo-950/50 hover:bg-indigo-900/50 border border-indigo-500/30 text-indigo-200 text-xs font-bold transition-all ml-1 mr-2 min-w-[120px]"
                 (click)="engine.toggleMode()">
-           <span class="material-symbols-outlined icon-sm">{{ engine.mode() === 'edit' ? 'edit' : 'travel_explore' }}</span>
-           <span class="hidden sm:inline">{{ engine.mode() === 'edit' ? 'EDIT MODE' : 'EXPLORE MODE' }}</span>
+           <span class="material-symbols-outlined icon-sm">{{ getModeIcon() }}</span>
+           <span class="hidden sm:inline">{{ getModeLabel() }}</span>
         </button>
 
         <div class="w-px h-5 bg-slate-800 mx-1 hidden lg:block"></div>
@@ -51,23 +51,23 @@ import { CommonModule } from '@angular/common';
         <div class="w-px h-5 bg-slate-800 mx-1"></div>
         
         <!-- Gizmo Modes (Edit only) -->
-        <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50" [class.opacity-50]="engine.mode() === 'explore'">
+        <div class="flex bg-slate-800/50 rounded p-0.5 border border-slate-700/50" [class.opacity-50]="engine.mode() !== 'edit'">
             <button class="tool-btn-sm" [class.active]="engine.transformMode() === 'translate'" 
-                    [disabled]="engine.mode() === 'explore'" (click)="engine.setTransformMode('translate')">
+                    [disabled]="engine.mode() !== 'edit'" (click)="engine.setTransformMode('translate')">
               <span class="material-symbols-outlined icon-sm">open_with</span>
             </button>
             <button class="tool-btn-sm" [class.active]="engine.transformMode() === 'rotate'" 
-                    [disabled]="engine.mode() === 'explore'" (click)="engine.setTransformMode('rotate')">
+                    [disabled]="engine.mode() !== 'edit'" (click)="engine.setTransformMode('rotate')">
               <span class="material-symbols-outlined icon-sm">rotate_right</span>
             </button>
             <button class="tool-btn-sm" [class.active]="engine.transformMode() === 'scale'" 
-                    [disabled]="engine.mode() === 'explore'" (click)="engine.setTransformMode('scale')">
+                    [disabled]="engine.mode() !== 'edit'" (click)="engine.setTransformMode('scale')">
               <span class="material-symbols-outlined icon-sm">aspect_ratio</span>
             </button>
         </div>
 
         <button class="tool-btn ml-1" 
-                [disabled]="engine.selectedEntity() === null || engine.mode() === 'explore'"
+                [disabled]="engine.selectedEntity() === null || engine.mode() !== 'edit'"
                 [class.opacity-40]="engine.selectedEntity() === null"
                 (click)="engine.focusSelectedEntity()" 
                 title="Focus Selection (F)">
@@ -137,5 +137,20 @@ export class ToolbarComponent {
   spawn(id: string) {
       if(id) this.engine.spawnFromTemplate(id);
   }
+  
+  getModeLabel() {
+      switch(this.engine.mode()) {
+          case 'edit': return 'EDIT MODE';
+          case 'walk': return 'WALK MODE';
+          case 'explore': return 'FLY MODE';
+      }
+  }
+
+  getModeIcon() {
+      switch(this.engine.mode()) {
+          case 'edit': return 'edit';
+          case 'walk': return 'directions_walk';
+          case 'explore': return 'travel_explore';
+      }
+  }
 }
-    

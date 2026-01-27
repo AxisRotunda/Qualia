@@ -4,6 +4,8 @@ import { PhysicsService, PhysicsBodyDef } from './physics.service';
 import { SceneService } from './scene.service';
 import { CameraControlService, CameraViewPreset } from './camera-control.service';
 import { FlyControlsService } from './fly-controls.service';
+import { CharacterControllerService } from './character-controller.service';
+import { GameInputService } from './game-input.service';
 import { EntityLibraryService } from './entity-library.service';
 import { SceneRegistryService } from './scene-registry.service';
 import { ParticleService } from './particle.service';
@@ -63,7 +65,7 @@ export class EngineService {
   texturesEnabled = signal(false);
   transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');
   
-  mode = signal<'edit' | 'explore'>('edit');
+  mode = signal<'edit' | 'explore' | 'walk'>('edit');
   currentSceneId = signal<string | null>(null);
   
   canUndo = signal(false);
@@ -83,6 +85,8 @@ export class EngineService {
     public sceneService: SceneService,
     private cameraControl: CameraControlService,
     private flyControls: FlyControlsService,
+    private charController: CharacterControllerService,
+    private gameInput: GameInputService,
     public entityLib: EntityLibraryService,
     private particleService: ParticleService
   ) {
@@ -115,22 +119,47 @@ export class EngineService {
     }
   }
 
-  toggleMode() {
-      const current = this.mode();
+  setMode(mode: 'edit' | 'explore' | 'walk') {
+      const previous = this.mode();
+      if (previous === mode) return;
+
       const canvas = this.sceneService.getDomElement();
 
-      if (current === 'edit') {
-          this.mode.set('explore');
-          this.cameraControl.setEnabled(false);
-          this.flyControls.enable();
-          this.selectedEntity.set(null); 
-          canvas.requestPointerLock();
-      } else {
-          this.mode.set('edit');
-          this.flyControls.disable();
-          this.cameraControl.setEnabled(true);
-          document.exitPointerLock();
+      // Cleanup Previous
+      if (previous === 'explore') this.flyControls.disable();
+      if (previous === 'walk') {
+          this.charController.destroy();
+          this.gameInput.exitPointerLock();
       }
+      if (previous === 'edit') this.cameraControl.setEnabled(false);
+
+      // Setup New
+      this.mode.set(mode);
+      
+      if (mode === 'edit') {
+          this.cameraControl.setEnabled(true);
+          this.gameInput.exitPointerLock();
+      } else if (mode === 'explore') {
+          this.selectedEntity.set(null); 
+          this.flyControls.enable();
+          this.gameInput.requestPointerLock(canvas);
+      } else if (mode === 'walk') {
+          this.selectedEntity.set(null);
+          // Spawn character at current camera position (projected to ground preferably, or just current pos)
+          const camPos = this.sceneService.getCamera().position.clone();
+          // Raycast down to find ground to spawn safely?
+          const spawnPos = camPos; // For now, just spawn where camera is
+          this.charController.init(spawnPos);
+          this.gameInput.requestPointerLock(canvas);
+      }
+  }
+
+  toggleMode() {
+      // Cycle: Edit -> Walk -> Explore -> Edit
+      const current = this.mode();
+      if (current === 'edit') this.setMode('walk');
+      else if (current === 'walk') this.setMode('explore');
+      else this.setMode('edit');
   }
 
   private startLoop() {
@@ -146,11 +175,13 @@ export class EngineService {
 
       let singleUpdateTarget: string | null = null;
 
-      // 1. Camera & Controls Update
+      // 1. Controls & Character Update
       if (this.mode() === 'explore') {
           this.flyControls.update(dt);
+      } else if (this.mode() === 'walk') {
+          this.charController.update(dt);
       } else {
-          // Disable orbit controls if dragging gizmo
+          // Edit Mode
           const dragging = this.sceneService.isDraggingGizmo();
           this.cameraControl.setEnabled(!dragging && !this.mainMenuVisible());
           this.cameraControl.update();
@@ -344,7 +375,8 @@ export class EngineService {
     this.physicsService.resetWorld();
     this.cameraControl.reset();
     
-    if (this.mode() === 'explore') this.toggleMode();
+    // Default to edit mode on reset
+    this.setMode('edit');
 
     this.updateCount();
   }
@@ -504,7 +536,7 @@ export class EngineService {
   // --- Interaction ---
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
-    if (this.mode() === 'explore') return null;
+    if (this.mode() !== 'edit') return null; // Only allow selection in edit mode
     if (this.mainMenuVisible()) return null;
     if (this.sceneService.isDraggingGizmo()) return this.selectedEntity();
 
