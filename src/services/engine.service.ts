@@ -29,6 +29,10 @@ export class EngineService {
   objectCount = signal(0);
   loading = signal(true);
   selectedEntity = signal<Entity | null>(null);
+  
+  // Simulation State
+  isPaused = signal(false);
+  gravityY = signal(-9.81);
 
   // Undo/Redo stubs
   canUndo = signal(false);
@@ -51,6 +55,7 @@ export class EngineService {
       this.startLoop();
       
       // Initial Spawn
+      this.reset(); // Use reset to ensure clean slate
       this.spawnBox();
       this.spawnSphere();
       this.spawnBox();
@@ -72,24 +77,26 @@ export class EngineService {
       // 2. Camera
       this.cameraControl.update();
 
-      // 3. Physics Step
-      const pStart = performance.now();
-      this.physicsService.step();
-      this.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
+      // 3. Physics Step (Only if not paused)
+      if (!this.isPaused()) {
+        const pStart = performance.now();
+        this.physicsService.step();
+        this.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
 
-      // 4. System: Sync Physics -> ECS
-      this.world.rigidBodies.forEach((rb, entity) => {
-        const pose = this.physicsService.getBodyPose(rb.handle);
-        if (pose) {
-          // Update ECS Transform
-          this.world.transforms.add(entity, {
-            position: pose.p,
-            rotation: pose.q
-          });
-        }
-      });
+        // 4. System: Sync Physics -> ECS
+        this.world.rigidBodies.forEach((rb, entity) => {
+          const pose = this.physicsService.getBodyPose(rb.handle);
+          if (pose) {
+            // Update ECS Transform
+            this.world.transforms.add(entity, {
+              position: pose.p,
+              rotation: pose.q
+            });
+          }
+        });
+      }
 
-      // 5. System: Sync ECS -> Render
+      // 5. System: Sync ECS -> Render (Always, so we can see updates even when paused if modified via inspector)
       this.world.meshes.forEach((meshRef, entity) => {
         const transform = this.world.transforms.get(entity);
         if (transform) {
@@ -106,6 +113,11 @@ export class EngineService {
           );
         }
       });
+      
+      // Update selection visual if moving
+      if (!this.isPaused() || this.selectedEntity() !== null) {
+        this.sceneService.updateSelectionHelper();
+      }
 
       // 6. Render
       const rStart = performance.now();
@@ -116,7 +128,28 @@ export class EngineService {
     requestAnimationFrame(loop);
   }
 
-  // --- API for UI ---
+  // --- Core Lifecycle ---
+
+  private destroyEntityInternal(e: Entity) {
+    if (this.selectedEntity() === e) {
+      this.selectedEntity.set(null);
+    }
+
+    // 1. Remove from Physics
+    const rb = this.world.rigidBodies.get(e);
+    if (rb) {
+      this.physicsService.removeBody(rb.handle);
+    }
+
+    // 2. Remove from Scene
+    const meshRef = this.world.meshes.get(e);
+    if (meshRef) {
+      this.sceneService.removeMesh(meshRef.mesh);
+    }
+
+    // 3. Remove from ECS (clears all component stores)
+    this.world.destroyEntity(e);
+  }
 
   spawnBox() {
     const x = (Math.random() - 0.5) * 5;
@@ -159,25 +192,7 @@ export class EngineService {
   }
 
   deleteEntity(e: Entity) {
-    if (this.selectedEntity() === e) {
-      this.selectedEntity.set(null);
-    }
-
-    // 1. Remove from Physics
-    const rb = this.world.rigidBodies.get(e);
-    if (rb) {
-      this.physicsService.removeBody(rb.handle);
-    }
-
-    // 2. Remove from Scene
-    const meshRef = this.world.meshes.get(e);
-    if (meshRef) {
-      this.sceneService.removeMesh(meshRef.mesh);
-    }
-
-    // 3. Remove from ECS (clears all component stores)
-    this.world.destroyEntity(e);
-    
+    this.destroyEntityInternal(e);
     this.updateCount();
   }
 
@@ -218,6 +233,28 @@ export class EngineService {
     }
   }
 
+  reset() {
+    // 1. Clear State
+    this.selectedEntity.set(null);
+    this.isPaused.set(false);
+    this.setGravity(-9.81);
+    
+    // 2. Destroy all entities safely
+    // We iterate a copy of keys because we're modifying the Set during iteration
+    const allEntities = Array.from(this.world.entities);
+    allEntities.forEach(e => this.destroyEntityInternal(e));
+    
+    // 3. Reset Physics World completely (double safety)
+    this.physicsService.resetWorld();
+    
+    // 4. Reset Camera (Optional, good for UX)
+    this.cameraControl.reset();
+
+    this.updateCount();
+  }
+
+  // --- Interaction API ---
+
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
     // Convert to Normalized Device Coordinates
     this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
@@ -243,32 +280,19 @@ export class EngineService {
     return null;
   }
 
-  reset() {
-    this.selectedEntity.set(null);
-    
-    // 1. Clean Physics
-    this.physicsService.resetWorld();
-    
-    // 2. Clean Scene & ECS
-    this.world.meshes.forEach(m => this.sceneService.removeMesh(m.mesh));
-    this.world.clear();
-    
-    this.updateCount();
-  }
+  // --- Controls ---
 
-  // Stub actions for Menu
-  undo() { 
-    // TODO: Implement Command History
-    console.log('Undo triggered'); 
-  }
-  
-  redo() { 
-    console.log('Redo triggered'); 
+  togglePause() {
+    this.isPaused.update(v => !v);
   }
 
   setGravity(val: number) {
+    this.gravityY.set(val);
     this.physicsService.setGravity(val);
   }
+
+  undo() { console.log('Undo triggered'); }
+  redo() { console.log('Redo triggered'); }
 
   resize(w: number, h: number) {
     this.sceneService.resize(w, h);

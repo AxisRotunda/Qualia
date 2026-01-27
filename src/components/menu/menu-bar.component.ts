@@ -78,6 +78,14 @@ export class MenuBarComponent {
       ]
     },
     {
+      id: 'simulation',
+      label: 'Simulation',
+      execute: () => {},
+      children: [
+          { id: 'pause', label: 'Toggle Pause', shortcut: 'Space', execute: () => this.engine.togglePause() }
+      ]
+    },
+    {
       id: 'view',
       label: 'View',
       execute: () => {},

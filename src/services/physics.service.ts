@@ -44,6 +44,8 @@ export class PhysicsService {
   setGravity(y: number) {
     if (!this.world) return;
     this.world.gravity = { x: 0, y: y, z: 0 };
+    // Wake up sleeping bodies so they react to gravity change immediately
+    this.world.forEachRigidBody(body => body.wakeUp());
   }
 
   resetWorld() {
@@ -116,7 +118,10 @@ export class PhysicsService {
     if (!this.world) return;
     
     // Safety: Validate inputs
-    if (isNaN(position.x) || isNaN(position.y) || isNaN(position.z)) return;
+    if (isNaN(position.x) || isNaN(position.y) || isNaN(position.z)) {
+      console.warn(`[Physics] Ignored NaN transform for handle ${handle}`);
+      return;
+    }
     
     // Clamp to reasonable world bounds to prevent physics engine errors
     const CLAMP = 10000;
@@ -142,9 +147,9 @@ export class PhysicsService {
 
   removeBody(handle: number) {
     if (!this.world) return;
-    const body = this.world.getRigidBody(handle);
-    if (body) {
-      this.world.removeRigidBody(body);
+    // Check if body exists before removing to avoid Rapier errors
+    if (this.world.getRigidBody(handle)) {
+      this.world.removeRigidBody(this.world.getRigidBody(handle)!);
     }
   }
 }

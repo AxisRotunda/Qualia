@@ -8,8 +8,11 @@ import { EngineService } from '../services/engine.service';
   standalone: true,
   template: `
     <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700 text-slate-300" style="contain: layout style;">
-      <div class="p-3 border-b border-slate-700 font-bold text-xs tracking-wide bg-slate-950 text-slate-400">
-        INSPECTOR
+      <div class="p-3 border-b border-slate-700 font-bold text-xs tracking-wide bg-slate-950 text-slate-400 flex justify-between items-center">
+        <span>INSPECTOR</span>
+        @if (engine.isPaused()) {
+          <span class="text-[10px] text-amber-500 font-mono px-1 border border-amber-900 bg-amber-900/20 rounded">PAUSED</span>
+        }
       </div>
 
       @if (engine.selectedEntity() !== null) {
@@ -60,9 +63,34 @@ import { EngineService } from '../services/engine.service';
           </div>
         </div>
       } @else {
-        <div class="flex-1 flex flex-col items-center justify-center text-slate-600 gap-2">
-          <span class="material-symbols-outlined text-4xl opacity-20">data_object</span>
-          <span class="text-xs">No Entity Selected</span>
+        <!-- Global Settings -->
+        <div class="p-4 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+          <div class="space-y-3">
+             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <span>World Settings</span>
+              <div class="h-px bg-slate-700 flex-grow"></div>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>Gravity Y</span>
+                <span class="font-mono text-cyan-400">{{ engine.gravityY() | number:'1.1-1' }}</span>
+              </div>
+              <input 
+                type="range" 
+                min="-20" 
+                max="0" 
+                step="0.1" 
+                [value]="engine.gravityY()"
+                (input)="updateGravity($event)"
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 hover:accent-cyan-400"
+              >
+            </div>
+            
+            <div class="text-[10px] text-slate-500 pt-2">
+               Adjusting gravity affects all dynamic bodies immediately.
+            </div>
+          </div>
         </div>
       }
     </div>
@@ -80,7 +108,6 @@ export class InspectorComponent {
   private frameCounter = signal(0);
 
   constructor() {
-    // High-performance loop to drive the inspector values without triggering full app change detection
     const loop = () => {
       if (this.engine.selectedEntity() !== null) {
         this.frameCounter.update(v => v + 1);
@@ -90,9 +117,8 @@ export class InspectorComponent {
     requestAnimationFrame(loop);
   }
 
-  // Reactive transform computed from ECS + Frame Signal
   transform = computed(() => {
-    this.frameCounter(); // Dependency to force update
+    this.frameCounter(); 
     const e = this.engine.selectedEntity();
     return e !== null ? this.engine.world.transforms.get(e) : null;
   });
@@ -101,11 +127,7 @@ export class InspectorComponent {
     const input = e.target as HTMLInputElement;
     const val = parseFloat(input.value);
     
-    // Validation
-    if (isNaN(val)) {
-        // Reset to valid value if possible or just ignore
-        return; 
-    }
+    if (isNaN(val)) return;
 
     const id = this.engine.selectedEntity();
     if (id === null) return;
@@ -116,12 +138,15 @@ export class InspectorComponent {
     const current = this.engine.world.transforms.get(id)?.position;
     if (!current) return;
 
-    // Construct new position
     const newPos = { ...current };
     newPos[axis] = val;
 
-    // Write-back to Physics
     this.engine.physicsService.updateBodyTransform(rb.handle, newPos);
+  }
+
+  updateGravity(e: Event) {
+    const val = parseFloat((e.target as HTMLInputElement).value);
+    this.engine.setGravity(val);
   }
 
   deleteSelected() {

@@ -38,7 +38,8 @@ export class KeyboardService {
   
   private onKeyDown(event: KeyboardEvent) {
     // Ignore input fields
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
     }
 
@@ -66,7 +67,6 @@ export class KeyboardService {
   }
 
   private normalizeShortcut(shortcut: string): string {
-      // Normalize format to match event.key construction
       return shortcut.replace('Space', ' ').split('+').map(p => p.trim()).join('+');
   }
 }

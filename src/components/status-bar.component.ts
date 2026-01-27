@@ -9,6 +9,12 @@ import { EngineService } from '../services/engine.service';
     <div class="flex items-center justify-between px-3 py-1 bg-slate-950 
                 border-t border-slate-800 text-[10px] text-slate-500 font-mono select-none">
       <div class="flex gap-4">
+        <span class="hover:text-cyan-400 cursor-default">
+           STATUS: 
+           <span [class.text-amber-500]="engine.isPaused()" [class.text-emerald-500]="!engine.isPaused()">
+             {{ engine.isPaused() ? 'PAUSED' : 'RUNNING' }}
+           </span>
+        </span>
         <span class="hover:text-cyan-400 cursor-default">ENTITIES: <span class="text-slate-300">{{ engine.objectCount() }}</span></span>
         <span class="hover:text-cyan-400 cursor-default">SELECTED: <span class="text-slate-300">{{ engine.selectedEntity() ?? 'NONE' }}</span></span>
       </div>

@@ -2,6 +2,7 @@
 import { Component, ElementRef, ViewChild, AfterViewInit, HostListener, inject, signal } from '@angular/core';
 import { EngineService } from './services/engine.service';
 import { CameraControlService } from './services/camera-control.service';
+import { SelectionHighlightService } from './services/selection-highlight.service';
 import { SceneTreeComponent } from './components/scene-tree.component';
 import { InspectorComponent } from './components/inspector.component';
 import { MenuBarComponent } from './components/menu/menu-bar.component';
@@ -90,12 +91,15 @@ export class AppComponent implements AfterViewInit {
   
   engine = inject(EngineService);
   cameraControl = inject(CameraControlService);
+  // Inject to activate effect
+  selectionHighlight = inject(SelectionHighlightService);
 
   private isDragging = false;
+  private dragStartX = 0;
+  private dragStartY = 0;
   private lastMouseX = 0;
   private lastMouseY = 0;
   
-  // Track tool mode for future gizmo integration
   private currentMode: 'select' | 'move' | 'rotate' = 'select';
 
   contextMenu = signal<{x: number, y: number, entity: number} | null>(null);
@@ -115,14 +119,12 @@ export class AppComponent implements AfterViewInit {
   
   setMode(mode: 'select' | 'move' | 'rotate') {
     this.currentMode = mode;
-    // In future: enable/disable Three.js TransformControls here
   }
 
   // --- Interaction ---
 
   onCanvasContextMenu(event: MouseEvent) {
       event.preventDefault();
-      // Raycast to find entity
       const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
       
       if (entity !== null) {
@@ -152,20 +154,19 @@ export class AppComponent implements AfterViewInit {
       this.contextMenu.set(null);
   }
 
-  // --- Camera Input ---
+  // --- Camera Input & Smart Selection ---
 
   onMouseDown(event: MouseEvent) {
     if (this.engine.loading()) return;
-    if (event.button !== 0) return; // Only left click for camera
+    if (event.button !== 0) return; 
     
     this.isDragging = true;
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
     this.lastMouseX = event.clientX;
     this.lastMouseY = event.clientY;
-    this.contextMenu.set(null); // Close menu on click
     
-    // Selection logic
-    const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
-    this.engine.selectedEntity.set(entity);
+    this.contextMenu.set(null);
   }
 
   @HostListener('window:mousemove', ['$event'])
@@ -175,18 +176,28 @@ export class AppComponent implements AfterViewInit {
     const dx = event.clientX - this.lastMouseX;
     const dy = event.clientY - this.lastMouseY;
     
-    // Add small threshold to avoid jitter clicks becoming drags
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-       this.cameraControl.onMouseDrag(dx, dy);
-    }
+    this.cameraControl.onMouseDrag(dx, dy);
     
     this.lastMouseX = event.clientX;
     this.lastMouseY = event.clientY;
   }
 
-  @HostListener('window:mouseup')
-  onMouseUp() {
+  @HostListener('window:mouseup', ['$event'])
+  onMouseUp(event: MouseEvent) {
+    if (!this.isDragging) return;
     this.isDragging = false;
+
+    // Calculate total distance moved
+    const dist = Math.sqrt(
+      Math.pow(event.clientX - this.dragStartX, 2) + 
+      Math.pow(event.clientY - this.dragStartY, 2)
+    );
+
+    // Only select if it was a click (moved less than 4 pixels)
+    if (dist < 4) {
+      const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
+      this.engine.selectedEntity.set(entity);
+    }
   }
   
   onWheel(event: WheelEvent) {

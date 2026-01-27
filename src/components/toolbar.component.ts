@@ -1,5 +1,6 @@
 
-import { Component, signal, output } from '@angular/core';
+import { Component, signal, output, inject } from '@angular/core';
+import { EngineService } from '../services/engine.service';
 
 @Component({
   selector: 'app-toolbar',
@@ -32,6 +33,17 @@ import { Component, signal, output } from '@angular/core';
         </button>
       </div>
       
+      <!-- Playback Controls -->
+      <div class="flex gap-1 border-r border-slate-700 pr-2 pl-1">
+        <button class="tool-btn" 
+                [class.text-amber-400]="engine.isPaused()"
+                [class.bg-amber-900_20]="engine.isPaused()"
+                (click)="engine.togglePause()" 
+                [title]="engine.isPaused() ? 'Resume (Space)' : 'Pause (Space)'">
+          <span class="icon">{{ engine.isPaused() ? 'play_arrow' : 'pause' }}</span>
+        </button>
+      </div>
+      
       <!-- View Options -->
       <div class="flex gap-1 pl-1">
         <button class="tool-btn" [class.active]="showGrid()"
@@ -54,6 +66,7 @@ import { Component, signal, output } from '@angular/core';
     .tool-btn.active {
       @apply bg-cyan-900/40 text-cyan-400 ring-1 ring-cyan-500/30;
     }
+    .bg-amber-900-20 { background-color: rgb(120 53 15 / 0.2); }
     .icon {
       font-family: 'Material Symbols Outlined';
       font-size: 18px;
@@ -61,6 +74,8 @@ import { Component, signal, output } from '@angular/core';
   `]
 })
 export class ToolbarComponent {
+  engine = inject(EngineService);
+  
   mode = signal<'select' | 'move' | 'rotate'>('select');
   showGrid = signal(true);
   showWireframe = signal(false);
@@ -76,11 +91,9 @@ export class ToolbarComponent {
 
   toggleGrid() {
     this.showGrid.update(v => !v);
-    // Future: emit grid toggle
   }
 
   toggleWireframe() {
     this.showWireframe.update(v => !v);
-    // Future: emit wireframe toggle
   }
 }

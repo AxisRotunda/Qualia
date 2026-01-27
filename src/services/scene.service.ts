@@ -15,6 +15,9 @@ export class SceneService {
   private materials: THREE.Material[] = [];
   private geometries: THREE.BufferGeometry[] = [];
 
+  // Highlight helper
+  private selectionHelper: THREE.BoxHelper | null = null;
+
   init(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0f172a);
@@ -99,7 +102,34 @@ export class SceneService {
 
   removeMesh(mesh: THREE.Mesh) {
     this.scene.remove(mesh);
-    // Note: Full geometry/material disposal should happen here in prod
+    
+    // Dispose geometry/material to prevent leaks
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (Array.isArray(mesh.material)) {
+      mesh.material.forEach(m => m.dispose());
+    } else if (mesh.material) {
+      mesh.material.dispose();
+    }
+  }
+
+  setSelection(mesh: THREE.Mesh | null) {
+    // Clean up old helper
+    if (this.selectionHelper) {
+      this.scene.remove(this.selectionHelper);
+      this.selectionHelper.dispose();
+      this.selectionHelper = null;
+    }
+
+    if (mesh) {
+      this.selectionHelper = new THREE.BoxHelper(mesh, 0x22d3ee); // Cyan-400
+      this.scene.add(this.selectionHelper);
+    }
+  }
+
+  updateSelectionHelper() {
+    if (this.selectionHelper) {
+      this.selectionHelper.update();
+    }
   }
 
   resize(width: number, height: number) {
@@ -110,10 +140,5 @@ export class SceneService {
 
   render() {
     this.renderer.render(this.scene, this.camera);
-  }
-
-  clearScene() {
-    // This helper allows the Engine to clear visual objects without destroying the scene graph
-    // Not strictly needed if ECS handles individual removals, but good for resets
   }
 }

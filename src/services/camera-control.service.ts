@@ -25,6 +25,13 @@ export class CameraControlService {
     this.spherical.radius = Math.max(5, Math.min(50, this.spherical.radius + delta * 0.05));
   }
   
+  reset() {
+    this.spherical.set(20, Math.PI / 4, 0);
+    this.target.set(0, 5, 0);
+    this.velocity = { theta: 0, phi: 0 };
+    this.update();
+  }
+  
   update() {
     if (!this.camera) return;
 
