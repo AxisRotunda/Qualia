@@ -50,6 +50,11 @@ export class EntityLibraryService {
     { id: 'terrain-platform', label: 'Platform', geometry: 'box',
       size: new THREE.Vector3(10, 0.5, 10), materialId: 'mat-metal',
       mass: 0, friction: 0.7, restitution: 0.2, tags: ['terrain'] },
+      
+    // Ice Terrain
+    { id: 'terrain-ice', label: 'Ice Patch', geometry: 'box',
+      size: new THREE.Vector3(20, 0.5, 20), materialId: 'mat-ice',
+      mass: 0, friction: 0.05, restitution: 0.1, tags: ['terrain', 'ice'] },
 
     // Props
     { id: 'prop-crate', label: 'Crate', geometry: 'box',
@@ -66,11 +71,25 @@ export class EntityLibraryService {
       
     { id: 'prop-glass-block', label: 'Glass Cube', geometry: 'box',
       size: new THREE.Vector3(2, 2, 2), materialId: 'mat-glass',
-      mass: 10, friction: 0.2, restitution: 0.5, tags: ['prop', 'dynamic'] }
+      mass: 10, friction: 0.2, restitution: 0.5, tags: ['prop', 'dynamic'] },
+
+    // Forest Props
+    { id: 'prop-tree', label: 'Tree', geometry: 'cylinder',
+      size: new THREE.Vector3(0.8, 8, 0.8), materialId: 'mat-forest',
+      mass: 0, friction: 0.6, restitution: 0.1, tags: ['prop', 'static', 'forest'] },
+
+    { id: 'prop-log', label: 'Log', geometry: 'cylinder',
+      size: new THREE.Vector3(0.6, 4, 0.6), materialId: 'mat-wood',
+      mass: 15, friction: 0.6, restitution: 0.2, tags: ['prop', 'dynamic', 'forest'] },
+
+    // Ice Props
+    { id: 'prop-ice-block', label: 'Ice Cube', geometry: 'box',
+      size: new THREE.Vector3(2, 2, 2), materialId: 'mat-ice',
+      mass: 10, friction: 0.02, restitution: 0.4, tags: ['prop', 'dynamic', 'ice'] }
   ];
 
   validateTemplates(sceneService: SceneService) {
-    const texturableMaterials = ['mat-road', 'mat-ground'];
+    const texturableMaterials = ['mat-road', 'mat-ground', 'mat-forest'];
     
     this.templates.forEach(tpl => {
       // 1. Material Existence

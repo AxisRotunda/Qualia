@@ -5,8 +5,12 @@ import { EntityLibraryService } from './entity-library.service';
 import { ParticleService } from './particle.service';
 import * as THREE from 'three';
 
-interface ScenePreset {
+export interface ScenePreset {
+  id: string;
   label: string;
+  description: string;
+  theme: 'city' | 'forest' | 'ice' | 'default';
+  previewColor: string;
   load: (engine: EngineService) => void;
 }
 
@@ -23,13 +27,16 @@ export class SceneRegistryService {
     this.registerScenes();
   }
 
-  // Plug-in surface: registerScene, listScenes, loadScene
-  registerScene(id: string, preset: ScenePreset) {
-      this.scenes.set(id, preset);
+  registerScene(preset: ScenePreset) {
+      this.scenes.set(preset.id, preset);
   }
 
-  listScenes(): {id: string, label: string}[] {
-      return Array.from(this.scenes.entries()).map(([id, preset]) => ({id, label: preset.label}));
+  listScenes(): ScenePreset[] {
+      return Array.from(this.scenes.values());
+  }
+
+  getLabel(id: string): string {
+      return this.scenes.get(id)?.label ?? 'Unknown Scene';
   }
 
   loadScene(engine: EngineService, sceneId: string) {
@@ -45,16 +52,48 @@ export class SceneRegistryService {
   }
 
   private registerScenes() {
-    this.registerScene('city', {
+    this.registerScene({
+      id: 'city',
       label: 'City Slice',
+      description: 'A grid of buildings, roads, and glass blocks in a clear atmosphere.',
+      theme: 'city',
+      previewColor: 'from-blue-600 to-indigo-900',
       load: (engine) => this.loadCitySlice(engine)
     });
-    this.registerScene('stacks', {
+
+    this.registerScene({
+      id: 'forest',
+      label: 'Deep Forest',
+      description: 'Dense trees, logs, and rough terrain with a warm, foggy atmosphere.',
+      theme: 'forest',
+      previewColor: 'from-emerald-700 to-green-900',
+      load: (engine) => this.loadForest(engine)
+    });
+
+    this.registerScene({
+      id: 'ice',
+      label: 'Glacial Plain',
+      description: 'Slippery ice blocks and platforms in a bright, cold environment.',
+      theme: 'ice',
+      previewColor: 'from-cyan-400 to-blue-200',
+      load: (engine) => this.loadIce(engine)
+    });
+
+    this.registerScene({
+      id: 'stacks',
       label: 'Stacks & Ramps',
+      description: 'A physics playground with precariously stacked crates and ramps.',
+      theme: 'default',
+      previewColor: 'from-amber-600 to-orange-800',
       load: (engine) => this.loadStacksAndRamps(engine)
     });
-    this.registerScene('particles', {
+
+    this.registerScene({
+      id: 'particles',
       label: 'Pillars & Particles',
+      description: 'A night scene with glowing particles and tall monoliths.',
+      theme: 'default',
+      previewColor: 'from-violet-600 to-purple-900',
       load: (engine) => this.loadPillarsAndParticles(engine)
     });
   }
@@ -84,6 +123,54 @@ export class SceneRegistryService {
              this.entityLib.spawnFromTemplate(engine, 'prop-glass-block', new THREE.Vector3(posX, 1.5, posZ));
           }
         }
+      }
+      
+      engine.setCameraPreset('front');
+  }
+
+  private loadForest(engine: EngineService) {
+      engine.sceneService.setAtmosphere('forest');
+      
+      // Random trees and logs
+      for(let i=0; i<30; i++) {
+          const x = (Math.random() - 0.5) * 80;
+          const z = (Math.random() - 0.5) * 80;
+          this.entityLib.spawnFromTemplate(engine, 'prop-tree', new THREE.Vector3(x, 4, z));
+      }
+
+      // Fallen logs (dynamic)
+      for(let i=0; i<10; i++) {
+          const x = (Math.random() - 0.5) * 60;
+          const z = (Math.random() - 0.5) * 60;
+          const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random(), Math.random(), Math.random()));
+          this.entityLib.spawnFromTemplate(engine, 'prop-log', new THREE.Vector3(x, 5, z), rot);
+      }
+
+      // Some rocks (using simple spheres or crates for now, mapped to generic prop)
+      for(let i=0; i<15; i++) {
+         const x = (Math.random() - 0.5) * 60;
+         const z = (Math.random() - 0.5) * 60;
+         this.entityLib.spawnFromTemplate(engine, 'prop-crate', new THREE.Vector3(x, 1, z));
+      }
+
+      engine.setCameraPreset('side');
+  }
+
+  private loadIce(engine: EngineService) {
+      engine.sceneService.setAtmosphere('ice');
+
+      // Ice Ground patches
+      for(let x=-2; x<=2; x++) {
+          for(let z=-2; z<=2; z++) {
+              this.entityLib.spawnFromTemplate(engine, 'terrain-ice', new THREE.Vector3(x*20, 0.2, z*20));
+          }
+      }
+
+      // Slippery platforms and blocks
+      for(let i=0; i<20; i++) {
+          const x = (Math.random() - 0.5) * 40;
+          const z = (Math.random() - 0.5) * 40;
+          this.entityLib.spawnFromTemplate(engine, 'prop-ice-block', new THREE.Vector3(x, 5 + i*2, z));
       }
       
       engine.setCameraPreset('front');

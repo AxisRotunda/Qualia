@@ -145,6 +145,16 @@ export class SceneService {
       color: 0x8B4513, roughness: 0.6, metalness: 0.0 
     }));
 
+    // Forest: Dark Green/Brown, Rough
+    this.materialRegistry.set('mat-forest', new THREE.MeshStandardMaterial({ 
+      color: 0x3d5a38, roughness: 0.9, metalness: 0.0 
+    }));
+
+    // Ice: Cyan/White, Smooth, slightly metallic
+    this.materialRegistry.set('mat-ice', new THREE.MeshStandardMaterial({ 
+      color: 0xe0f2fe, roughness: 0.05, metalness: 0.3 
+    }));
+
     // Glass: Smooth, Transparent, High Env
     this.materialRegistry.set('mat-glass', new THREE.MeshStandardMaterial({ 
       color: 0xa5f3fc, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.6 
@@ -171,7 +181,7 @@ export class SceneService {
       const map = enabled ? this.commonTexture : null;
 
       // Only apply texture to specific materials
-      const texturableIds = ['mat-road', 'mat-concrete', 'mat-ground'];
+      const texturableIds = ['mat-road', 'mat-concrete', 'mat-ground', 'mat-forest'];
       
       texturableIds.forEach(id => {
           const mat = this.materialRegistry.get(id);
@@ -190,12 +200,20 @@ export class SceneService {
     return this.materialRegistry.has(id);
   }
 
-  setAtmosphere(preset: 'clear'|'fog'|'night') {
+  setAtmosphere(preset: 'clear'|'fog'|'night'|'forest'|'ice') {
+    // Reset defaults
+    if (this.dirLight) {
+        this.dirLight.color.setHex(0xffffff);
+        this.dirLight.intensity = 0.8;
+    }
+    if (this.ambientLight) {
+        this.ambientLight.intensity = 0.4;
+    }
+
     switch(preset) {
       case 'clear':
         this.scene.fog = new THREE.Fog(0x0f172a, 30, 150);
         this.scene.background = new THREE.Color(0x0f172a);
-        if(this.ambientLight) this.ambientLight.intensity = 0.4;
         break;
       case 'fog':
         this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
@@ -211,6 +229,21 @@ export class SceneService {
             this.dirLight.intensity = 0.5;
             this.dirLight.color.setHex(0x6688ff);
         }
+        break;
+      case 'forest':
+        this.scene.fog = new THREE.FogExp2(0x1a2e1a, 0.02);
+        this.scene.background = new THREE.Color(0x0f1a0f);
+        if (this.ambientLight) this.ambientLight.intensity = 0.5;
+        if (this.dirLight) {
+            this.dirLight.intensity = 0.6;
+            this.dirLight.color.setHex(0xffecc7); // Warm sunlight
+        }
+        break;
+      case 'ice':
+        this.scene.fog = new THREE.Fog(0xcceeff, 20, 100);
+        this.scene.background = new THREE.Color(0xbae6fd);
+        if (this.ambientLight) this.ambientLight.intensity = 0.7;
+        if (this.dirLight) this.dirLight.intensity = 0.9;
         break;
     }
   }

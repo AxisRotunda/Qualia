@@ -18,6 +18,11 @@ export interface DebugState {
 
 export interface SavedScene {
   version: number;
+  meta: {
+      sceneId?: string;
+      label?: string;
+      timestamp: number;
+  };
   entities: {
     tplId: string;
     position: {x:number, y:number, z:number};
@@ -59,6 +64,7 @@ export class EngineService {
   transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');
   
   mode = signal<'edit' | 'explore'>('edit');
+  currentSceneId = signal<string | null>(null);
   
   canUndo = signal(false);
   canRedo = signal(false);
@@ -103,6 +109,7 @@ export class EngineService {
       
       // Initialize with City scene behind menu
       this.sceneRegistry.loadScene(this, 'city');
+      this.currentSceneId.set('city');
     } catch (err) {
       console.error("Engine Init Failed", err);
     }
@@ -270,6 +277,7 @@ export class EngineService {
   
   loadScene(id: string) {
       this.sceneRegistry.loadScene(this, id);
+      this.currentSceneId.set(id);
       this.mainMenuVisible.set(false);
   }
 
@@ -358,8 +366,15 @@ export class EngineService {
         }
     });
 
+    const sceneId = this.currentSceneId();
+
     return {
         version: 1,
+        meta: {
+            sceneId: sceneId ?? undefined,
+            label: sceneId ? this.sceneRegistry.getLabel(sceneId) : 'Custom Sandbox',
+            timestamp: Date.now()
+        },
         entities,
         engine: {
             gravityY: this.gravityY(),
@@ -373,6 +388,21 @@ export class EngineService {
       this.setGravity(data.engine.gravityY);
       if (this.texturesEnabled() !== data.engine.texturesEnabled) {
           this.toggleTextures();
+      }
+      
+      // If we know the source scene ID, we can try to restore its environment/atmosphere first
+      // But we don't want to reload the entities, just the mood. 
+      // For now, simpler: if sceneId exists, maybe load that scene to set atmosphere, then clear entities?
+      // Or just assume the saved state captures the entities.
+      // Ideally, we'd save the atmosphere setting too. For now, we'll just restore the ID state.
+      if (data.meta.sceneId) {
+          // hack to restore atmosphere if we had a dedicated method
+          // this.sceneRegistry.loadScene(this, data.meta.sceneId) --> would spawn default entities
+          // So we skip that and just set ID for UI consistency
+          this.currentSceneId.set(data.meta.sceneId);
+          // Manually attempt to set atmosphere if scene is known (optional refinement)
+      } else {
+          this.currentSceneId.set(null);
       }
 
       data.entities.forEach(e => {
@@ -403,7 +433,6 @@ export class EngineService {
   quickSave() {
       const data = this.exportScene();
       localStorage.setItem('qualia_quick_save', JSON.stringify(data));
-      // Could show a toast notification here
   }
 
   quickLoad() {
@@ -420,6 +449,17 @@ export class EngineService {
 
   hasSavedState(): boolean {
       return !!localStorage.getItem('qualia_quick_save');
+  }
+
+  getQuickSaveLabel(): string {
+     const raw = localStorage.getItem('qualia_quick_save');
+     if (!raw) return 'No Save';
+     try {
+         const data = JSON.parse(raw);
+         return data.meta?.label ? `Continue: ${data.meta.label}` : 'Continue: Quick Save';
+     } catch {
+         return 'Continue: Quick Save';
+     }
   }
 
   // --- Debug / Regression Helpers ---
