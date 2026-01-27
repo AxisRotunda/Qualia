@@ -48,9 +48,6 @@ export class PhysicsService {
 
   resetWorld() {
     if (!this.world) return;
-    // Rapier specific cleanup could go here, 
-    // but for this demo we rely on creating a new world or manual cleanup by caller.
-    // To be safe and fast:
     const bodies: RAPIER.RigidBody[] = [];
     this.world.forEachRigidBody(body => {
       if (!body.isFixed()) {
@@ -113,6 +110,22 @@ export class PhysicsService {
       p: body.translation(),
       q: body.rotation()
     };
+  }
+
+  updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
+    if (!this.world) return;
+    const body = this.world.getRigidBody(handle);
+    if (!body) return;
+
+    body.setTranslation(position, true);
+    if (rotation) {
+      body.setRotation(rotation, true);
+    }
+    // Critical: Reset momentum to prevent "explosions" after teleport
+    body.resetForces(true);
+    body.resetTorques(true);
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    body.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
 
   removeBody(handle: number) {

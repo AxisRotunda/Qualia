@@ -17,6 +17,10 @@ export class EngineService {
   private lastTime = 0;
   private frameCount = 0;
   private lastFpsTime = 0;
+  
+  // Raycaster for interaction
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
 
   // Signals for UI
   fps = signal(0);
@@ -24,18 +28,22 @@ export class EngineService {
   loading = signal(true);
   selectedEntity = signal<Entity | null>(null);
 
+  // Undo/Redo stubs
+  canUndo = signal(false);
+  canRedo = signal(false);
+
   constructor(
-    private physics: PhysicsService,
-    private scene: SceneService,
+    public physicsService: PhysicsService,
+    private sceneService: SceneService,
     private cameraControl: CameraControlService
   ) {}
 
   async init(canvas: HTMLCanvasElement) {
     try {
-      await this.physics.init();
-      this.scene.init(canvas);
+      await this.physicsService.init();
+      this.sceneService.init(canvas);
       
-      this.cameraControl.setCamera(this.scene.getCamera());
+      this.cameraControl.setCamera(this.sceneService.getCamera());
 
       this.loading.set(false);
       this.startLoop();
@@ -65,11 +73,11 @@ export class EngineService {
       this.cameraControl.update();
 
       // 3. Physics Step
-      this.physics.step();
+      this.physicsService.step();
 
       // 4. System: Sync Physics -> ECS
       this.world.rigidBodies.forEach((rb, entity) => {
-        const pose = this.physics.getBodyPose(rb.handle);
+        const pose = this.physicsService.getBodyPose(rb.handle);
         if (pose) {
           // Update ECS Transform
           this.world.transforms.add(entity, {
@@ -98,7 +106,7 @@ export class EngineService {
       });
 
       // 6. Render
-      this.scene.render();
+      this.sceneService.render();
     };
     
     requestAnimationFrame(loop);
@@ -112,8 +120,8 @@ export class EngineService {
     const z = (Math.random() - 0.5) * 5;
     const color = Math.random() * 0xffffff;
 
-    const bodyDef = this.physics.createBox(x, y, z);
-    const mesh = this.scene.createMesh(bodyDef, color);
+    const bodyDef = this.physicsService.createBox(x, y, z);
+    const mesh = this.sceneService.createMesh(bodyDef, color);
 
     const entity = this.world.createEntity();
     this.world.rigidBodies.add(entity, { handle: bodyDef.handle });
@@ -132,8 +140,8 @@ export class EngineService {
     const z = (Math.random() - 0.5) * 5;
     const color = Math.random() * 0xffffff;
 
-    const bodyDef = this.physics.createSphere(x, y, z);
-    const mesh = this.scene.createMesh(bodyDef, color);
+    const bodyDef = this.physicsService.createSphere(x, y, z);
+    const mesh = this.sceneService.createMesh(bodyDef, color);
 
     const entity = this.world.createEntity();
     this.world.rigidBodies.add(entity, { handle: bodyDef.handle });
@@ -146,24 +154,109 @@ export class EngineService {
     this.updateCount();
   }
 
+  deleteEntity(e: Entity) {
+    // 1. Remove from Physics
+    const rb = this.world.rigidBodies.get(e);
+    if (rb) {
+      this.physicsService.removeBody(rb.handle);
+    }
+
+    // 2. Remove from Scene
+    const meshRef = this.world.meshes.get(e);
+    if (meshRef) {
+      this.sceneService.removeMesh(meshRef.mesh);
+    }
+
+    // 3. Remove from ECS
+    this.world.destroyEntity(e);
+    
+    // 4. Update UI
+    if (this.selectedEntity() === e) {
+      this.selectedEntity.set(null);
+    }
+    this.updateCount();
+  }
+
+  duplicateEntity(e: Entity) {
+    const t = this.world.transforms.get(e);
+    const meshRef = this.world.meshes.get(e);
+    
+    if (t && meshRef) {
+      // Offset slightly
+      const x = t.position.x + 1;
+      const y = t.position.y;
+      const z = t.position.z;
+
+      // Determine type via geometry (heuristic for now)
+      const geo = meshRef.mesh.geometry;
+      if (geo instanceof THREE.SphereGeometry) {
+         // Create Sphere
+         const bodyDef = this.physicsService.createSphere(x, y, z);
+         const mesh = this.sceneService.createMesh(bodyDef, (meshRef.mesh.material as THREE.MeshStandardMaterial).color.getHex());
+         const newEntity = this.world.createEntity();
+         this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
+         this.world.meshes.add(newEntity, { mesh });
+         this.world.transforms.add(newEntity, { position: bodyDef.position, rotation: bodyDef.rotation });
+      } else {
+         // Default to Box
+         const bodyDef = this.physicsService.createBox(x, y, z);
+         const mesh = this.sceneService.createMesh(bodyDef, (meshRef.mesh.material as THREE.MeshStandardMaterial).color.getHex());
+         const newEntity = this.world.createEntity();
+         this.world.rigidBodies.add(newEntity, { handle: bodyDef.handle });
+         this.world.meshes.add(newEntity, { mesh });
+         this.world.transforms.add(newEntity, { position: bodyDef.position, rotation: bodyDef.rotation });
+      }
+      this.updateCount();
+    }
+  }
+
+  raycastFromScreen(clientX: number, clientY: number): Entity | null {
+    // Convert to Normalized Device Coordinates
+    this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.mouse, this.sceneService.getCamera());
+
+    // Collect meshes
+    const meshes: THREE.Object3D[] = [];
+    const meshToEntity = new Map<number, Entity>();
+
+    this.world.meshes.forEach((ref, entity) => {
+      meshes.push(ref.mesh);
+      meshToEntity.set(ref.mesh.id, entity);
+    });
+
+    const intersects = this.raycaster.intersectObjects(meshes);
+
+    if (intersects.length > 0) {
+      const hit = intersects[0].object;
+      return meshToEntity.get(hit.id) ?? null;
+    }
+    return null;
+  }
+
   reset() {
     this.selectedEntity.set(null);
     // 1. Clean Physics
-    this.physics.resetWorld();
+    this.physicsService.resetWorld();
     
     // 2. Clean Scene & ECS
-    this.world.meshes.forEach(m => this.scene.removeMesh(m.mesh));
+    this.world.meshes.forEach(m => this.sceneService.removeMesh(m.mesh));
     this.world.clear();
     
     this.updateCount();
   }
 
+  // Stub actions for Menu
+  undo() { console.log('Undo not implemented'); }
+  redo() { console.log('Redo not implemented'); }
+
   setGravity(val: number) {
-    this.physics.setGravity(val);
+    this.physicsService.setGravity(val);
   }
 
   resize(w: number, h: number) {
-    this.scene.resize(w, h);
+    this.sceneService.resize(w, h);
   }
 
   private updateStats(time: number) {

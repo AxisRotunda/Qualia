@@ -7,12 +7,12 @@ import { Entity } from '../engine/core';
   selector: 'app-scene-tree',
   standalone: true,
   template: `
-    <div class="h-full flex flex-col bg-slate-900 border-r border-slate-700 text-slate-300">
-      <div class="p-3 border-b border-slate-700 font-bold text-sm tracking-wide bg-slate-950">
-        SCENE HIERARCHY
+    <div class="h-full flex flex-col text-slate-300">
+      <div class="p-3 border-b border-slate-700 font-bold text-xs tracking-wide bg-slate-950 text-slate-400">
+        HIERARCHY
       </div>
       
-      <div class="flex-1 overflow-y-auto relative" (scroll)="onScroll($event)">
+      <div class="flex-1 overflow-y-auto relative custom-scrollbar" (scroll)="onScroll($event)">
         <!-- Virtual Scroll Spacer -->
         <div [style.height.px]="totalHeight()" class="absolute w-full top-0 left-0 z-0"></div>
 
@@ -20,16 +20,18 @@ import { Entity } from '../engine/core';
         <div [style.transform]="'translateY(' + scrollOffset() + 'px)'" class="relative z-10">
           @for (entity of visibleEntities(); track entity) {
             <div 
-              class="flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer border-l-2 transition-colors"
+              class="flex items-center gap-2 px-3 py-1 text-xs cursor-pointer border-l-2 transition-all select-none group"
               [class.bg-cyan-900_20]="engine.selectedEntity() === entity"
+              [class.bg-cyan-900-20]="engine.selectedEntity() === entity" 
               [class.border-cyan-400]="engine.selectedEntity() === entity"
               [class.border-transparent]="engine.selectedEntity() !== entity"
-              [class.text-cyan-400]="engine.selectedEntity() === entity"
+              [class.text-cyan-300]="engine.selectedEntity() === entity"
               [class.hover:bg-slate-800]="engine.selectedEntity() !== entity"
               (click)="select(entity)"
+              (contextmenu)="onContextMenu($event, entity)"
             >
-              <span class="text-slate-500 material-symbols-outlined text-[10px]">{{ getIcon(entity) }}</span>
-              <span>Entity {{ entity }}</span>
+              <span class="material-symbols-outlined text-[10px] opacity-70 group-hover:opacity-100">data_object</span>
+              <span class="font-mono opacity-90">Entity_{{ entity }}</span>
             </div>
           }
         </div>
@@ -37,19 +39,19 @@ import { Entity } from '../engine/core';
     </div>
   `,
   styles: [`
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: #334155; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .bg-cyan-900-20 { background-color: rgb(22 78 99 / 0.3); }
   `]
 })
 export class SceneTreeComponent {
   engine = inject(EngineService);
 
-  private readonly ROW_HEIGHT = 28;
+  private readonly ROW_HEIGHT = 26;
   private scrollTop = signal(0);
   
-  // React to object count changes to refresh the set conversion
   private allEntities = computed(() => {
-    // Dependency on objectCount ensures re-evaluation when entities change
     this.engine.objectCount(); 
     return Array.from(this.engine.world.entities);
   });
@@ -58,8 +60,7 @@ export class SceneTreeComponent {
 
   visibleEntities = computed(() => {
     const start = Math.floor(this.scrollTop() / this.ROW_HEIGHT);
-    // Buffer a few items
-    const end = start + 30; 
+    const end = start + 40; 
     const all = this.allEntities();
     return all.slice(start, end);
   });
@@ -76,9 +77,9 @@ export class SceneTreeComponent {
     this.engine.selectedEntity.set(e);
   }
 
-  getIcon(e: Entity): string {
-    // Simple check: if radius exists in creation logic it's a sphere, else box.
-    // For now, we don't store "type" in ECS explicitly for the icon, but we can assume 'cube' generic
-    return '◈';
+  onContextMenu(e: MouseEvent, entity: Entity) {
+      e.preventDefault();
+      // Basic implementation for now: just select
+      this.select(entity);
   }
 }
