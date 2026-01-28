@@ -64,8 +64,7 @@ export class PersistenceService {
   }
 
   loadSceneData(data: SavedScene, engine: any) {
-      // engine passed as 'any' or interface to avoid circular dep on full EngineService, 
-      // primarily we just need specific setters or we act on managers directly.
+      // engine passed as 'any' to avoid circular dep
       
       this.entityMgr.reset();
       engine.setGravity(data.engine.gravityY);
@@ -78,10 +77,10 @@ export class PersistenceService {
           engine.currentSceneId.set(data.meta.sceneId);
           const preset = this.sceneRegistry.getPreset(data.meta.sceneId);
           const atm = preset?.theme === 'forest' ? 'forest' : preset?.theme === 'ice' ? 'ice' : 'clear';
-          engine.environmentService.setAtmosphere(atm);
+          engine.sceneService.setAtmosphere(atm);
       } else {
           engine.currentSceneId.set(null);
-          engine.environmentService.setAtmosphere('clear');
+          engine.sceneService.setAtmosphere('clear');
       }
 
       // Spawn Entities
@@ -90,7 +89,6 @@ export class PersistenceService {
           const rot = new THREE.Quaternion(e.rotation.x, e.rotation.y, e.rotation.z, e.rotation.w);
           
           try {
-              // We need EntityLibrary here
               const ent = this.entityLib.spawnFromTemplate(this.entityMgr, e.tplId, pos, rot);
               
               if (e.scale.x !== 1 || e.scale.y !== 1 || e.scale.z !== 1) {
@@ -99,7 +97,6 @@ export class PersistenceService {
                    const rb = this.entityMgr.world.rigidBodies.get(ent);
                    if(t && def && rb) {
                        t.scale = { ...e.scale };
-                       // We need access to physics update logic
                        engine.physicsService.updateBodyScale(rb.handle, def, t.scale);
                    }
               }

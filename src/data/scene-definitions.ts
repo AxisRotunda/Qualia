@@ -16,7 +16,7 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
     {
       id: 'city', label: 'City Slice', description: 'Concrete canyons.', theme: 'city', previewColor: 'from-blue-600 to-indigo-900',
       load: (engine, lib) => {
-          engine.environmentService.setAtmosphere('clear');
+          engine.sceneService.setAtmosphere('clear');
           const tpls = lib.templates;
           for (let x = 0; x < 8; x++) {
             for (let z = 0; z < 8; z++) {
@@ -41,7 +41,7 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
     {
       id: 'forest', label: 'Deep Forest', description: 'Dense woods with fallen logs.', theme: 'forest', previewColor: 'from-emerald-700 to-green-900',
       load: (engine, lib) => {
-          engine.environmentService.setAtmosphere('forest');
+          engine.sceneService.setAtmosphere('forest');
           
           // Dense Trees
           for(let i=0; i<30; i++) {
@@ -57,7 +57,6 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
           for(let i=0; i<15; i++) {
               const x = (Math.random() - 0.5) * 80;
               const z = (Math.random() - 0.5) * 80;
-              // Logs lie flat-ish, random yaw, slight pitch/roll for uneven ground feel
               const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
                   Math.PI/2 + (Math.random()-0.5)*0.2, 
                   Math.random()*Math.PI, 
@@ -87,7 +86,7 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
     {
       id: 'ice', label: 'Glacial Plain', description: 'Slippery ice fields.', theme: 'ice', previewColor: 'from-cyan-400 to-blue-200',
       load: (engine, lib) => {
-          engine.environmentService.setAtmosphere('ice');
+          engine.sceneService.setAtmosphere('ice');
           
           // Floor
           for(let x=-3; x<=3; x++) for(let z=-3; z<=3; z++) 
@@ -111,7 +110,7 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
     {
       id: 'stacks', label: 'Stacks & Ramps', description: 'Physics testbed.', theme: 'default', previewColor: 'from-amber-600 to-orange-800',
       load: (engine, lib) => {
-          engine.environmentService.setAtmosphere('clear');
+          engine.sceneService.setAtmosphere('clear');
           const rampRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, 0));
           lib.spawnFromTemplate(engine.entityMgr, 'structure-ramp', new THREE.Vector3(0, 5, 0), rampRot);
           for(let i=0; i<10; i++) lib.spawnFromTemplate(engine.entityMgr, 'prop-crate', new THREE.Vector3(0, 10 + (i*1.6), -8));
@@ -121,7 +120,7 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
     {
       id: 'particles', label: 'Pillars & Particles', description: 'Visual demo.', theme: 'default', previewColor: 'from-violet-600 to-purple-900',
       load: (engine, lib) => {
-          engine.environmentService.setAtmosphere('night');
+          engine.sceneService.setAtmosphere('night');
           engine.particleService.init(engine.sceneService.getScene(), 1000);
           for(let i=0; i<12; i++) {
               const angle = (i/12) * Math.PI * 2;

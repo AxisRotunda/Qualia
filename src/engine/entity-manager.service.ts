@@ -4,7 +4,6 @@ import { World, Entity } from './core';
 import { PhysicsService, PhysicsBodyDef } from '../services/physics.service';
 import { SceneService } from '../services/scene.service';
 import { PhysicsFactoryService } from '../services/factories/physics-factory.service';
-import { MeshFactoryService } from '../services/factories/mesh-factory.service';
 import * as THREE from 'three';
 
 @Injectable({
@@ -17,12 +16,12 @@ export class EntityManager {
 
   private physics = inject(PhysicsService);
   private physicsFactory = inject(PhysicsFactoryService);
-  private meshFactory = inject(MeshFactoryService);
   private scene = inject(SceneService);
   
   // Create an entity with fully formed physics and mesh
   createEntityFromDef(bodyDef: PhysicsBodyDef, visualOpts: { color?: number, materialId?: string, meshId?: string }, name: string, templateId?: string): Entity {
-      const mesh = this.meshFactory.createMesh(bodyDef, visualOpts);
+      // Mesh creation now delegated to SceneService
+      const mesh = this.scene.createMesh(bodyDef, visualOpts);
       
       const entity = this.world.createEntity();
       
@@ -53,7 +52,7 @@ export class EntityManager {
     const meshRef = this.world.meshes.get(e);
     if (meshRef) {
         this.scene.removeMesh(meshRef.mesh);
-        this.meshFactory.disposeMesh(meshRef.mesh);
+        this.scene.disposeMesh(meshRef.mesh);
     }
     
     this.world.destroyEntity(e);
@@ -90,8 +89,6 @@ export class EntityManager {
       const visualOpts = {
           color: mat.color?.getHex(),
           materialId: this.resolveMaterialId(mat),
-          // We lose meshId here if we don't store it, assuming primitive for non-template dupe for now
-          // If we had templateId, the persistence/factory logic should ideally handle it.
       };
       
       const newEntity = this.createEntityFromDef(bodyDef, visualOpts, `${name}_copy`, tplId);
@@ -110,7 +107,7 @@ export class EntityManager {
 
   private resolveMaterialId(mat: THREE.Material): string | undefined {
       // Helper to try and reverse look up or use userData
-      return mat.userData['mapId'] ? undefined : undefined; // Simplified, usually handled by factory
+      return mat.userData['mapId'] ? undefined : undefined;
   }
 
   syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {

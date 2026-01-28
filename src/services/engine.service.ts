@@ -6,7 +6,6 @@ import { EntityManager } from '../engine/entity-manager.service';
 import { PhysicsService } from './physics.service';
 import { PhysicsMaterialsService } from '../physics/physics-materials.service';
 import { SceneService } from './scene.service';
-import { EnvironmentService } from './environment.service';
 import { EntityLibraryService } from './entity-library.service';
 import { SceneRegistryService } from './scene-registry.service';
 import { InteractionService } from '../engine/interaction.service';
@@ -34,7 +33,6 @@ export class EngineService {
   public sceneService = inject(SceneService);
   private physicsMaterials = inject(PhysicsMaterialsService);
   
-  public environmentService = inject(EnvironmentService);
   public interaction = inject(InteractionService);
   public persistence = inject(PersistenceService);
   public materialService = inject(MaterialService);
@@ -80,7 +78,7 @@ export class EngineService {
     try {
       await this.physicsService.init();
       this.sceneService.init(canvas);
-      this.environmentService.init();
+      // Environment init is now implicit in SceneService.init()
       this.entityLib.validateTemplates(this.materialService);
       
       this.cameraControl.init(this.sceneService.getCamera(), canvas);
@@ -178,7 +176,7 @@ export class EngineService {
   setTransformMode(m: 'translate'|'rotate'|'scale') { this.state.transformMode.set(m); this.sceneService.setTransformMode(m); }
   setDebugOverlayVisible(v: boolean) { this.state.showDebugOverlay.set(v); }
   setCameraPreset(p: CameraViewPreset) { this.cameraControl.setPreset(p); }
-  setLightSettings(s: any) { this.environmentService.setLightSettings(s); }
+  setLightSettings(s: any) { this.sceneService.setLightSettings(s); }
 
   updateEntityPhysics(e: Entity, props: {friction: number, restitution: number}) {
       const safe = { friction: Math.max(0, Math.min(props.friction, 5)), restitution: Math.max(0, Math.min(props.restitution, 2)) };
