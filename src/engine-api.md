@@ -1,33 +1,71 @@
+# Engine API Reference
 
-# Engine Core API
+> **Scope**: Public Facade methods of `EngineService`.
+> **Audience**: UI Component Developers / AI Agents generating UI code.
+> **Version**: 0.2.1
 
-This document describes the public interface of `EngineService` for internal UI tools.
+## 1. State Accessors (Read-Only Signals)
+Access via `engine.[signalName]()`.
 
-## Signals (Read-Only)
+| Signal | Type | Description |
+|--------|------|-------------|
+| `mode` | `'edit' \| 'walk' \| 'explore'` | Current input controller state. |
+| `isPaused` | `boolean` | Physics simulation active state. |
+| `loading` | `boolean` | Engine initialization status. |
+| `objectCount` | `number` | Total entities in `World`. |
+| `selectedEntity` | `Entity \| null` | Currently selected/inspected entity ID. |
+| `gravityY` | `number` | Vertical gravity force (default -9.81). |
+| `wireframe` | `boolean` | Global material wireframe override. |
+| `texturesEnabled` | `boolean` | Global texture map state. |
+| `transformMode` | `'translate' \| 'rotate' \| 'scale'` | Current gizmo operation mode. |
+| `mainMenuVisible` | `boolean` | Main menu overlay visibility. |
+| `showDebugOverlay` | `boolean` | Runtime invariant monitor visibility. |
+| `debugInfo` | `DebugState` | Low-level physics loop stats. |
+| `currentSceneId` | `string \| null` | ID of currently loaded scene preset. |
+| `canUndo` / `canRedo` | `boolean` | History stack availability (Stubbed). |
 
-- `world`: The ECS World instance (Entities, Transforms, MeshRefs, RigidBodies).
-- `selectedEntity`: Signal<Entity | null>. Currently selected object ID.
-- `isPaused`: Signal<boolean>. Simulation run state.
-- `gravityY`: Signal<number>. Current vertical gravity.
-- `fps`, `physicsTime`, `renderTime`, `objectCount`: Performance metrics.
+## 2. Actions
 
-## Actions
+### 2.1 Entity Management
+- `spawnFromTemplate(id: string)`: Raycasts to ground/scene and spawns entity from `EntityLibrary`.
+- `spawnBox() / spawnSphere()`: Shortcuts for basic props.
+- `duplicateEntity(e: Entity)`: Clones physics body, mesh, and transforms of target.
+- `deleteEntity(e: Entity)`: Destroys ECS entity, cleans up Physics/Three.js resources.
+- `getEntityName(e: Entity): string`: Retreives UI label.
+- `setEntityName(e: Entity, name: string)`: Updates UI label.
+- `focusSelectedEntity()`: Moves camera to target entity position.
 
-### Entity Management
-- `spawnBox()`: Spawns a random cube.
-- `spawnSphere()`: Spawns a random sphere.
-- `duplicateEntity(e: Entity)`: Clones the entity.
-- `deleteEntity(e: Entity)`: Destroys physics, mesh, and ECS data.
-- `reset()`: Clears the entire scene and resets camera/physics.
+### 2.2 Simulation Control
+- `init(canvas)`: Bootstraps engine (called by Layout).
+- `reset()`: Destroys all entities, resets physics world and camera.
+- `togglePause()` / `setPaused(v: boolean)`: Controls physics stepping.
+- `setGravity(y: number)`: Updates world gravity.
+- `setMode(mode)`: Switches Input Controller (Orbit vs Fly vs Character).
 
-### Simulation Control
-- `togglePause()`: Freezes/Unfreezes physics stepping.
-- `setGravity(val: number)`: Updates physics world gravity Y.
+### 2.3 Visuals & Environment
+- `toggleWireframe()`: Toggles mesh wireframe mode.
+- `toggleTextures()`: Toggles procedural textures.
+- `setTransformMode(mode)`: Updates Gizmo behavior.
+- `setDebugOverlayVisible(v)`: Toggles debug UI.
+- `setCameraPreset(preset)`: Moves camera to 'top', 'front', or 'side'.
+- `setLightSettings(settings)`: Updates Ambient/Directional light intensity and color.
+- `updateEntityPhysics(e, props)`: Updates Friction/Restitution on runtime body.
 
-### Interaction
-- `raycastFromScreen(x, y)`: Returns Entity ID under mouse or null.
+### 2.4 Persistence
+- `loadScene(id: string)`: Loads a full scene definition from `SceneRegistry`.
+- `quickSave()`: Serializes World state to LocalStorage.
+- `quickLoad()`: Deserializes World state from LocalStorage.
+- `hasSavedState()`: Boolean check for save existence.
+- `getQuickSaveLabel()`: Metadata string for save file.
 
-## Integration Rules
-1. UI Components must inject `EngineService`.
-2. UI Components must NOT access `PhysicsService` or `SceneService` directly unless implementing a new renderer/solver feature.
-3. All state mutations (position, gravity) must go through `EngineService` or `PhysicsService` validated methods.
+## 3. ECS Direct Access (Advanced)
+Direct access to `engine.world` (Class: `World`) is permitted for complex logic but discouraged for UI.
+
+```typescript
+// Read
+const pos = engine.world.transforms.get(entityId)?.position;
+
+// Write (Prefer EngineService methods for syncing)
+// Direct writes to transform components will be overwritten by Physics
+// unless handled inside the sync loop or if object is kinematic/fixed.
+```
