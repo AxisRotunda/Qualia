@@ -1,21 +1,22 @@
 
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { EngineStateService } from '../engine/engine-state.service';
+import { EngineRuntimeService } from '../engine/runtime/engine-runtime.service';
+import { EntityManager } from '../engine/entity-manager.service';
 import { PhysicsService } from './physics.service';
-import { SceneService } from './scene.service';
+import { PhysicsMaterialsService } from '../physics/physics-materials.service';
+import { SceneVisualsService } from '../scene/scene-visuals.service';
 import { EnvironmentService } from './environment.service';
+import { EntityLibraryService } from './entity-library.service';
+import { SceneRegistryService } from './scene-registry.service';
+import { InteractionService } from '../engine/interaction.service';
+import { PersistenceService } from '../engine/persistence.service';
 import { CameraControlService, CameraViewPreset } from './camera-control.service';
 import { FlyControlsService } from './fly-controls.service';
 import { CharacterControllerService } from './character-controller.service';
 import { GameInputService } from './game-input.service';
-import { EntityLibraryService } from './entity-library.service';
-import { SceneRegistryService } from './scene-registry.service';
-import { ParticleService } from './particle.service';
 import { MaterialService } from './material.service';
-import { EntityManager } from '../engine/entity-manager.service';
-import { InteractionService } from '../engine/interaction.service';
-import { PersistenceService } from '../engine/persistence.service';
-import { GameLoopService } from './game-loop.service';
-import { EngineStateService } from '../engine/engine-state.service';
+import { ParticleService } from './particle.service';
 import { Entity } from '../engine/core';
 import * as THREE from 'three';
 
@@ -25,17 +26,21 @@ import * as THREE from 'three';
 export class EngineService {
   // Core Subsystems
   public state = inject(EngineStateService);
-  public physicsService = inject(PhysicsService);
-  public sceneService = inject(SceneService);
-  public environmentService = inject(EnvironmentService);
+  private runtime = inject(EngineRuntimeService);
   public entityMgr = inject(EntityManager);
+  
+  // Feature Services
+  public physicsService = inject(PhysicsService); // Facade for consumers expecting physics access
+  public sceneService = inject(SceneVisualsService);   // Facade for consumers
+  private physicsMaterials = inject(PhysicsMaterialsService);
+  
+  public environmentService = inject(EnvironmentService);
   public interaction = inject(InteractionService);
   public persistence = inject(PersistenceService);
   public materialService = inject(MaterialService);
-  public loop = inject(GameLoopService);
   public particleService = inject(ParticleService);
   
-  // High-Level Logic
+  // Logic & Controllers
   private cameraControl = inject(CameraControlService);
   private flyControls = inject(FlyControlsService);
   private charController = inject(CharacterControllerService);
@@ -43,8 +48,7 @@ export class EngineService {
   private entityLib = inject(EntityLibraryService);
   private sceneRegistry = inject(SceneRegistryService);
 
-  // --- Facade Accessors for Components ---
-  // Using getters to maintain compatibility while delegating to State Service
+  // Facade Accessors
   get fps() { return this.state.fps; }
   get physicsTime() { return this.state.physicsTime; }
   get renderTime() { return this.state.renderTime; }
@@ -61,20 +65,15 @@ export class EngineService {
   get mainMenuVisible() { return this.state.mainMenuVisible; }
   get showDebugOverlay() { return this.state.showDebugOverlay; }
   get debugInfo() { return this.state.debugInfo; }
-
-  // ECS Facade
   get world() { return this.entityMgr.world; }
   get selectedEntity() { return this.entityMgr.selectedEntity; }
   get objectCount() { return this.entityMgr.objectCount; }
 
   constructor() {
-      (window as any).qualiaDebug = {
-          spawnAll: () => this.debugSpawnAllTemplates(),
-          validate: () => console.log('Validation moved to tests')
-      };
-      
-      // Wire up update loop
-      this.loop.fps.set = (v) => this.state.fps.set(v); // Sync loop FPS to state
+    (window as any).qualiaDebug = { spawnAll: () => this.debugSpawnAllTemplates() };
+    
+    // Wire runtime update callback
+    this.runtime.onUpdate = (dt) => this.handleControlsUpdate(dt);
   }
 
   async init(canvas: HTMLCanvasElement) {
@@ -88,9 +87,7 @@ export class EngineService {
       this.flyControls.init(this.sceneService.getCamera(), canvas);
 
       this.state.loading.set(false);
-      
-      // Start the loop
-      this.loop.start((dt) => this.update(dt));
+      this.runtime.init();
       
       this.loadScene('city');
     } catch (err) {
@@ -98,10 +95,7 @@ export class EngineService {
     }
   }
 
-  private update(dt: number) {
-      let singleUpdateTarget: string | null = null;
-
-      // 1. Controls
+  private handleControlsUpdate(dt: number) {
       if (this.mode() === 'explore') this.flyControls.update(dt);
       else if (this.mode() === 'walk') this.charController.update(dt);
       else {
@@ -109,43 +103,9 @@ export class EngineService {
           this.cameraControl.setEnabled(!dragging && !this.mainMenuVisible());
           this.cameraControl.update();
       }
-      
-      this.particleService.update(dt);
-
-      // 2. Physics & Sync
-      const physicsPaused = this.isPaused() || this.mainMenuVisible();
-      if (!physicsPaused) {
-        const pStart = performance.now();
-        this.physicsService.step();
-        this.state.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
-        
-        // Use EntityManager for Sync
-        const syncMode = this.mode() === 'edit' ? 'edit' : 'play';
-        this.entityMgr.syncPhysicsTransforms(syncMode, this.sceneService.isDraggingGizmo());
-      } else {
-         if (this.mode() === 'edit' && this.sceneService.isDraggingGizmo()) {
-             const e = this.selectedEntity();
-             if (e !== null) {
-                 this.entityMgr.updateSingleEntityFromVisual(e);
-                 singleUpdateTarget = `Entity_${e}`;
-             }
-         }
-      }
-
-      this.state.debugInfo.set({
-          paused: physicsPaused,
-          bodyCount: this.world.rigidBodies.size,
-          singleUpdate: singleUpdateTarget
-      });
-      
-      if (this.selectedEntity() !== null) this.sceneService.updateSelectionHelper();
-
-      const rStart = performance.now();
-      this.sceneService.render();
-      this.state.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);
   }
 
-  // --- Actions ---
+  // --- API ---
 
   setMode(mode: 'edit' | 'explore' | 'walk') {
       const previous = this.mode();
@@ -181,7 +141,6 @@ export class EngineService {
       const pos = this.interaction.raycastGround() ?? new THREE.Vector3(0, 5, 0);
       this.entityLib.spawnFromTemplate(this.entityMgr, id, pos);
   }
-  
   spawnBox() { this.spawnFromTemplate('prop-crate'); }
   spawnSphere() { this.spawnFromTemplate('prop-barrel'); }
 
@@ -199,46 +158,24 @@ export class EngineService {
       this.setMode('edit');
   }
 
-  // Persistence
   quickSave() { this.persistence.saveToLocal(this.persistence.exportScene(this.currentSceneId(), this.gravityY(), this.texturesEnabled())); }
   quickLoad() { const data = this.persistence.loadFromLocal(); if(data) this.persistence.loadSceneData(data, this); }
   hasSavedState() { return !!this.persistence.loadFromLocal(); }
-  getQuickSaveLabel() { 
-      const d = this.persistence.loadFromLocal(); 
-      return d?.meta?.label ? `Continue: ${d.meta.label}` : 'Continue'; 
-  }
+  getQuickSaveLabel() { const d = this.persistence.loadFromLocal(); return d?.meta?.label ? `Continue: ${d.meta.label}` : 'Continue'; }
 
-  // Entity Delegation
   deleteEntity(e: Entity) { this.entityMgr.destroyEntity(e); }
   duplicateEntity(e: Entity) { this.entityMgr.duplicateEntity(e); }
   raycastFromScreen(x: number, y: number) { return this.interaction.raycastFromScreen(x, y); }
   getEntityName(e: Entity) { return this.world.names.get(e) ?? `Entity_${e}`; }
   setEntityName(e: Entity, n: string) { this.world.names.add(e, n); }
 
-  // Settings & State Setters
   togglePause() { this.state.isPaused.update(v => !v); }
   setPaused(v: boolean) { this.state.isPaused.set(v); }
   
-  toggleWireframe() { 
-      this.state.wireframe.update(v => !v); 
-      this.materialService.setWireframeForAll(this.wireframe()); 
-  }
-  
-  toggleTextures() { 
-      this.state.texturesEnabled.update(v => !v); 
-      this.materialService.setTexturesEnabled(this.texturesEnabled()); 
-  }
-  
-  setGravity(v: number) { 
-      this.state.gravityY.set(v); 
-      this.physicsService.setGravity(v); 
-  }
-  
-  setTransformMode(m: 'translate'|'rotate'|'scale') { 
-      this.state.transformMode.set(m); 
-      this.sceneService.setTransformMode(m); 
-  }
-  
+  toggleWireframe() { this.state.wireframe.update(v => !v); this.materialService.setWireframeForAll(this.wireframe()); }
+  toggleTextures() { this.state.texturesEnabled.update(v => !v); this.materialService.setTexturesEnabled(this.texturesEnabled()); }
+  setGravity(v: number) { this.state.gravityY.set(v); this.physicsService.setGravity(v); }
+  setTransformMode(m: 'translate'|'rotate'|'scale') { this.state.transformMode.set(m); this.sceneService.setTransformMode(m); }
   setDebugOverlayVisible(v: boolean) { this.state.showDebugOverlay.set(v); }
   setCameraPreset(p: CameraViewPreset) { this.cameraControl.setPreset(p); }
   setLightSettings(s: any) { this.environmentService.setLightSettings(s); }
@@ -247,7 +184,7 @@ export class EngineService {
       const safe = { friction: Math.max(0, Math.min(props.friction, 5)), restitution: Math.max(0, Math.min(props.restitution, 2)) };
       const rb = this.world.rigidBodies.get(e);
       if(rb) {
-          this.physicsService.updateBodyMaterial(rb.handle, safe);
+          this.physicsMaterials.updateBodyMaterial(rb.handle, safe);
           this.world.physicsProps.add(e, safe);
       }
   }
