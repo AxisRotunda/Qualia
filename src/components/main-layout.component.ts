@@ -10,6 +10,7 @@ import { ToolbarComponent } from './toolbar.component';
 import { StatusBarComponent } from './status-bar.component';
 import { DebugOverlayComponent } from './debug-overlay.component';
 import { MainMenuComponent } from './main-menu.component';
+import { ContextMenuComponent } from './ui/context-menu.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -22,7 +23,8 @@ import { MainMenuComponent } from './main-menu.component';
       ToolbarComponent, 
       StatusBarComponent,
       DebugOverlayComponent,
-      MainMenuComponent
+      MainMenuComponent,
+      ContextMenuComponent
   ],
   template: `
     <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
@@ -73,22 +75,16 @@ import { MainMenuComponent } from './main-menu.component';
                   (pointerup)="onPointerUp($event)"></canvas>
           
           <!-- Context Menu -->
-          @if (contextMenu()) {
-            <div class="absolute bg-slate-900 border border-slate-700 shadow-xl rounded-lg py-1 z-50 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
-                 [style.top.px]="contextMenu()!.y"
-                 [style.left.px]="contextMenu()!.x"
-                 (mouseleave)="closeContextMenu()">
-               <button class="menu-item" (click)="selectEntity(contextMenu()!.entity)">
-                 <span class="material-symbols-outlined icon-xs">check_circle</span> Select
-               </button>
-               <button class="menu-item" (click)="duplicateEntity(contextMenu()!.entity)">
-                 <span class="material-symbols-outlined icon-xs">content_copy</span> Duplicate
-               </button>
-               <div class="h-px bg-slate-800 my-1 mx-2"></div>
-               <button class="menu-item text-red-400 hover:bg-red-950/50" (click)="deleteEntity(contextMenu()!.entity)">
-                 <span class="material-symbols-outlined icon-xs">delete</span> Delete
-               </button>
-            </div>
+          @if (contextMenu(); as cm) {
+             <app-context-menu 
+                [x]="cm.x" 
+                [y]="cm.y" 
+                [entityId]="cm.entity"
+                (select)="selectEntity($event)"
+                (duplicate)="duplicateEntity($event)"
+                (delete)="deleteEntity($event)"
+                (close)="closeContextMenu()"
+             />
           }
         </main>
 
@@ -126,10 +122,7 @@ import { MainMenuComponent } from './main-menu.component';
       <app-status-bar />
     </div>
   `,
-  styles: [`
-    .menu-item { @apply w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-800 transition-colors text-slate-300; }
-    .icon-xs { font-size: 16px; }
-  `]
+  styles: []
 })
 export class MainLayoutComponent implements AfterViewInit {
   @ViewChild('renderCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;

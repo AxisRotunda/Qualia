@@ -1,6 +1,6 @@
 
 # Qualia 3D System Manifest
-> **VERSION**: 0.3.0
+> **VERSION**: 0.3.1
 > **TYPE**: Master Index / Meta-Architecture
 > **META_RULE**: This is the root node. Refer to sub-documents for implementation details.
 
@@ -30,15 +30,20 @@ src/
 │   ├── entity-manager.ts    # Entity Lifecycle & Sync
 │   ├── interaction.ts       # Raycasting & Input Events
 │   ├── persistence.ts       # Save/Load Logic
-│   └── engine-state.ts      # Reactive State Store
+│   ├── engine-state.ts      # Reactive State Store
+│   └── graphics/            # Rendering Systems
+│       ├── environment-manager.ts # Lights, Fog, Sky
+│       └── visuals-factory.ts     # Mesh & Geometry Gen
 ├── services/                # Angular Services (Logic Glue)
 │   ├── engine.service.ts    # Main Facade
 │   ├── physics.service.ts   # Rapier Wrapper
-│   ├── scene.service.ts     # Three.js Wrapper
+│   ├── scene.service.ts     # Three.js Wrapper (Coordinator)
 │   ├── asset.service.ts     # Procedural Asset Generation (Trees/Rocks)
 │   ├── material.service.ts  # Texture & Material Management
 │   └── ...                  # Specific Systems (Input, Particles, etc)
 ├── components/              # UI Components (Dumb/Smart)
+│   ├── ui/                  # Reusable UI widgets
+│   │   └── context-menu.ts  # Extracted Context Menu
 │   ├── ui-panel.ts          # Generic UI Container
 │   ├── scene-tree.ts        # Entity List
 │   ├── inspector.ts         # Property Editor

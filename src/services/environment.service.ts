@@ -1,10 +1,7 @@
 
+// DEPRECATED: Logic moved to src/engine/graphics/environment-manager.service.ts
 import { Injectable } from '@angular/core';
 
-/**
- * @deprecated Use SceneService instead.
- * Logic has been consolidated into SceneService to reduce dependency scattering.
- */
 @Injectable({
   providedIn: 'root'
 })
