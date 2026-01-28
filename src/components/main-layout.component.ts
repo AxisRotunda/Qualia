@@ -2,6 +2,7 @@
 import { Component, ElementRef, ViewChild, AfterViewInit, HostListener, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngineService } from '../services/engine.service';
+import { InteractionService } from '../engine/interaction.service';
 import { SceneTreeComponent } from './scene-tree.component';
 import { InspectorComponent } from './inspector.component';
 import { MenuBarComponent } from './menu/menu-bar.component';
@@ -76,7 +77,7 @@ import { MainMenuComponent } from './main-menu.component';
             <div class="absolute bg-slate-900 border border-slate-700 shadow-xl rounded-lg py-1 z-50 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
                  [style.top.px]="contextMenu()!.y"
                  [style.left.px]="contextMenu()!.x"
-                 (mouseleave)="contextMenu.set(null)">
+                 (mouseleave)="closeContextMenu()">
                <button class="menu-item" (click)="selectEntity(contextMenu()!.entity)">
                  <span class="material-symbols-outlined icon-xs">check_circle</span> Select
                </button>
@@ -134,16 +135,15 @@ export class MainLayoutComponent implements AfterViewInit {
   @ViewChild('renderCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   
   engine = inject(EngineService);
+  interaction = inject(InteractionService);
 
   // Layout State
   leftPanelOpen = signal(true);
   rightPanelOpen = signal(true);
   isMobile = signal(window.innerWidth < 1024);
 
-  // Interaction State
-  private pointerDownPos = { x: 0, y: 0 };
-  private pointerDownTime = 0;
-  contextMenu = signal<{x: number, y: number, entity: number} | null>(null);
+  // Expose context menu state from interaction service
+  contextMenu = this.interaction.contextMenuRequest;
 
   ngAfterViewInit() {
     this.engine.init(this.canvasRef.nativeElement);
@@ -162,60 +162,44 @@ export class MainLayoutComponent implements AfterViewInit {
 
   private checkResponsive() {
     if (this.isMobile()) {
-       // logic for mobile responsiveness if needed
+       this.leftPanelOpen.set(false);
+       this.rightPanelOpen.set(false);
     }
   }
 
-  // --- Interaction ---
+  // --- Interaction Delegates ---
 
   onPointerDown(event: PointerEvent) {
       if (this.engine.mainMenuVisible()) return;
-      this.pointerDownPos = { x: event.clientX, y: event.clientY };
-      this.pointerDownTime = performance.now();
-      this.contextMenu.set(null);
+      this.interaction.handlePointerDown(event);
   }
 
   onPointerUp(event: PointerEvent) {
       if (this.engine.mainMenuVisible()) return;
-      const dx = event.clientX - this.pointerDownPos.x;
-      const dy = event.clientY - this.pointerDownPos.y;
-      const distSq = dx*dx + dy*dy;
-      const dt = performance.now() - this.pointerDownTime;
-
-      // Tight threshold: < 16px sq (4px linear) AND < 200ms
-      const isClick = distSq < 16 && dt < 200;
-
-      if (isClick && event.button === 0) {
-          const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
-          this.engine.selectedEntity.set(entity);
-      }
+      this.interaction.handlePointerUp(event);
   }
 
   onCanvasContextMenu(event: MouseEvent) {
-      event.preventDefault();
       if (this.engine.mainMenuVisible()) return;
+      this.interaction.handleContextMenu(event);
+  }
 
-      const entity = this.engine.raycastFromScreen(event.clientX, event.clientY);
-      
-      if (entity !== null) {
-          this.contextMenu.set({ x: event.clientX, y: event.clientY, entity });
-      } else {
-          this.contextMenu.set(null);
-      }
+  closeContextMenu() {
+      this.contextMenu.set(null);
   }
 
   selectEntity(e: number) {
       this.engine.selectedEntity.set(e);
-      this.contextMenu.set(null);
+      this.closeContextMenu();
   }
 
   duplicateEntity(e: number) {
       this.engine.duplicateEntity(e);
-      this.contextMenu.set(null);
+      this.closeContextMenu();
   }
 
   deleteEntity(e: number) {
       this.engine.deleteEntity(e);
-      this.contextMenu.set(null);
+      this.closeContextMenu();
   }
 }

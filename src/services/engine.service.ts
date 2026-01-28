@@ -15,20 +15,16 @@ import { EntityManager } from '../engine/entity-manager.service';
 import { InteractionService } from '../engine/interaction.service';
 import { PersistenceService } from '../engine/persistence.service';
 import { GameLoopService } from './game-loop.service';
+import { EngineStateService } from '../engine/engine-state.service';
 import { Entity } from '../engine/core';
 import * as THREE from 'three';
-
-export interface DebugState {
-    paused: boolean;
-    bodyCount: number;
-    singleUpdate: string | null;
-}
 
 @Injectable({
   providedIn: 'root'
 })
 export class EngineService {
-  // Subsystems
+  // Core Subsystems
+  public state = inject(EngineStateService);
   public physicsService = inject(PhysicsService);
   public sceneService = inject(SceneService);
   public environmentService = inject(EnvironmentService);
@@ -37,45 +33,48 @@ export class EngineService {
   public persistence = inject(PersistenceService);
   public materialService = inject(MaterialService);
   public loop = inject(GameLoopService);
+  public particleService = inject(ParticleService);
   
+  // High-Level Logic
   private cameraControl = inject(CameraControlService);
   private flyControls = inject(FlyControlsService);
   private charController = inject(CharacterControllerService);
   private gameInput = inject(GameInputService);
   private entityLib = inject(EntityLibraryService);
   private sceneRegistry = inject(SceneRegistryService);
-  private particleService = inject(ParticleService);
 
-  // Facade Properties (for compatibility)
+  // --- Facade Accessors for Components ---
+  // Using getters to maintain compatibility while delegating to State Service
+  get fps() { return this.state.fps; }
+  get physicsTime() { return this.state.physicsTime; }
+  get renderTime() { return this.state.renderTime; }
+  get loading() { return this.state.loading; }
+  get isPaused() { return this.state.isPaused; }
+  get gravityY() { return this.state.gravityY; }
+  get wireframe() { return this.state.wireframe; }
+  get texturesEnabled() { return this.state.texturesEnabled; }
+  get transformMode() { return this.state.transformMode; }
+  get mode() { return this.state.mode; }
+  get currentSceneId() { return this.state.currentSceneId; }
+  get canUndo() { return this.state.canUndo; }
+  get canRedo() { return this.state.canRedo; }
+  get mainMenuVisible() { return this.state.mainMenuVisible; }
+  get showDebugOverlay() { return this.state.showDebugOverlay; }
+  get debugInfo() { return this.state.debugInfo; }
+
+  // ECS Facade
   get world() { return this.entityMgr.world; }
   get selectedEntity() { return this.entityMgr.selectedEntity; }
   get objectCount() { return this.entityMgr.objectCount; }
-
-  // State Signals
-  fps = this.loop.fps;
-  physicsTime = signal(0);
-  renderTime = signal(0);
-  loading = signal(true);
-  
-  isPaused = signal(false);
-  gravityY = signal(-9.81);
-  wireframe = signal(false);
-  texturesEnabled = signal(false);
-  transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');
-  mode = signal<'edit' | 'explore' | 'walk'>('edit');
-  currentSceneId = signal<string | null>(null);
-  
-  canUndo = signal(false);
-  canRedo = signal(false);
-  mainMenuVisible = signal(true);
-  showDebugOverlay = signal(true);
-  debugInfo = signal<DebugState>({ paused: false, bodyCount: 0, singleUpdate: null });
 
   constructor() {
       (window as any).qualiaDebug = {
           spawnAll: () => this.debugSpawnAllTemplates(),
           validate: () => console.log('Validation moved to tests')
       };
+      
+      // Wire up update loop
+      this.loop.fps.set = (v) => this.state.fps.set(v); // Sync loop FPS to state
   }
 
   async init(canvas: HTMLCanvasElement) {
@@ -88,7 +87,7 @@ export class EngineService {
       this.cameraControl.init(this.sceneService.getCamera(), canvas);
       this.flyControls.init(this.sceneService.getCamera(), canvas);
 
-      this.loading.set(false);
+      this.state.loading.set(false);
       
       // Start the loop
       this.loop.start((dt) => this.update(dt));
@@ -118,7 +117,7 @@ export class EngineService {
       if (!physicsPaused) {
         const pStart = performance.now();
         this.physicsService.step();
-        this.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
+        this.state.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
         
         // Use EntityManager for Sync
         const syncMode = this.mode() === 'edit' ? 'edit' : 'play';
@@ -133,7 +132,7 @@ export class EngineService {
          }
       }
 
-      this.debugInfo.set({
+      this.state.debugInfo.set({
           paused: physicsPaused,
           bodyCount: this.world.rigidBodies.size,
           singleUpdate: singleUpdateTarget
@@ -143,10 +142,10 @@ export class EngineService {
 
       const rStart = performance.now();
       this.sceneService.render();
-      this.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);
+      this.state.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);
   }
 
-  // --- Facade Methods ---
+  // --- Actions ---
 
   setMode(mode: 'edit' | 'explore' | 'walk') {
       const previous = this.mode();
@@ -157,7 +156,7 @@ export class EngineService {
       if (previous === 'walk') { this.charController.destroy(); this.gameInput.exitPointerLock(); }
       if (previous === 'edit') this.cameraControl.setEnabled(false);
 
-      this.mode.set(mode);
+      this.state.mode.set(mode);
       
       if (mode === 'edit') {
           this.cameraControl.setEnabled(true);
@@ -183,25 +182,24 @@ export class EngineService {
       this.entityLib.spawnFromTemplate(this.entityMgr, id, pos);
   }
   
-  // Specific Spawns
   spawnBox() { this.spawnFromTemplate('prop-crate'); }
   spawnSphere() { this.spawnFromTemplate('prop-barrel'); }
 
   loadScene(id: string) {
       this.sceneRegistry.loadScene(this, id);
-      this.currentSceneId.set(id);
-      this.mainMenuVisible.set(false);
+      this.state.currentSceneId.set(id);
+      this.state.mainMenuVisible.set(false);
   }
 
   reset() {
       this.entityMgr.reset();
-      this.isPaused.set(false);
+      this.state.isPaused.set(false);
       this.setGravity(-9.81);
       this.cameraControl.reset();
       this.setMode('edit');
   }
 
-  // Persistance Facade
+  // Persistence
   quickSave() { this.persistence.saveToLocal(this.persistence.exportScene(this.currentSceneId(), this.gravityY(), this.texturesEnabled())); }
   quickLoad() { const data = this.persistence.loadFromLocal(); if(data) this.persistence.loadSceneData(data, this); }
   hasSavedState() { return !!this.persistence.loadFromLocal(); }
@@ -210,21 +208,38 @@ export class EngineService {
       return d?.meta?.label ? `Continue: ${d.meta.label}` : 'Continue'; 
   }
 
-  // Entity Passthrough
+  // Entity Delegation
   deleteEntity(e: Entity) { this.entityMgr.destroyEntity(e); }
   duplicateEntity(e: Entity) { this.entityMgr.duplicateEntity(e); }
   raycastFromScreen(x: number, y: number) { return this.interaction.raycastFromScreen(x, y); }
   getEntityName(e: Entity) { return this.world.names.get(e) ?? `Entity_${e}`; }
   setEntityName(e: Entity, n: string) { this.world.names.add(e, n); }
 
-  // Settings
-  togglePause() { this.isPaused.update(v => !v); }
-  setPaused(v: boolean) { this.isPaused.set(v); }
-  toggleWireframe() { this.wireframe.update(v => !v); this.materialService.setWireframeForAll(this.wireframe()); }
-  toggleTextures() { this.texturesEnabled.update(v => !v); this.materialService.setTexturesEnabled(this.texturesEnabled()); }
-  setGravity(v: number) { this.gravityY.set(v); this.physicsService.setGravity(v); }
-  setTransformMode(m: 'translate'|'rotate'|'scale') { this.transformMode.set(m); this.sceneService.setTransformMode(m); }
-  setDebugOverlayVisible(v: boolean) { this.showDebugOverlay.set(v); }
+  // Settings & State Setters
+  togglePause() { this.state.isPaused.update(v => !v); }
+  setPaused(v: boolean) { this.state.isPaused.set(v); }
+  
+  toggleWireframe() { 
+      this.state.wireframe.update(v => !v); 
+      this.materialService.setWireframeForAll(this.wireframe()); 
+  }
+  
+  toggleTextures() { 
+      this.state.texturesEnabled.update(v => !v); 
+      this.materialService.setTexturesEnabled(this.texturesEnabled()); 
+  }
+  
+  setGravity(v: number) { 
+      this.state.gravityY.set(v); 
+      this.physicsService.setGravity(v); 
+  }
+  
+  setTransformMode(m: 'translate'|'rotate'|'scale') { 
+      this.state.transformMode.set(m); 
+      this.sceneService.setTransformMode(m); 
+  }
+  
+  setDebugOverlayVisible(v: boolean) { this.state.showDebugOverlay.set(v); }
   setCameraPreset(p: CameraViewPreset) { this.cameraControl.setPreset(p); }
   setLightSettings(s: any) { this.environmentService.setLightSettings(s); }
 
