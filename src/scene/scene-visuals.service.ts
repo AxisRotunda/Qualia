@@ -1,10 +1,4 @@
 
-import { Injectable } from '@angular/core';
-
-/**
- * @deprecated Use SceneService instead.
- */
-@Injectable({
-  providedIn: 'root'
-})
-export class SceneVisualsService {}
+// DEPRECATED AND REMOVED.
+// Functionality merged into src/services/scene.service.ts
+export {};

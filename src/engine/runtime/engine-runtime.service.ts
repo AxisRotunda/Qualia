@@ -36,6 +36,7 @@ export class EngineRuntimeService {
 
      // 2. Physics & Sync
      const physicsPaused = this.state.isPaused() || this.state.mainMenuVisible();
+     const isDragging = this.scene.isDraggingGizmo();
      
      if (!physicsPaused) {
        const pStart = performance.now();
@@ -43,17 +44,24 @@ export class EngineRuntimeService {
        this.state.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
        
        const syncMode = this.state.mode() === 'edit' ? 'edit' : 'play';
-       this.entityManager.syncPhysicsTransforms(syncMode, this.scene.isDraggingGizmo());
-     } else {
-        if (this.state.mode() === 'edit' && this.scene.isDraggingGizmo()) {
-            const e = this.entityManager.selectedEntity();
-            if (e !== null) {
-                this.entityManager.updateSingleEntityFromVisual(e);
-            }
+       // Sync Physics -> Visuals (ECS)
+       // If dragging, we tell syncPhysicsTransforms to SKIP the selected entity 
+       // so physics doesn't overwrite the visual
+       this.entityManager.syncPhysicsTransforms(syncMode, isDragging);
+     }
+
+     // 3. Force Sync Visuals (Gizmo) -> Physics
+     // We do this REGARDLESS of pause state if dragging. 
+     // This ensures the physics body teleports to the gizmo location every frame, 
+     // preventing it from falling/drifting while being held.
+     if (this.state.mode() === 'edit' && isDragging) {
+        const e = this.entityManager.selectedEntity();
+        if (e !== null) {
+            this.entityManager.updateSingleEntityFromVisual(e);
         }
      }
 
-     // 3. Stats & Debug
+     // 4. Stats & Debug
      this.state.debugInfo.set({
          paused: physicsPaused,
          bodyCount: this.entityManager.world.rigidBodies.size,
@@ -64,7 +72,7 @@ export class EngineRuntimeService {
          this.scene.updateSelectionHelper();
      }
 
-     // 4. Render
+     // 5. Render
      const rStart = performance.now();
      this.scene.render();
      this.state.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);

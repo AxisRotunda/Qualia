@@ -75,7 +75,8 @@ export class CharacterControllerService {
 
     // 2. Movement (WASD)
     const xInput = this.input.getAxis('KeyA', 'KeyD');
-    const zInput = this.input.getAxis('KeyW', 'KeyS');
+    // FIXED: Inverted logic here. W should be positive (Forward) to move along -Z vector.
+    const zInput = this.input.getAxis('KeyS', 'KeyW'); 
     const isRunning = this.input.isPressed('ShiftLeft');
     
     const speed = isRunning ? this.RUN_SPEED : this.WALK_SPEED;

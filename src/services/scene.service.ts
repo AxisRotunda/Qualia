@@ -88,21 +88,18 @@ export class SceneService {
 
   // --- Object Management ---
 
-  createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }): THREE.Mesh {
+  createEntityVisual(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }): THREE.Mesh {
     const mesh = this.visualsFactory.createMesh(data, options);
     this.scene.add(mesh);
     return mesh;
   }
   
-  disposeMesh(mesh: THREE.Mesh) {
-    this.visualsFactory.disposeMesh(mesh);
-  }
-
-  removeMesh(mesh: THREE.Mesh) {
+  removeEntityVisual(mesh: THREE.Mesh) {
     this.scene.remove(mesh);
     if (this.transformControl?.object === mesh) {
         this.transformControl.detach();
     }
+    this.visualsFactory.disposeMesh(mesh);
   }
 
   setSelection(mesh: THREE.Mesh | null) {

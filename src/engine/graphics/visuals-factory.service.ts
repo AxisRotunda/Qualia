@@ -12,17 +12,17 @@ export class VisualsFactoryService {
   private materialService = inject(MaterialService);
   private assetService = inject(AssetService);
   
-  // Track created primitive geometries for disposal
+  // Track created primitive geometries for disposal to prevent memory leaks
   private geometries: THREE.BufferGeometry[] = [];
 
   createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }): THREE.Mesh {
     let mesh: THREE.Mesh;
 
     if (options.meshId) {
-        // Asset-based mesh generation
+        // Asset-based mesh generation (Shared geometries, managed by AssetService)
         mesh = this.assetService.getMesh(options.meshId);
     } else {
-        // Primitive generation
+        // Primitive generation (Unique geometries, managed here)
         let geometry: THREE.BufferGeometry;
         
         if (data.type === 'box') {
@@ -58,9 +58,14 @@ export class VisualsFactoryService {
   }
 
   disposeMesh(mesh: THREE.Mesh) {
-      if (this.geometries.includes(mesh.geometry)) {
+      if (mesh.geometry && this.geometries.includes(mesh.geometry)) {
           mesh.geometry.dispose();
+          // Remove from tracking array to prevent memory leak
+          const idx = this.geometries.indexOf(mesh.geometry);
+          if (idx > -1) {
+              this.geometries.splice(idx, 1);
+          }
       }
-      // AssetService geometries are cached shared resources, so we don't dispose them here
+      // Note: We do not dispose AssetService geometries as they are shared/cached
   }
 }

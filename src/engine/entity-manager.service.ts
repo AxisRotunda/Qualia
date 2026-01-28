@@ -20,8 +20,8 @@ export class EntityManager {
   
   // Create an entity with fully formed physics and mesh
   createEntityFromDef(bodyDef: PhysicsBodyDef, visualOpts: { color?: number, materialId?: string, meshId?: string }, name: string, templateId?: string): Entity {
-      // Mesh creation now delegated to SceneService
-      const mesh = this.scene.createMesh(bodyDef, visualOpts);
+      // Delegate visual creation to SceneService façade
+      const mesh = this.scene.createEntityVisual(bodyDef, visualOpts);
       
       const entity = this.world.createEntity();
       
@@ -51,8 +51,8 @@ export class EntityManager {
     
     const meshRef = this.world.meshes.get(e);
     if (meshRef) {
-        this.scene.removeMesh(meshRef.mesh);
-        this.scene.disposeMesh(meshRef.mesh);
+        // Delegate visual destruction to SceneService façade
+        this.scene.removeEntityVisual(meshRef.mesh);
     }
     
     this.world.destroyEntity(e);

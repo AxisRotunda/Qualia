@@ -1,17 +1,17 @@
 
 # Qualia 3D System Manifest
-> **VERSION**: 0.3.1
+> **VERSION**: 0.4.0
 > **TYPE**: Master Index / Meta-Architecture
 > **META_RULE**: This is the root node. Refer to sub-documents for implementation details.
 
 ## 1. Global Architecture
 **Stack**: Angular 19+ (Zoneless, Signals) | Three.js (r160) | Rapier3D (WASM/Compat)
-**Pattern**: Entity Component System (ECS) with Angular Service Facades.
+**Pattern**: Entity Component System (ECS) with Linear Service Facades.
 
 ### 1.1 Core Principles
 *   **Zoneless**: Application bootstraps with `provideZonelessChangeDetection`. No `zone.js`.
 *   **Signal-First**: All state is reactive via Angular Signals.
-*   **Facade Pattern**: UI Components never touch `Three.js` or `Rapier` objects directly. They interact via `EngineService`.
+*   **Strict Graphics Boundary**: `SceneService` is the **only** permitted entry point for rendering operations.
 *   **Loop-Driven**: Physics and Rendering occur in `requestAnimationFrame` loop via `GameLoopService`.
 
 ## 2. Sub-System Documentation Map
@@ -31,30 +31,21 @@ src/
 │   ├── interaction.ts       # Raycasting & Input Events
 │   ├── persistence.ts       # Save/Load Logic
 │   ├── engine-state.ts      # Reactive State Store
-│   └── graphics/            # Rendering Systems
+│   └── graphics/            # Rendering Systems (Internal)
 │       ├── environment-manager.ts # Lights, Fog, Sky
 │       └── visuals-factory.ts     # Mesh & Geometry Gen
 ├── services/                # Angular Services (Logic Glue)
-│   ├── engine.service.ts    # Main Facade
+│   ├── engine.service.ts    # Main App Facade
 │   ├── physics.service.ts   # Rapier Wrapper
-│   ├── scene.service.ts     # Three.js Wrapper (Coordinator)
+│   ├── scene.service.ts     # Three.js Facade (The Renderer)
 │   ├── asset.service.ts     # Procedural Asset Generation (Trees/Rocks)
 │   ├── material.service.ts  # Texture & Material Management
-│   └── ...                  # Specific Systems (Input, Particles, etc)
-├── components/              # UI Components (Dumb/Smart)
-│   ├── ui/                  # Reusable UI widgets
-│   │   └── context-menu.ts  # Extracted Context Menu
-│   ├── ui-panel.ts          # Generic UI Container
-│   ├── scene-tree.ts        # Entity List
-│   ├── inspector.ts         # Property Editor
-│   └── ...
-└── data/                    # Static Definitions
-    ├── entity-templates.ts  # Spawnable Object Configs
-    └── scene-definitions.ts # Level Layouts
+│   └── ...                  
+└── components/              # UI Components
 ```
 
 ## 4. Implementation Heuristics
-*   **Adding Entities**: Define in `entity-templates.ts`, ensure `AssetService` supports geometry.
+*   **Data Flow**: ECS → EngineService → SceneService. Never bypass `SceneService` to touch meshes directly from Logic components.
 *   **State Updates**: Never mutate Signals directly from Components. Call Service methods.
-*   **Performance**: ECS stores use `Map<Entity, T>` for O(1) access. Avoid array iteration in hot loops where possible. Use `ComponentStore.forEach`.
-*   **Simulation**: `Walk Mode` and `CharacterControllerService` are part of the physics loop. `AssetService` provides fully rendered, textured assets for scenarios.
+*   **Performance**: ECS stores use `Map<Entity, T>` for O(1) access. 
+*   **Memory Management**: `VisualsFactoryService` tracks created geometries and disposes of them when `SceneService.removeEntityVisual` is called.

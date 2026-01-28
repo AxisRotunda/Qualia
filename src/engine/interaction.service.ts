@@ -61,13 +61,17 @@ export class InteractionService {
   }
 
   handlePointerUp(event: PointerEvent) {
+      // Guard: If dragging a gizmo, do not process selection
+      if (this.sceneService.isDraggingGizmo()) return;
+
       const dx = event.clientX - this.pointerDownPos.x;
       const dy = event.clientY - this.pointerDownPos.y;
       const distSq = dx*dx + dy*dy;
       const dt = performance.now() - this.pointerDownTime;
 
-      // Tight threshold: < 16px sq (4px linear) AND < 200ms
-      const isClick = distSq < 16 && dt < 200;
+      // Relaxed threshold: < 10px linear (100sq) AND < 300ms
+      // Allows for slight mouse jitter during clicks
+      const isClick = distSq < 100 && dt < 300;
 
       if (isClick && event.button === 0) {
           const entity = this.raycastFromScreen(event.clientX, event.clientY);
@@ -76,6 +80,8 @@ export class InteractionService {
   }
   
   handleContextMenu(event: MouseEvent) {
+      if (this.sceneService.isDraggingGizmo()) return;
+
       event.preventDefault();
       const entity = this.raycastFromScreen(event.clientX, event.clientY);
       

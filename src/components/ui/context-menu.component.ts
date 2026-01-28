@@ -7,8 +7,7 @@ import { Component, input, output } from '@angular/core';
   template: `
     <div class="absolute bg-slate-900 border border-slate-700 shadow-xl rounded-lg py-1 z-50 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
          [style.top.px]="y()"
-         [style.left.px]="x()"
-         (mouseleave)="close.emit()">
+         [style.left.px]="x()">
        <button class="menu-item" (click)="select.emit(entityId())">
          <span class="material-symbols-outlined icon-xs">check_circle</span> Select
        </button>
