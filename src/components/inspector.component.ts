@@ -1,14 +1,21 @@
 
 import { Component, inject, signal, effect } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { EngineService } from '../services/engine.service';
 import { Transform, PhysicsProps } from '../engine/core';
 import { UiPanelComponent } from './ui-panel.component';
+import { TransformPanelComponent } from './inspector/transform-panel.component';
+import { PhysicsPanelComponent } from './inspector/physics-panel.component';
+import { WorldSettingsPanelComponent } from './inspector/world-settings-panel.component';
 
 @Component({
   selector: 'app-inspector',
   standalone: true,
-  imports: [DecimalPipe, UiPanelComponent],
+  imports: [
+      UiPanelComponent, 
+      TransformPanelComponent, 
+      PhysicsPanelComponent, 
+      WorldSettingsPanelComponent
+  ],
   template: `
     <div class="h-full flex flex-col gap-2 p-2 bg-slate-950/50">
       
@@ -35,57 +42,16 @@ import { UiPanelComponent } from './ui-panel.component';
                  </button>
               </div>
 
-              <!-- Transform (Read Only) -->
-              <section>
-                 <h3 class="control-label mb-2">Transform <span class="text-[9px] opacity-50 ml-1">(READ ONLY)</span></h3>
-                 @if (transformSnapshot(); as t) {
-                    <div class="grid grid-cols-1 gap-2">
-                       <!-- Position -->
-                       <div class="grid grid-cols-3 gap-1">
-                          <div class="prop-readout"><span class="text-rose-500">X</span> {{ t.position.x | number:'1.2-2' }}</div>
-                          <div class="prop-readout"><span class="text-emerald-500">Y</span> {{ t.position.y | number:'1.2-2' }}</div>
-                          <div class="prop-readout"><span class="text-blue-500">Z</span> {{ t.position.z | number:'1.2-2' }}</div>
-                       </div>
-                       <!-- Rot/Scale Compact -->
-                       <div class="grid grid-cols-2 gap-2">
-                           <div class="bg-slate-950/50 p-1.5 rounded border border-slate-800/50 text-[10px] text-slate-400 flex justify-between">
-                              <span>Scale</span> <span class="font-mono text-slate-200">{{ t.scale.x | number:'1.1-1' }}</span>
-                           </div>
-                           <div class="bg-slate-950/50 p-1.5 rounded border border-slate-800/50 text-[10px] text-slate-400 flex justify-between">
-                              <span>Rot Y</span> <span class="font-mono text-slate-200">{{ t.rotation.y | number:'1.2-2' }}</span>
-                           </div>
-                       </div>
-                    </div>
-                 }
-              </section>
+              <!-- Transform Sub-Component -->
+              <app-transform-panel [data]="transformSnapshot()" />
 
               <hr class="border-slate-800/50">
 
-              <!-- Physics (Editable) -->
-              <section>
-                 <h3 class="control-label mb-2">Physics Properties</h3>
-                 @if (physicsPropsSnapshot(); as p) {
-                    <div class="space-y-3">
-                        <div class="control-group">
-                           <div class="flex justify-between text-[10px] mb-1">
-                              <span class="text-slate-400">Restitution</span>
-                              <span class="font-mono text-cyan-300">{{ p.restitution | number:'1.1-1' }}</span>
-                           </div>
-                           <input type="range" min="0" max="1.5" step="0.1" [value]="p.restitution" (input)="updatePhysics('restitution', $event)" 
-                                  class="range-slider">
-                        </div>
-                        
-                        <div class="control-group">
-                           <div class="flex justify-between text-[10px] mb-1">
-                              <span class="text-slate-400">Friction</span>
-                              <span class="font-mono text-cyan-300">{{ p.friction | number:'1.1-1' }}</span>
-                           </div>
-                           <input type="range" min="0" max="2.0" step="0.1" [value]="p.friction" (input)="updatePhysics('friction', $event)"
-                                  class="range-slider">
-                        </div>
-                    </div>
-                 }
-              </section>
+              <!-- Physics Sub-Component -->
+              <app-physics-panel 
+                [data]="physicsPropsSnapshot()"
+                (update)="updatePhysics($event)"
+              />
             </div>
 
           } @else {
@@ -100,49 +66,16 @@ import { UiPanelComponent } from './ui-panel.component';
       <!-- Panel 2: World Settings -->
       <div class="shrink-0 h-auto">
         <app-ui-panel title="World Settings">
-           <div class="space-y-4">
-              
-              <!-- Gravity -->
-              <div>
-                <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                   <span>Gravity Y</span>
-                   <span class="font-mono text-cyan-400">{{ engine.gravityY() | number:'1.1-1' }}</span>
-                </div>
-                <input type="range" min="-20" max="0" step="0.5" 
-                       [value]="engine.gravityY()" (input)="updateGravity($event)"
-                       class="range-slider">
-              </div>
-
-              <!-- Lighting -->
-              <div class="space-y-2">
-                 <div class="text-[10px] font-bold text-slate-500 uppercase">Atmosphere</div>
-                 
-                 <div class="grid grid-cols-2 gap-2">
-                    <div class="space-y-1">
-                       <label class="text-[9px] text-slate-500">Sun Intensity</label>
-                       <input type="range" min="0" max="3" step="0.1" [value]="dirIntensity()" (input)="updateLight('dir', $event)"
-                              class="range-slider-sm">
-                    </div>
-                    <div class="space-y-1">
-                       <label class="text-[9px] text-slate-500">Ambient</label>
-                       <input type="range" min="0" max="1" step="0.1" [value]="ambientIntensity()" (input)="updateLight('ambient', $event)"
-                              class="range-slider-sm">
-                    </div>
-                 </div>
-              </div>
-
-           </div>
+           <app-world-settings-panel 
+              [gravity]="engine.gravityY()"
+              (gravityChange)="engine.setGravity($event)"
+              (lightChange)="engine.setLightSettings($event)"
+           />
         </app-ui-panel>
       </div>
 
     </div>
-  `,
-  styles: [`
-    .control-label { @apply text-[10px] font-bold text-slate-500 uppercase tracking-wide; }
-    .prop-readout { @apply bg-slate-950 rounded border border-slate-800 py-1.5 px-2 text-[10px] font-mono text-slate-300 flex items-center gap-2; }
-    .range-slider { @apply w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500; }
-    .range-slider-sm { @apply w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 block; }
-  `]
+  `
 })
 export class InspectorComponent {
   engine = inject(EngineService);
@@ -150,12 +83,6 @@ export class InspectorComponent {
   transformSnapshot = signal<Transform | null>(null);
   physicsPropsSnapshot = signal<PhysicsProps | null>(null);
   entityName = signal('');
-  
-  ambientIntensity = signal(0.4);
-  dirIntensity = signal(0.8);
-  dirColor = signal('#ffffff');
-
-  // Computed title
   selectionTitle = signal('No Selection');
 
   constructor() {
@@ -200,36 +127,17 @@ export class InspectorComponent {
       }
   }
 
-  updatePhysics(prop: 'friction' | 'restitution', e: Event) {
-      const val = parseFloat((e.target as HTMLInputElement).value);
+  updatePhysics(event: {prop: 'friction' | 'restitution', value: number}) {
       const id = this.engine.selectedEntity();
       if(id===null) return;
       
       const props = this.engine.world.physicsProps.get(id);
       if(!props) return;
       
-      const newProps = { ...props, [prop]: val };
+      const newProps = { ...props, [event.prop]: event.value };
       this.engine.updateEntityPhysics(id, newProps);
 
-      this.physicsPropsSnapshot.update(curr => curr ? ({ ...curr, [prop]: val }) : null);
-  }
-
-  updateGravity(e: Event) {
-    const val = parseFloat((e.target as HTMLInputElement).value);
-    this.engine.setGravity(val);
-  }
-  
-  updateLight(type: 'ambient' | 'dir' | 'color', e: Event) {
-      const val = (e.target as HTMLInputElement).value;
-      if (type === 'ambient') this.ambientIntensity.set(parseFloat(val));
-      if (type === 'dir') this.dirIntensity.set(parseFloat(val));
-      if (type === 'color') this.dirColor.set(val);
-      
-      this.engine.setLightSettings({
-          ambient: this.ambientIntensity(),
-          directional: this.dirIntensity(),
-          color: this.dirColor()
-      });
+      this.physicsPropsSnapshot.update(curr => curr ? ({ ...curr, [event.prop]: event.value }) : null);
   }
 
   deleteSelected() {

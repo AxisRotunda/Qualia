@@ -5,7 +5,7 @@ import { EngineRuntimeService } from '../engine/runtime/engine-runtime.service';
 import { EntityManager } from '../engine/entity-manager.service';
 import { PhysicsService } from './physics.service';
 import { PhysicsMaterialsService } from '../physics/physics-materials.service';
-import { SceneVisualsService } from '../scene/scene-visuals.service';
+import { SceneService } from './scene.service';
 import { EnvironmentService } from './environment.service';
 import { EntityLibraryService } from './entity-library.service';
 import { SceneRegistryService } from './scene-registry.service';
@@ -30,8 +30,8 @@ export class EngineService {
   public entityMgr = inject(EntityManager);
   
   // Feature Services
-  public physicsService = inject(PhysicsService); // Facade for consumers expecting physics access
-  public sceneService = inject(SceneVisualsService);   // Facade for consumers
+  public physicsService = inject(PhysicsService);
+  public sceneService = inject(SceneService);
   private physicsMaterials = inject(PhysicsMaterialsService);
   
   public environmentService = inject(EnvironmentService);

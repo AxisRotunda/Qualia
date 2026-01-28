@@ -2,7 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { GameLoopService } from '../../services/game-loop.service';
 import { PhysicsWorldService } from '../../physics/world.service';
-import { SceneVisualsService } from '../../scene/scene-visuals.service';
+import { SceneService } from '../../services/scene.service';
 import { EntityManager } from '../entity-manager.service';
 import { EngineStateService } from '../engine-state.service';
 import { ParticleService } from '../../services/particle.service';
@@ -13,7 +13,7 @@ import { ParticleService } from '../../services/particle.service';
 export class EngineRuntimeService {
   private loop = inject(GameLoopService);
   private physics = inject(PhysicsWorldService);
-  private scene = inject(SceneVisualsService);
+  private scene = inject(SceneService);
   private entityManager = inject(EntityManager);
   private state = inject(EngineStateService);
   private particleService = inject(ParticleService);
