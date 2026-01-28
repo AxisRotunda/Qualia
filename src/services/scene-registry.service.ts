@@ -68,7 +68,7 @@ export class SceneRegistryService {
   }
 
   private loadCitySlice(engine: EngineService) {
-      engine.sceneService.setAtmosphere('clear');
+      engine.environmentService.setAtmosphere('clear');
       for (let x = 0; x < 8; x++) {
         for (let z = 0; z < 8; z++) {
           const posX = (x * 15) - 60;
@@ -90,7 +90,7 @@ export class SceneRegistryService {
   }
 
   private loadForest(engine: EngineService) {
-      engine.sceneService.setAtmosphere('forest');
+      engine.environmentService.setAtmosphere('forest');
       for(let i=0; i<8; i++) {
           const angle = (i/8) * Math.PI * 2;
           const x = Math.cos(angle) * 8;
@@ -107,7 +107,7 @@ export class SceneRegistryService {
   }
 
   private loadIce(engine: EngineService) {
-      engine.sceneService.setAtmosphere('ice');
+      engine.environmentService.setAtmosphere('ice');
       for(let x=-2; x<=2; x++) for(let z=-2; z<=2; z++) 
           this.entityLib.spawnFromTemplate(engine.entityMgr, 'terrain-ice', new THREE.Vector3(x*20, 0.2, z*20));
       for(let i=0; i<15; i++) 
@@ -116,7 +116,7 @@ export class SceneRegistryService {
   }
 
   private loadStacksAndRamps(engine: EngineService) {
-      engine.sceneService.setAtmosphere('clear');
+      engine.environmentService.setAtmosphere('clear');
       const rampRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0, 0));
       this.entityLib.spawnFromTemplate(engine.entityMgr, 'structure-ramp', new THREE.Vector3(0, 5, 0), rampRot);
       for(let i=0; i<10; i++) this.entityLib.spawnFromTemplate(engine.entityMgr, 'prop-crate', new THREE.Vector3(0, 10 + (i*1.6), -8));
@@ -124,7 +124,7 @@ export class SceneRegistryService {
   }
 
   private loadPillarsAndParticles(engine: EngineService) {
-      engine.sceneService.setAtmosphere('night');
+      engine.environmentService.setAtmosphere('night');
       this.particleService.init(engine.sceneService.getScene(), 1000);
       for(let i=0; i<12; i++) {
           const angle = (i/12) * Math.PI * 2;

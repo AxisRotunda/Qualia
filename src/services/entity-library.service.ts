@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { EntityManager } from '../engine/entity-manager.service';
 import { MaterialService } from './material.service';
+import { PhysicsFactoryService } from './factories/physics-factory.service';
 import { PhysicsService } from './physics.service';
 import { Entity } from '../engine/core';
 
@@ -25,6 +26,7 @@ export interface EntityTemplate {
   providedIn: 'root'
 })
 export class EntityLibraryService {
+  private physicsFactory = inject(PhysicsFactoryService);
   private physics = inject(PhysicsService);
   
   readonly templates: EntityTemplate[] = [
@@ -116,19 +118,19 @@ export class EntityLibraryService {
     let bodyDef;
     if (tpl.geometry === 'mesh') {
         if (tpl.physicsShape === 'capsule' || tpl.physicsShape === 'cylinder') {
-             bodyDef = this.physics.createCylinder(position.x, position.y + (tpl.size.y/2), position.z, tpl.size.y, tpl.size.x, tpl.mass);
+             bodyDef = this.physicsFactory.createCylinder(position.x, position.y + (tpl.size.y/2), position.z, tpl.size.y, tpl.size.x, tpl.mass);
         } else if (tpl.physicsShape === 'sphere') {
-             bodyDef = this.physics.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
+             bodyDef = this.physicsFactory.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
         } else {
-             bodyDef = this.physics.createBox(position.x, position.y, position.z, 1, 1, 1, tpl.mass);
+             bodyDef = this.physicsFactory.createBox(position.x, position.y, position.z, 1, 1, 1, tpl.mass);
         }
     } else {
         if (tpl.geometry === 'box') {
-          bodyDef = this.physics.createBox(position.x, position.y, position.z, tpl.size.x, tpl.size.y, tpl.size.z, tpl.mass);
+          bodyDef = this.physicsFactory.createBox(position.x, position.y, position.z, tpl.size.x, tpl.size.y, tpl.size.z, tpl.mass);
         } else if (tpl.geometry === 'cylinder') {
-          bodyDef = this.physics.createCylinder(position.x, position.y, position.z, tpl.size.y, tpl.size.x, tpl.mass);
+          bodyDef = this.physicsFactory.createCylinder(position.x, position.y, position.z, tpl.size.y, tpl.size.x, tpl.mass);
         } else {
-          bodyDef = this.physics.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
+          bodyDef = this.physicsFactory.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
         }
     }
 

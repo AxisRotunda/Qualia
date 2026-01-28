@@ -1,7 +1,8 @@
 
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
-import { PhysicsService, CharacterContext } from './physics.service';
+import { PhysicsService } from './physics.service';
+import { CharacterPhysicsService, CharacterContext } from './character-physics.service';
 import { SceneService } from './scene.service';
 import { GameInputService } from './game-input.service';
 
@@ -10,6 +11,7 @@ import { GameInputService } from './game-input.service';
 })
 export class CharacterControllerService {
   private physics = inject(PhysicsService);
+  private charPhysics = inject(CharacterPhysicsService);
   private scene = inject(SceneService);
   private input = inject(GameInputService);
 
@@ -33,7 +35,7 @@ export class CharacterControllerService {
     if (this.character) return;
     
     // Create physics representation
-    this.character = this.physics.createCharacter(
+    this.character = this.charPhysics.createCharacter(
         position.x, position.y + (this.HEIGHT/2), position.z, 
         this.RADIUS, this.HEIGHT
     );
@@ -50,7 +52,7 @@ export class CharacterControllerService {
 
   destroy() {
     if (this.character) {
-        this.physics.destroyCharacter(this.character);
+        this.charPhysics.destroyCharacter(this.character);
         this.character = null;
     }
     this.active = false;
@@ -89,7 +91,7 @@ export class CharacterControllerService {
     if (moveDir.lengthSq() > 0) moveDir.normalize();
     
     // 3. Jump & Gravity
-    const grounded = this.physics.isCharacterGrounded(this.character);
+    const grounded = this.charPhysics.isCharacterGrounded(this.character);
     
     if (grounded && this.verticalVelocity < 0) {
         this.verticalVelocity = -2; // Stick to ground
@@ -107,7 +109,7 @@ export class CharacterControllerService {
     displacement.y = this.verticalVelocity * dt;
 
     // 5. Physics Step
-    this.physics.moveCharacter(this.character, displacement, dt);
+    this.charPhysics.moveCharacter(this.character, displacement, dt);
 
     // 6. Sync Camera
     const pose = this.physics.getBodyPose(this.character.bodyHandle);

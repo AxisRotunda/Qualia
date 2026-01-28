@@ -3,7 +3,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { World, Entity } from './core';
 import { PhysicsService, PhysicsBodyDef } from '../services/physics.service';
 import { SceneService } from '../services/scene.service';
-import { AssetService } from '../services/asset.service';
+import { PhysicsFactoryService } from '../services/factories/physics-factory.service';
+import { MeshFactoryService } from '../services/factories/mesh-factory.service';
 import * as THREE from 'three';
 
 @Injectable({
@@ -15,11 +16,13 @@ export class EntityManager {
   public selectedEntity = signal<Entity | null>(null);
 
   private physics = inject(PhysicsService);
+  private physicsFactory = inject(PhysicsFactoryService);
+  private meshFactory = inject(MeshFactoryService);
   private scene = inject(SceneService);
   
   // Create an entity with fully formed physics and mesh
   createEntityFromDef(bodyDef: PhysicsBodyDef, visualOpts: { color?: number, materialId?: string, meshId?: string }, name: string, templateId?: string): Entity {
-      const mesh = this.scene.createMesh(bodyDef, visualOpts);
+      const mesh = this.meshFactory.createMesh(bodyDef, visualOpts);
       
       const entity = this.world.createEntity();
       
@@ -48,7 +51,10 @@ export class EntityManager {
     if (rb) this.physics.removeBody(rb.handle);
     
     const meshRef = this.world.meshes.get(e);
-    if (meshRef) this.scene.removeMesh(meshRef.mesh);
+    if (meshRef) {
+        this.scene.removeMesh(meshRef.mesh);
+        this.meshFactory.disposeMesh(meshRef.mesh);
+    }
     
     this.world.destroyEntity(e);
     this.objectCount.update(c => c - 1);
@@ -65,18 +71,13 @@ export class EntityManager {
 
       const newPos = { x: t.position.x + 1, y: t.position.y, z: t.position.z };
       
-      // If it was a template, best to respawn via template factory to get fresh logic,
-      // but for raw duplication we can recreate manually.
-      // NOTE: For true template support, we should invoke the factory. 
-      // This simple duplicator mimics the primitive fallback.
-      
       let bodyDef: PhysicsBodyDef;
       if (oldDef.type === 'sphere') {
-           bodyDef = this.physics.createSphere(newPos.x, newPos.y, newPos.z, oldDef.radius, oldDef.mass);
+           bodyDef = this.physicsFactory.createSphere(newPos.x, newPos.y, newPos.z, oldDef.radius, oldDef.mass);
       } else if (oldDef.type === 'cylinder') {
-            bodyDef = this.physics.createCylinder(newPos.x, newPos.y, newPos.z, oldDef.height!, oldDef.radius!, oldDef.mass);
+            bodyDef = this.physicsFactory.createCylinder(newPos.x, newPos.y, newPos.z, oldDef.height!, oldDef.radius!, oldDef.mass);
       } else {
-           bodyDef = this.physics.createBox(newPos.x, newPos.y, newPos.z, oldDef.size?.w, oldDef.size?.h, oldDef.size?.d, oldDef.mass);
+           bodyDef = this.physicsFactory.createBox(newPos.x, newPos.y, newPos.z, oldDef.size?.w, oldDef.size?.h, oldDef.size?.d, oldDef.mass);
       }
 
       // Re-apply scale

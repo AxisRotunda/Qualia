@@ -77,12 +77,11 @@ export class PersistenceService {
       if (data.meta.sceneId) {
           engine.currentSceneId.set(data.meta.sceneId);
           const preset = this.sceneRegistry.getPreset(data.meta.sceneId);
-          // Assuming SceneService is accessible via engine or injected here if we moved setAtmosphere
           const atm = preset?.theme === 'forest' ? 'forest' : preset?.theme === 'ice' ? 'ice' : 'clear';
-          engine.sceneService.setAtmosphere(atm);
+          engine.environmentService.setAtmosphere(atm);
       } else {
           engine.currentSceneId.set(null);
-          engine.sceneService.setAtmosphere('clear');
+          engine.environmentService.setAtmosphere('clear');
       }
 
       // Spawn Entities

@@ -2,6 +2,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { PhysicsService } from './physics.service';
 import { SceneService } from './scene.service';
+import { EnvironmentService } from './environment.service';
 import { CameraControlService, CameraViewPreset } from './camera-control.service';
 import { FlyControlsService } from './fly-controls.service';
 import { CharacterControllerService } from './character-controller.service';
@@ -30,6 +31,7 @@ export class EngineService {
   // Subsystems
   public physicsService = inject(PhysicsService);
   public sceneService = inject(SceneService);
+  public environmentService = inject(EnvironmentService);
   public entityMgr = inject(EntityManager);
   public interaction = inject(InteractionService);
   public persistence = inject(PersistenceService);
@@ -80,6 +82,7 @@ export class EngineService {
     try {
       await this.physicsService.init();
       this.sceneService.init(canvas);
+      this.environmentService.init();
       this.entityLib.validateTemplates(this.materialService);
       
       this.cameraControl.init(this.sceneService.getCamera(), canvas);
@@ -223,7 +226,7 @@ export class EngineService {
   setTransformMode(m: 'translate'|'rotate'|'scale') { this.transformMode.set(m); this.sceneService.setTransformMode(m); }
   setDebugOverlayVisible(v: boolean) { this.showDebugOverlay.set(v); }
   setCameraPreset(p: CameraViewPreset) { this.cameraControl.setPreset(p); }
-  setLightSettings(s: any) { this.sceneService.setLightSettings(s); }
+  setLightSettings(s: any) { this.environmentService.setLightSettings(s); }
 
   updateEntityPhysics(e: Entity, props: {friction: number, restitution: number}) {
       const safe = { friction: Math.max(0, Math.min(props.friction, 5)), restitution: Math.max(0, Math.min(props.restitution, 2)) };
