@@ -17,12 +17,16 @@ export class MeshFactoryService {
   private geometries: THREE.BufferGeometry[] = [];
 
   createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }): THREE.Mesh {
-    let geometry: THREE.BufferGeometry;
-    let material: THREE.Material | THREE.Material[];
+    let mesh: THREE.Mesh;
 
     if (options.meshId) {
-        geometry = this.assetService.getGeometry(options.meshId);
+        // Asset-based mesh generation (Trees, Rocks, etc.)
+        // AssetService handles material assignment for these
+        mesh = this.assetService.getMesh(options.meshId);
     } else {
+        // Primitive generation
+        let geometry: THREE.BufferGeometry;
+        
         if (data.type === 'box') {
             geometry = new THREE.BoxGeometry(data.size!.w, data.size!.h, data.size!.d);
         } else if (data.type === 'cylinder') {
@@ -31,13 +35,8 @@ export class MeshFactoryService {
             geometry = new THREE.SphereGeometry(data.radius!, 32, 32);
         }
         this.geometries.push(geometry);
-    }
 
-    if (options.meshId === 'tree-01') {
-        const trunk = this.materialService.getMaterial('mat-bark') as THREE.Material;
-        const leaf = this.materialService.getMaterial('mat-leaf') as THREE.Material;
-        material = [trunk, leaf];
-    } else {
+        let material: THREE.Material | THREE.Material[];
         if (options.materialId && this.materialService.hasMaterial(options.materialId)) {
             material = this.materialService.getMaterial(options.materialId)!;
         } else if (options.color) {
@@ -45,12 +44,18 @@ export class MeshFactoryService {
         } else {
             material = this.materialService.getMaterial('mat-default')!;
         }
+
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
     }
 
-    const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(data.position.x, data.position.y, data.position.z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    
+    // Apply initial rotation if present in bodyDef (for assets that need alignment)
+    if (data.rotation) {
+        mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
+    }
     
     this.sceneService.getScene().add(mesh);
     return mesh;
@@ -60,5 +65,6 @@ export class MeshFactoryService {
       if (this.geometries.includes(mesh.geometry)) {
           mesh.geometry.dispose();
       }
+      // Note: We don't dispose AssetService geometries here as they are shared/cached
   }
 }

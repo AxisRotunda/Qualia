@@ -3,9 +3,6 @@ import * as THREE from 'three';
 import { EngineService } from '../services/engine.service';
 import { EntityLibraryService } from '../services/entity-library.service';
 
-// Minimal interface to avoid full service dependency if needed, 
-// but for now we use the service types for ease of refactoring.
-
 export interface ScenePreset {
   id: string;
   label: string;
@@ -42,32 +39,72 @@ export const SCENE_DEFINITIONS: ScenePreset[] = [
       }
     },
     {
-      id: 'forest', label: 'Deep Forest', description: 'Dense logs and trees.', theme: 'forest', previewColor: 'from-emerald-700 to-green-900',
+      id: 'forest', label: 'Deep Forest', description: 'Dense woods with fallen logs.', theme: 'forest', previewColor: 'from-emerald-700 to-green-900',
       load: (engine, lib) => {
           engine.environmentService.setAtmosphere('forest');
-          for(let i=0; i<8; i++) {
-              const angle = (i/8) * Math.PI * 2;
-              const x = Math.cos(angle) * 8;
-              const z = Math.sin(angle) * 8;
+          
+          // Dense Trees
+          for(let i=0; i<30; i++) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = 10 + Math.random() * 80;
+              const x = Math.cos(angle) * dist;
+              const z = Math.sin(angle) * dist;
               const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random()*Math.PI, 0));
               lib.spawnFromTemplate(engine.entityMgr, 'hero-tree', new THREE.Vector3(x, 0, z), rot);
           }
-          for(let i=0; i<40; i++) {
-              const dist = 20 + Math.random() * 60;
-              const angle = Math.random() * Math.PI * 2;
-              lib.spawnFromTemplate(engine.entityMgr, 'prop-tree', new THREE.Vector3(Math.cos(angle)*dist, 4, Math.sin(angle)*dist));
+
+          // Fallen Logs
+          for(let i=0; i<15; i++) {
+              const x = (Math.random() - 0.5) * 80;
+              const z = (Math.random() - 0.5) * 80;
+              // Logs lie flat-ish, random yaw, slight pitch/roll for uneven ground feel
+              const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+                  Math.PI/2 + (Math.random()-0.5)*0.2, 
+                  Math.random()*Math.PI, 
+                  (Math.random()-0.5)*0.2
+              ));
+              lib.spawnFromTemplate(engine.entityMgr, 'prop-log', new THREE.Vector3(x, 1, z), rot);
           }
+
+          // Scattered Rocks
+          for(let i=0; i<20; i++) {
+             const x = (Math.random() - 0.5) * 100;
+             const z = (Math.random() - 0.5) * 100;
+             const scale = 0.8 + Math.random() * 1.5;
+             const id = lib.spawnFromTemplate(engine.entityMgr, 'hero-rock', new THREE.Vector3(x, scale/2, z));
+             
+             // Manually apply scale to rock for variety
+             const t = engine.world.transforms.get(id);
+             if (t) t.scale = {x: scale, y: scale, z: scale};
+             const body = engine.world.rigidBodies.get(id);
+             const def = engine.world.bodyDefs.get(id);
+             if(body && def) engine.physicsService.updateBodyScale(body.handle, def, t!.scale);
+          }
+
           engine.setCameraPreset('side');
       }
     },
     {
-      id: 'ice', label: 'Glacial Plain', description: 'Slippery ice.', theme: 'ice', previewColor: 'from-cyan-400 to-blue-200',
+      id: 'ice', label: 'Glacial Plain', description: 'Slippery ice fields.', theme: 'ice', previewColor: 'from-cyan-400 to-blue-200',
       load: (engine, lib) => {
           engine.environmentService.setAtmosphere('ice');
-          for(let x=-2; x<=2; x++) for(let z=-2; z<=2; z++) 
+          
+          // Floor
+          for(let x=-3; x<=3; x++) for(let z=-3; z<=3; z++) 
               lib.spawnFromTemplate(engine.entityMgr, 'terrain-ice', new THREE.Vector3(x*20, 0.2, z*20));
+          
+          // Ice Spires
+          for(let i=0; i<25; i++) {
+              const x = (Math.random()-0.5)*80;
+              const z = (Math.random()-0.5)*80;
+              const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random()*Math.PI, (Math.random()-0.5)*0.3));
+              lib.spawnFromTemplate(engine.entityMgr, 'hero-ice-chunk', new THREE.Vector3(x, 1, z), rot);
+          }
+
+          // Dynamic Ice Cubes
           for(let i=0; i<15; i++) 
               lib.spawnFromTemplate(engine.entityMgr, 'prop-ice-block', new THREE.Vector3((Math.random()-0.5)*40, 5+i*2, (Math.random()-0.5)*40));
+          
           engine.setCameraPreset('front');
       }
     },

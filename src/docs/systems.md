@@ -1,5 +1,6 @@
+
 # Qualia 3D System Manifest
-> **VERSION**: 0.2.1
+> **VERSION**: 0.3.0
 > **TYPE**: Master Index / Meta-Architecture
 > **META_RULE**: This is the root node. Refer to sub-documents for implementation details.
 
@@ -34,6 +35,8 @@ src/
 │   ├── engine.service.ts    # Main Facade
 │   ├── physics.service.ts   # Rapier Wrapper
 │   ├── scene.service.ts     # Three.js Wrapper
+│   ├── asset.service.ts     # Procedural Asset Generation (Trees/Rocks)
+│   ├── material.service.ts  # Texture & Material Management
 │   └── ...                  # Specific Systems (Input, Particles, etc)
 ├── components/              # UI Components (Dumb/Smart)
 │   ├── ui-panel.ts          # Generic UI Container
@@ -49,3 +52,4 @@ src/
 *   **Adding Entities**: Define in `entity-templates.ts`, ensure `AssetService` supports geometry.
 *   **State Updates**: Never mutate Signals directly from Components. Call Service methods.
 *   **Performance**: ECS stores use `Map<Entity, T>` for O(1) access. Avoid array iteration in hot loops where possible. Use `ComponentStore.forEach`.
+*   **Simulation**: `Walk Mode` and `CharacterControllerService` are part of the physics loop. `AssetService` provides fully rendered, textured assets for scenarios.
