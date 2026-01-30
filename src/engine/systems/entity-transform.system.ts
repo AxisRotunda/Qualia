@@ -16,26 +16,40 @@ export class EntityTransformSystem {
 
   // ECS <-> Physics Sync
   syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {
+    const rWorld = this.physics.rWorld;
+    if (!rWorld) return;
+
     this.entityMgr.world.rigidBodies.forEach((rb, entity) => {
       // If dragging ANY entity (Edit, Walk, or Fly modes), don't overwrite with physics
       // We prioritize user interaction over simulation
       if (isDragging && this.entityMgr.selectedEntity() === entity) return;
 
-      const pose = this.physics.getBodyPose(rb.handle);
-      if (pose) {
-        const transform = this.entityMgr.world.transforms.get(entity);
-        const meshRef = this.entityMgr.world.meshes.get(entity);
-        
-        if (transform) {
-            transform.position = pose.p;
-            transform.rotation = pose.q;
+      // Optimization: Access Rapier body directly to check sleep state
+      // If body is sleeping, we assume it hasn't moved, so we skip the expensive ECS/Visual sync
+      const rawBody = rWorld.getRigidBody(rb.handle);
+      if (!rawBody) return;
+      
+      if (rawBody.isSleeping() && !rawBody.isKinematic()) {
+          return;
+      }
 
-            if (meshRef) {
-                meshRef.mesh.position.set(pose.p.x, pose.p.y, pose.p.z);
-                meshRef.mesh.quaternion.set(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-                meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
-            }
-        }
+      const p = rawBody.translation();
+      const q = rawBody.rotation();
+
+      const transform = this.entityMgr.world.transforms.get(entity);
+      const meshRef = this.entityMgr.world.meshes.get(entity);
+      
+      if (transform) {
+          transform.position = p;
+          transform.rotation = q;
+
+          if (meshRef) {
+              meshRef.mesh.position.set(p.x, p.y, p.z);
+              meshRef.mesh.quaternion.set(q.x, q.y, q.z, q.w);
+              // Scale is controlled by ECS, not Physics (Physics doesn't change scale dynamically usually)
+              // We re-apply ECS scale to mesh to ensure consistency if it changed elsewhere
+              meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
+          }
       }
     });
   }
