@@ -5,8 +5,11 @@ import { EntityManager } from '../engine/entity-manager.service';
 import { MaterialService } from './material.service';
 import { PhysicsFactoryService } from './factories/physics-factory.service';
 import { PhysicsService } from './physics.service';
+import { AssetService } from './asset.service';
 import { Entity } from '../engine/core';
-import { ENTITY_TEMPLATES, EntityTemplate } from '../data/entity-templates';
+import { ENTITY_TEMPLATES } from '../data/entity-templates';
+import { EntityTemplate } from '../data/entity-types';
+import { ShapesFactory } from '../physics/shapes.factory';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +17,8 @@ import { ENTITY_TEMPLATES, EntityTemplate } from '../data/entity-templates';
 export class EntityLibraryService {
   private physicsFactory = inject(PhysicsFactoryService);
   private physics = inject(PhysicsService);
+  private assetService = inject(AssetService);
+  private shapesFactory = inject(ShapesFactory);
   
   readonly templates: EntityTemplate[] = ENTITY_TEMPLATES;
 
@@ -30,31 +35,30 @@ export class EntityLibraryService {
     const tpl = this.templates.find(t => t.id === templateId);
     if (!tpl) throw new Error(`Template ${templateId} not found`);
 
-    let bodyDef;
-    if (tpl.geometry === 'mesh') {
-        if (tpl.physicsShape === 'capsule' || tpl.physicsShape === 'cylinder') {
-             bodyDef = this.physicsFactory.createCylinder(position.x, position.y + (tpl.size.y/2), position.z, tpl.size.y, tpl.size.x, tpl.mass);
-        } else if (tpl.physicsShape === 'sphere') {
-             bodyDef = this.physicsFactory.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
-        } else {
-             bodyDef = this.physicsFactory.createBox(position.x, position.y, position.z, 1, 1, 1, tpl.mass);
-        }
-    } else {
-        if (tpl.geometry === 'box') {
-          bodyDef = this.physicsFactory.createBox(position.x, position.y, position.z, tpl.size.x, tpl.size.y, tpl.size.z, tpl.mass);
-        } else if (tpl.geometry === 'cylinder') {
-          bodyDef = this.physicsFactory.createCylinder(position.x, position.y, position.z, tpl.size.y, tpl.size.x, tpl.mass);
-        } else {
-          bodyDef = this.physicsFactory.createSphere(position.x, position.y, position.z, tpl.size.x, tpl.mass);
+    // Fetch geometry if needed for advanced physics hulls
+    let geometry: THREE.BufferGeometry | undefined;
+    if (tpl.geometry === 'mesh' && tpl.meshId) {
+        if (tpl.physicsShape === 'convex-hull' || tpl.physicsShape === 'trimesh') {
+             geometry = this.assetService.getGeometry(tpl.meshId);
         }
     }
 
+    // Use Factory for body creation
+    const bodyDef = this.physicsFactory.createFromTemplate(tpl, position.x, position.y, position.z, geometry);
+
+    // Apply Rotation
     if (rotation) {
         this.physics.updateBodyTransform(bodyDef.handle, bodyDef.position, {x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w});
         bodyDef.rotation = {x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w};
     }
 
+    // Apply Material Props
     this.physics.updateBodyMaterial(bodyDef.handle, { friction: tpl.friction, restitution: tpl.restitution });
+
+    // Apply Lock Rotation if specified
+    if (tpl.lockRotation) {
+        this.shapesFactory.setLockRotation(bodyDef.handle, true);
+    }
 
     // Use EntityManager to complete the spawn
     const entity = entityMgr.createEntityFromDef(bodyDef, { 

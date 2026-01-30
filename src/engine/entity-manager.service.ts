@@ -4,6 +4,7 @@ import { World, Entity } from './core';
 import { PhysicsService, PhysicsBodyDef } from '../services/physics.service';
 import { SceneService } from '../services/scene.service';
 import { PhysicsFactoryService } from '../services/factories/physics-factory.service';
+import { PhysicsMaterialsService } from '../physics/physics-materials.service';
 import * as THREE from 'three';
 
 @Injectable({
@@ -15,6 +16,7 @@ export class EntityManager {
   public selectedEntity = signal<Entity | null>(null);
 
   private physics = inject(PhysicsService);
+  private physicsMaterials = inject(PhysicsMaterialsService);
   private physicsFactory = inject(PhysicsFactoryService);
   private scene = inject(SceneService);
   
@@ -39,6 +41,9 @@ export class EntityManager {
       this.world.names.add(entity, name);
       if (templateId) this.world.templateIds.add(entity, templateId);
 
+      // Map Physics Handle to Entity ID for Collision Events
+      this.physics.registerEntity(bodyDef.handle, entity);
+
       this.objectCount.update(c => c + 1);
       return entity;
   }
@@ -47,7 +52,10 @@ export class EntityManager {
     if (this.selectedEntity() === e) this.selectedEntity.set(null);
     
     const rb = this.world.rigidBodies.get(e);
-    if (rb) this.physics.removeBody(rb.handle);
+    if (rb) {
+        this.physics.removeBody(rb.handle);
+        this.physics.unregisterEntity(rb.handle);
+    }
     
     const meshRef = this.world.meshes.get(e);
     if (meshRef) {
@@ -70,14 +78,8 @@ export class EntityManager {
 
       const newPos = { x: t.position.x + 1, y: t.position.y, z: t.position.z };
       
-      let bodyDef: PhysicsBodyDef;
-      if (oldDef.type === 'sphere') {
-           bodyDef = this.physicsFactory.createSphere(newPos.x, newPos.y, newPos.z, oldDef.radius, oldDef.mass);
-      } else if (oldDef.type === 'cylinder') {
-            bodyDef = this.physicsFactory.createCylinder(newPos.x, newPos.y, newPos.z, oldDef.height!, oldDef.radius!, oldDef.mass);
-      } else {
-           bodyDef = this.physicsFactory.createBox(newPos.x, newPos.y, newPos.z, oldDef.size?.w, oldDef.size?.h, oldDef.size?.d, oldDef.mass);
-      }
+      // Use Factory to recreate body logic
+      const bodyDef = this.physicsFactory.recreateBody(oldDef, newPos.x, newPos.y, newPos.z);
 
       // Re-apply scale
       this.physics.updateBodyScale(bodyDef.handle, bodyDef, t.scale);
@@ -105,54 +107,17 @@ export class EntityManager {
       }
   }
 
+  updateEntityPhysics(e: Entity, props: {friction: number, restitution: number}) {
+      const safe = { friction: Math.max(0, Math.min(props.friction, 5)), restitution: Math.max(0, Math.min(props.restitution, 2)) };
+      const rb = this.world.rigidBodies.get(e);
+      if(rb) {
+          this.physicsMaterials.updateBodyMaterial(rb.handle, safe);
+          this.world.physicsProps.add(e, safe);
+      }
+  }
+
   private resolveMaterialId(mat: THREE.Material): string | undefined {
-      // Helper to try and reverse look up or use userData
       return mat.userData['mapId'] ? undefined : undefined;
-  }
-
-  syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {
-    // ECS <-> Physics Sync
-    this.world.rigidBodies.forEach((rb, entity) => {
-      // If dragging in edit mode, don't overwrite with physics
-      if (mode === 'edit' && isDragging && this.selectedEntity() === entity) return;
-
-      const pose = this.physics.getBodyPose(rb.handle);
-      if (pose) {
-        const transform = this.world.transforms.get(entity);
-        const meshRef = this.world.meshes.get(entity);
-        
-        if (transform) {
-            transform.position = pose.p;
-            transform.rotation = pose.q;
-
-            if (meshRef) {
-                meshRef.mesh.position.set(pose.p.x, pose.p.y, pose.p.z);
-                meshRef.mesh.quaternion.set(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-                meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
-            }
-        }
-      }
-    });
-  }
-
-  // Update specific entity from visual transform (Gizmo)
-  updateSingleEntityFromVisual(entity: Entity) {
-      const meshRef = this.world.meshes.get(entity);
-      const transform = this.world.transforms.get(entity);
-      
-      if (meshRef && transform) {
-          const mesh = meshRef.mesh;
-          transform.position = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
-          transform.rotation = { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w };
-          transform.scale = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
-          
-          const rb = this.world.rigidBodies.get(entity);
-          const def = this.world.bodyDefs.get(entity);
-          if (rb) {
-              this.physics.updateBodyTransform(rb.handle, transform.position, transform.rotation);
-              if (def) this.physics.updateBodyScale(rb.handle, def, transform.scale);
-          }
-      }
   }
 
   reset() {

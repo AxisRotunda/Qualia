@@ -1,8 +1,9 @@
+
 # Engine API Reference
 
 > **Scope**: Public Facade methods of `EngineService`.
 > **Audience**: UI Component Developers / AI Agents generating UI code.
-> **Version**: 0.2.1
+> **Version**: 0.5.0
 
 ## 1. State Accessors (Read-Only Signals)
 Access via `engine.[signalName]()`.
@@ -28,28 +29,33 @@ Access via `engine.[signalName]()`.
 
 ### 2.1 Entity Management
 - `spawnFromTemplate(id: string)`: Raycasts to ground/scene and spawns entity from `EntityLibrary`.
+- `startPlacement(id: string)`: Enters visual placement mode (ghosting).
 - `spawnBox() / spawnSphere()`: Shortcuts for basic props.
-- `duplicateEntity(e: Entity)`: Clones physics body, mesh, and transforms of target.
+- `duplicateEntity(e: Entity)`: Clones physics body, mesh, and transforms.
 - `deleteEntity(e: Entity)`: Destroys ECS entity, cleans up Physics/Three.js resources.
 - `getEntityName(e: Entity): string`: Retreives UI label.
 - `setEntityName(e: Entity, name: string)`: Updates UI label.
 - `focusSelectedEntity()`: Moves camera to target entity position.
+- `transformSelectedEntity(dPos, dRot, dScale)`: Manual transform application (for Joysticks).
 
 ### 2.2 Simulation Control
-- `init(canvas)`: Bootstraps engine (called by Layout).
+- `init(canvas)`: Bootstraps engine.
 - `reset()`: Destroys all entities, resets physics world and camera.
 - `togglePause()` / `setPaused(v: boolean)`: Controls physics stepping.
 - `setGravity(y: number)`: Updates world gravity.
-- `setMode(mode)`: Switches Input Controller (Orbit vs Fly vs Character).
+- `setMode(mode)`: Switches Input Controller.
+- `applyBuoyancy(level, time)`: Runs buoyancy system update.
 
 ### 2.3 Visuals & Environment
-- `toggleWireframe()`: Toggles mesh wireframe mode.
-- `toggleTextures()`: Toggles procedural textures.
+- `toggleWireframe()`: Toggles mesh wireframe.
+- `toggleTextures()`: Toggles procedural textures/performance mode.
+- `setPerformanceMode(bool)`: Macro for texture toggling.
 - `setTransformMode(mode)`: Updates Gizmo behavior.
-- `setDebugOverlayVisible(v)`: Toggles debug UI.
 - `setCameraPreset(preset)`: Moves camera to 'top', 'front', or 'side'.
 - `setLightSettings(settings)`: Updates Ambient/Directional light intensity and color.
-- `updateEntityPhysics(e, props)`: Updates Friction/Restitution on runtime body.
+- `setAtmosphere(preset)`: Sets Fog/Skybox/Lighting theme.
+- `setWeather(type)`: Sets Particle System (Snow/Rain).
+- `setTimeOfDay(hour)`: Rotates Sun light.
 
 ### 2.4 Persistence
 - `loadScene(id: string)`: Loads a full scene definition from `SceneRegistry`.
@@ -57,15 +63,3 @@ Access via `engine.[signalName]()`.
 - `quickLoad()`: Deserializes World state from LocalStorage.
 - `hasSavedState()`: Boolean check for save existence.
 - `getQuickSaveLabel()`: Metadata string for save file.
-
-## 3. ECS Direct Access (Advanced)
-Direct access to `engine.world` (Class: `World`) is permitted for complex logic but discouraged for UI.
-
-```typescript
-// Read
-const pos = engine.world.transforms.get(entityId)?.position;
-
-// Write (Prefer EngineService methods for syncing)
-// Direct writes to transform components will be overwritten by Physics
-// unless handled inside the sync loop or if object is kinematic/fixed.
-```

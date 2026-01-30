@@ -2,7 +2,8 @@
 import { Injectable, inject } from '@angular/core';
 import { EngineService } from './engine.service';
 import { EntityLibraryService } from './entity-library.service';
-import { SCENE_DEFINITIONS, ScenePreset } from '../data/scene-definitions';
+import { SCENE_DEFINITIONS } from '../data/scene-definitions';
+import { ScenePreset } from '../data/scene-types';
 
 @Injectable({
   providedIn: 'root'

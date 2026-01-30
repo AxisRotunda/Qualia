@@ -1,80 +1,59 @@
 
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, effect, Injector, runInInjectionContext } from '@angular/core';
 import { GameLoopService } from '../../services/game-loop.service';
-import { PhysicsWorldService } from '../../physics/world.service';
-import { SceneService } from '../../services/scene.service';
-import { EntityManager } from '../entity-manager.service';
 import { EngineStateService } from '../engine-state.service';
-import { ParticleService } from '../../services/particle.service';
+import { EngineService } from '../../services/engine.service';
+import { GameSystem } from '../system';
+import { InputSystem } from '../systems/input.system';
+import { EnvironmentSystem } from '../systems/environment.system';
+import { SceneLogicSystem } from '../systems/scene-logic.system';
+import { PhysicsSystem } from '../systems/physics.system';
+import { RenderSystem } from '../systems/render.system';
 
 @Injectable({
   providedIn: 'root'
 })
 export class EngineRuntimeService {
   private loop = inject(GameLoopService);
-  private physics = inject(PhysicsWorldService);
-  private scene = inject(SceneService);
-  private entityManager = inject(EntityManager);
   private state = inject(EngineStateService);
-  private particleService = inject(ParticleService);
+  private injector = inject(Injector);
 
-  // Callbacks for mode-specific updates (injected by EngineService)
-  public onUpdate: ((dt: number) => void) | null = null;
+  // Systems
+  private systems: GameSystem[] = [];
+
+  private totalTime = 0;
+
+  constructor() {
+    // Initialize Systems Order
+    // In a larger app, we might use a multi-provider token, but manual list is explicit and safe.
+    this.systems = [
+      inject(InputSystem),
+      inject(EnvironmentSystem),
+      inject(SceneLogicSystem),
+      inject(PhysicsSystem),
+      inject(RenderSystem)
+    ].sort((a, b) => a.priority - b.priority);
+  }
 
   init() {
-    this.loop.fps.set = (v) => this.state.fps.set(v);
+    // Lazy load EngineService for internal state effects to avoid circular dependency
+    runInInjectionContext(this.injector, () => {
+      inject(EngineService); // Ensure engine initialized
+      effect(() => {
+        const fps = this.loop.fps();
+        this.state.fps.set(fps);
+      });
+    });
+
     this.loop.start((dt) => this.tick(dt));
   }
 
   private tick(dt: number) {
-     // 1. External Mode Updates (Controls, Inputs)
-     if (this.onUpdate) {
-         this.onUpdate(dt);
-     }
-     
-     this.particleService.update(dt);
+    this.totalTime += dt;
 
-     // 2. Physics & Sync
-     const physicsPaused = this.state.isPaused() || this.state.mainMenuVisible();
-     const isDragging = this.scene.isDraggingGizmo();
-     
-     if (!physicsPaused) {
-       const pStart = performance.now();
-       this.physics.step();
-       this.state.physicsTime.set(Math.round((performance.now() - pStart) * 100) / 100);
-       
-       const syncMode = this.state.mode() === 'edit' ? 'edit' : 'play';
-       // Sync Physics -> Visuals (ECS)
-       // If dragging, we tell syncPhysicsTransforms to SKIP the selected entity 
-       // so physics doesn't overwrite the visual
-       this.entityManager.syncPhysicsTransforms(syncMode, isDragging);
-     }
-
-     // 3. Force Sync Visuals (Gizmo) -> Physics
-     // We do this REGARDLESS of pause state if dragging. 
-     // This ensures the physics body teleports to the gizmo location every frame, 
-     // preventing it from falling/drifting while being held.
-     if (this.state.mode() === 'edit' && isDragging) {
-        const e = this.entityManager.selectedEntity();
-        if (e !== null) {
-            this.entityManager.updateSingleEntityFromVisual(e);
-        }
-     }
-
-     // 4. Stats & Debug
-     this.state.debugInfo.set({
-         paused: physicsPaused,
-         bodyCount: this.entityManager.world.rigidBodies.size,
-         singleUpdate: null
-     });
-     
-     if (this.entityManager.selectedEntity() !== null) {
-         this.scene.updateSelectionHelper();
-     }
-
-     // 5. Render
-     const rStart = performance.now();
-     this.scene.render();
-     this.state.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);
+    // Iterate all systems
+    for (const system of this.systems) {
+      system.update(dt, this.totalTime);
+    }
   }
 }

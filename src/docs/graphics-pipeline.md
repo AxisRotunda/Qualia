@@ -1,11 +1,10 @@
-
 # Graphics Pipeline
-> **Scope**: Rendering, Assets, Materials, Lighting.
+> **Scope**: Rendering, Assets, Materials, Lighting, Procedural Textures.
 > **Source**: `src/services/scene.service.ts`, `src/engine/graphics/`
 
 ## 1. Scene Graph
-*   **Renderer**: `THREE.WebGLRenderer` with `antialias: true`, `PCFSoftShadowMap`.
-*   **Camera**: `PerspectiveCamera` (FOV 60).
+*   **Renderer**: `THREE.WebGLRenderer` with `antialias: true`, `PCFSoftShadowMap`, `ACESFilmicToneMapping`, `SRGBColorSpace`.
+*   **Camera**: `PerspectiveCamera` (FOV 75).
 *   **Root Objects**:
     *   `GridHelper` (Visual reference).
     *   `PlaneGeometry` (Ground receiver).
@@ -22,23 +21,37 @@ The **only** public service for graphics.
 
 ### 2.2 EnvironmentManagerService (Internal)
 Managed by `SceneService`. Handles the "world atmosphere".
-*   **Lights**: Ambient and Directional (Sun).
-*   **Atmosphere**: Fog settings and Background color.
+*   **Lights**: Ambient, Hemisphere, Directional (Sun).
+*   **Shadows**: High-res PCFSoft shadows (4096 map) on Directional light.
+*   **Atmosphere**: Fog settings and Background color presets (`clear`, `night`, `blizzard`, etc).
+*   **IBL**: `generateDefaultEnvironment` creates procedural `PMREMGenerator` env map for PBR.
 
 ### 2.3 VisualsFactoryService (Internal)
 Managed by `SceneService`. Handles the creation and disposal of `THREE.Mesh` instances.
-*   **Primitives**: Box, Sphere, Cylinder geometry management.
+*   **Primitives**: Uses `primitiveCache` (`Map<string, BufferGeometry>`) to reuse geometries for Boxes, Spheres, etc., reducing memory overhead.
 *   **Assets**: Bridges to `AssetService` for complex procedural geometry.
-*   **Lifecycle**: Auto-disposes geometries when entities are removed to prevent memory leaks.
+*   **Lifecycle**: Manages mesh instantiation from `PhysicsBodyDef`.
 
-## 3. Material System
-Service: `MaterialService`.
-Uses a Registry pattern to manage `MeshStandardMaterial` instances.
+### 2.4 GizmoManagerService
+Handles `TransformControls` (Translate/Rotate/Scale).
+*   **State**: `isDraggingGizmo` signal (consumed by `InteractionService` to block raycasts).
+*   **Snap**: Configurable grid snapping via `setConfig`.
 
-### 3.1 Procedural Textures
-Generated via HTML5 Canvas API in memory (`CanvasTexture`).
-*   **State**: Toggled via `setTexturesEnabled(boolean)`.
+### 2.5 SelectionVisualsFactory
+Generates the Cyberpunk-style selection bracket.
+*   **Components**: Corner brackets (LineSegments), Volume fill (Transparent Mesh), Edge outline.
+*   **Lifecycle**: Disposed/Recreated on selection change.
 
-## 4. Asset Generation
-Service: `AssetService`.
-Generates procedural geometry for non-primitive objects (Trees, Rocks, Ice).
+## 3. Material System (`MaterialService`)
+Uses a Registry pattern (`Map<string, Material>`).
+*   **Texture Context**: `TextureContextService` provides shared Canvas 2D contexts for generation.
+*   **Procedural Gen**: `TextureGeneratorService` creates maps (Normal, Diffuse, Emissive) on the fly.
+    *   **Noise**: Per-pixel operations.
+    *   **Patterns**: Grid, Brick, Marble (Canvas paths).
+    *   **Tech**: Text rendering for screens.
+*   **Optimization**: Textures are lazy-loaded only when `texturesEnabled` is true.
+
+## 4. Asset Generation (`AssetService`)
+*   **CSG**: Heavy use of `BufferGeometryUtils.mergeGeometries`.
+*   **Generators**: `Nature`, `Architecture`, `Interior`, `SciFi` sub-services.
+*   **Optimization**: Caches generated `BufferGeometry` by ID.

@@ -1,97 +1,136 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
+import { TextureGeneratorService } from '../engine/graphics/texture-generator.service';
+import { MATERIAL_DEFINITIONS } from '../config/material.config';
+import { TEXTURE_DEFINITIONS } from '../config/texture.config';
+import { createWaterMaterial } from '../engine/graphics/materials/water-material.factory';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MaterialService {
+  private texGen = inject(TextureGeneratorService);
+  
   private materialRegistry = new Map<string, THREE.Material | THREE.Material[]>();
   private textures = new Map<string, THREE.Texture>();
   public texturesEnabled = false;
 
   constructor() {
-    this.initTextures();
     this.initMaterials();
   }
 
-  private generateProceduralTexture(baseColor: string, grainColor: string, scale: number = 4): THREE.Texture {
-    const size = 512;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-        ctx.fillStyle = baseColor;
-        ctx.fillRect(0, 0, size, size);
-        const imgData = ctx.getImageData(0,0, size, size);
-        const data = imgData.data;
-        for(let i=0; i < data.length; i += 4) {
-            const grain = (Math.random() - 0.5) * 40;
-            data[i] = Math.min(255, Math.max(0, data[i] + grain));
-            data[i+1] = Math.min(255, Math.max(0, data[i+1] + grain));
-            data[i+2] = Math.min(255, Math.max(0, data[i+2] + grain));
-        }
-        ctx.putImageData(imgData, 0, 0);
+  // Lazy Texture Loader
+  private getTexture(id: string): THREE.Texture | null {
+    if (this.textures.has(id)) {
+        return this.textures.get(id)!;
     }
+
+    let tex: THREE.Texture | null = null;
     
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(scale, scale);
-    tex.colorSpace = THREE.SRGBColorSpace;
+    const generatorFn = TEXTURE_DEFINITIONS[id];
+    if (generatorFn) {
+        tex = generatorFn(this.texGen);
+    }
+
+    if (tex) {
+        this.textures.set(id, tex);
+    }
     return tex;
   }
 
-  private initTextures() {
-    this.textures.set('tex-concrete', this.generateProceduralTexture('#808080', '#505050'));
-    this.textures.set('tex-ground', this.generateProceduralTexture('#2d3748', '#1a202c', 8));
-    this.textures.set('tex-bark', this.generateProceduralTexture('#3f2e26', '#2b1d16', 2));
-    this.textures.set('tex-leaf', this.generateProceduralTexture('#2f5c35', '#224a28', 2));
-    this.textures.set('tex-rock', this.generateProceduralTexture('#64748b', '#475569', 1));
-    this.textures.set('tex-snow', this.generateProceduralTexture('#f0f9ff', '#e0f2fe', 4));
+  private initMaterials() {
+    // 1. Load Data-Driven Materials
+    MATERIAL_DEFINITIONS.forEach(def => {
+        let mat: THREE.Material;
+        if (def.type === 'physical') {
+            mat = new THREE.MeshPhysicalMaterial(def.props);
+        } else {
+            mat = new THREE.MeshStandardMaterial(def.props);
+        }
+        
+        if (def.mapId) {
+            mat.userData['mapId'] = def.mapId;
+        }
+        this.materialRegistry.set(def.id, mat);
+    });
+
+    // 2. Load Complex/Custom Materials
+    this.initCustomMaterials();
   }
 
-  private initMaterials() {
-    const std = (col: number, rough: number, metal: number, mapId?: string) => {
-        const m = new THREE.MeshStandardMaterial({ color: col, roughness: rough, metalness: metal });
-        if (mapId) m.userData['mapId'] = mapId;
-        return m;
-    };
-
-    this.materialRegistry.set('mat-concrete', std(0x808080, 0.8, 0.0, 'tex-concrete'));
-    this.materialRegistry.set('mat-metal', std(0x94a3b8, 0.2, 1.0));
-    this.materialRegistry.set('mat-road', std(0x333333, 0.7, 0.0, 'tex-concrete'));
-    this.materialRegistry.set('mat-wood', std(0x8B4513, 0.6, 0.0, 'tex-bark'));
-    this.materialRegistry.set('mat-forest', std(0x3d5a38, 0.9, 0.0, 'tex-leaf'));
-    this.materialRegistry.set('mat-ice', std(0xe0f2fe, 0.05, 0.3, 'tex-snow'));
-    this.materialRegistry.set('mat-glass', new THREE.MeshStandardMaterial({ 
-      color: 0xa5f3fc, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.6 
+  private initCustomMaterials() {
+    // Ice & Snow - Physical
+    this.materialRegistry.set('mat-ice', new THREE.MeshPhysicalMaterial({
+        color: 0xa5bfd1,
+        roughness: 0.15,
+        metalness: 0.1,
+        transmission: 0.4,
+        thickness: 2.0,
+        ior: 1.31,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1
     }));
-    this.materialRegistry.set('mat-hazard', std(0xfacc15, 0.6, 0.1));
-    this.materialRegistry.set('mat-ground', std(0x1e293b, 0.9, 0.0, 'tex-ground'));
-    this.materialRegistry.set('mat-bark', std(0x5c4033, 0.9, 0.0, 'tex-bark'));
-    this.materialRegistry.set('mat-leaf', std(0x4ade80, 0.8, 0.0, 'tex-leaf'));
-    this.materialRegistry.set('mat-rock', std(0x94a3b8, 0.9, 0.0, 'tex-rock'));
-    this.materialRegistry.set('mat-default', std(0xffffff, 0.5, 0.0));
+
+    // Water (Using Factory)
+    // We lazily get the texture here
+    const normalMap = this.getTexture('tex-water-normal');
+    if (normalMap) {
+        const waterMat = createWaterMaterial(normalMap);
+        this.materialRegistry.set('mat-water', waterMat);
+    }
+
+    // Glass Alias
+    const glass = this.materialRegistry.get('mat-glass') as THREE.MeshPhysicalMaterial;
+    if (glass) this.materialRegistry.set('mat-window', glass.clone());
+
+    // Interior Special
+    const marble = this.materialRegistry.get('mat-marble');
+    if (marble) (marble as any).userData['mapId'] = 'tex-marble';
+
+    const woodPolish = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.3, metalness: 0.1 });
+    woodPolish.userData['mapId'] = 'tex-wood-dark';
+    this.materialRegistry.set('mat-wood-polish', woodPolish);
+
+    // Screens
+    const mScreen = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x22c55e, emissiveIntensity: 2.0, roughness: 0.2 });
+    mScreen.userData['mapId'] = 'tex-screen-matrix';
+    this.materialRegistry.set('mat-screen-matrix', mScreen);
+
+    const mapScreen = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x38bdf8, emissiveIntensity: 2.0, roughness: 0.2 });
+    mapScreen.userData['mapId'] = 'tex-screen-map';
+    this.materialRegistry.set('mat-screen-map', mapScreen);
+
+    const srvFace = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8, emissive: 0xffffff, emissiveIntensity: 1.0 });
+    srvFace.userData['mapId'] = 'tex-server-rack';
+    this.materialRegistry.set('mat-server-face', srvFace);
   }
 
   setTexturesEnabled(enabled: boolean) {
       this.texturesEnabled = enabled;
-      this.materialRegistry.forEach(mat => {
+      this.materialRegistry.forEach((mat, key) => {
           if (Array.isArray(mat)) {
               mat.forEach(m => this.applyTexture(m as THREE.MeshStandardMaterial, enabled));
           } else {
+              if (key === 'mat-water') return;
               this.applyTexture(mat as THREE.MeshStandardMaterial, enabled);
           }
       });
   }
 
-  private applyTexture(mat: THREE.MeshStandardMaterial, enabled: boolean) {
+  private applyTexture(mat: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial, enabled: boolean) {
       const mapId = mat.userData['mapId'];
-      if (mapId && this.textures.has(mapId)) {
-          mat.map = enabled ? this.textures.get(mapId)! : null;
+      if (mapId) {
+          const tex = this.getTexture(mapId); // Lazy load if enabled
+          if (!tex) return;
+
+          if (mapId.includes('screen') || mapId.includes('server')) {
+             mat.emissiveMap = enabled ? tex : null;
+             mat.map = enabled ? tex : null;
+             mat.emissiveIntensity = enabled ? 2.0 : 0.0;
+          } else {
+             mat.map = enabled ? tex : null;
+          }
           mat.needsUpdate = true;
       }
   }

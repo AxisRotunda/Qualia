@@ -15,6 +15,10 @@ export interface CharacterContext {
 export class CharacterPhysicsService {
   private physics = inject(PhysicsService);
 
+  // Approximate mass of the character + equipment in kg.
+  // Defines how much momentum is transferred during collisions.
+  private readonly VIRTUAL_MASS = 120.0; 
+
   private get world() {
     return this.physics.rWorld;
   }
@@ -28,26 +32,24 @@ export class CharacterPhysicsService {
       const rigidBody = this.world.createRigidBody(bodyDesc);
 
       // 2. Create Capsule Collider
-      // Rapier Capsule is Half-Height (segment half length) + Radius
-      // Total height = 2 * halfHeight + 2 * radius
-      // We want Total Height = height.
-      // 2 * hh = height - 2 * radius  => hh = (height/2) - radius
       const halfHeight = (height / 2) - radius;
       const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius)
-          .setFriction(0.0) // Character usually handles friction manually or via controller
+          .setFriction(0.0) 
           .setRestitution(0.0);
       
       const collider = this.world.createCollider(colliderDesc, rigidBody);
 
       // 3. Create Controller
-      const offset = 0.05; // Gap for collision detection
+      const offset = 0.05; 
       const controller = this.world.createCharacterController(offset);
       
       // Default settings
       controller.setUp({ x: 0.0, y: 1.0, z: 0.0 });
-      controller.setMaxSlopeClimbAngle(45 * Math.PI / 180);
+      controller.setMaxSlopeClimbAngle(50 * Math.PI / 180); // Increased to 50deg for steeper ramps
       controller.setMinSlopeSlideAngle(30 * Math.PI / 180);
-      controller.enableAutostep(0.3, 0.2, true);
+      
+      // Autostep: Increased max height to 0.5 to handle the 0.31m steps in the grand staircase
+      controller.enableAutostep(0.5, 0.2, true);
       controller.enableSnapToGround(0.3);
 
       return {
@@ -83,6 +85,34 @@ export class CharacterPhysicsService {
       };
       
       body.setNextKinematicTranslation(newPos);
+
+      // Interaction: Apply impulses to dynamic bodies we touched
+      this.applyInteractionImpulses(ctx, corrected, dt);
+  }
+
+  private applyInteractionImpulses(ctx: CharacterContext, movement: RAPIER.Vector, dt: number) {
+      const num = ctx.controller.numComputedCollisions();
+      for (let i = 0; i < num; i++) {
+          const collision = ctx.controller.computedCollision(i);
+          const otherCollider = this.world!.getCollider(collision.collider.handle);
+          if (otherCollider) {
+              const otherBody = otherCollider.parent();
+              // Only push dynamic bodies
+              if (otherBody && otherBody.isDynamic()) {
+                  // Hard Realism: Momentum Transfer
+                  const coupling = 50.0; // Increased coupling for better heavy object pushing
+                  
+                  const impulse = {
+                      x: movement.x * this.VIRTUAL_MASS * coupling,
+                      y: movement.y * this.VIRTUAL_MASS * coupling, 
+                      z: movement.z * this.VIRTUAL_MASS * coupling
+                  };
+                  
+                  otherBody.applyImpulse(impulse, true);
+                  otherBody.wakeUp();
+              }
+          }
+      }
   }
 
   isCharacterGrounded(ctx: CharacterContext): boolean {

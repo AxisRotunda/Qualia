@@ -1,0 +1,28 @@
+
+import * as THREE from 'three';
+import { TextureGeneratorService } from '../engine/graphics/texture-generator.service';
+
+export type TextureGenFn = (gen: TextureGeneratorService) => THREE.Texture;
+
+export const TEXTURE_DEFINITIONS: Record<string, TextureGenFn> = {
+    'tex-concrete': (gen) => gen.createNoiseTexture('#b0b0b0', 50, 1),
+    'tex-ground': (gen) => gen.createGridTexture('#0f172a', '#1e293b', 8, 8),
+    'tex-bark': (gen) => gen.createNoiseTexture('#3f2e26', 40, 1),
+    'tex-leaf': (gen) => gen.createNoiseTexture('#2f5c35', 60, 1),
+    'tex-rock': (gen) => gen.createNoiseTexture('#64748b', 50, 1),
+    'tex-snow': (gen) => gen.createNoiseTexture('#e2e8f0', 20, 2),
+    'tex-brick': (gen) => gen.createBrickTexture('#8B4513', '#5a2e15', 2),
+    'tex-ice': (gen) => gen.createIceTexture(),
+    'tex-water-normal': (gen) => gen.createWaterNormal(4),
+    'tex-station-floor': (gen) => gen.createGridTexture('#1e293b', '#334155', 4, 1),
+    'tex-scifi-panel': (gen) => gen.createGridTexture('#27272a', '#3f3f46', 2, 1),
+    'tex-hex-floor': (gen) => gen.createGridTexture('#18181b', '#0ea5e9', 8, 1),
+    'tex-marble': (gen) => gen.createMarbleTexture('#f8fafc', '#cbd5e1', 1),
+    'tex-carpet': (gen) => gen.createCarpetTexture('#7f1d1d', '#991b1b'),
+    'tex-fabric-gray': (gen) => gen.createNoiseTexture('#475569', 30, 2),
+    'tex-wood-dark': (gen) => gen.createNoiseTexture('#3f2418', 20, 1),
+    'tex-screen-matrix': (gen) => gen.createTechScreenCode('#000000', '#22c55e'),
+    'tex-screen-map': (gen) => gen.createTechScreenMap(),
+    'tex-server-rack': (gen) => gen.createServerRackTexture(),
+    'tex-linoleum': (gen) => gen.createNoiseTexture('#334155', 10, 2),
+};

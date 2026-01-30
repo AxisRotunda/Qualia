@@ -1,11 +1,13 @@
 
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
-import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { MaterialService } from './material.service';
 import { PhysicsBodyDef } from './physics.service';
 import { EnvironmentManagerService } from '../engine/graphics/environment-manager.service';
 import { VisualsFactoryService } from '../engine/graphics/visuals-factory.service';
+import { SelectionVisualsFactory } from '../engine/graphics/selection-visuals.factory';
+import { GizmoManagerService, GizmoConfig } from '../engine/graphics/gizmo-manager.service';
+import { RendererService } from '../engine/graphics/renderer.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,41 +16,37 @@ export class SceneService {
   private materialService = inject(MaterialService);
   private envManager = inject(EnvironmentManagerService);
   private visualsFactory = inject(VisualsFactoryService);
+  private selectionFactory = inject(SelectionVisualsFactory);
+  public gizmoManager = inject(GizmoManagerService);
+  private rendererService = inject(RendererService);
   
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
 
   // Tools
-  private selectionHelper: THREE.BoxHelper | null = null;
-  private transformControl: TransformControls | null = null;
+  private selectionMesh: THREE.Group | null = null;
   
-  // Signals
-  public readonly isDraggingGizmo = signal(false);
+  // Proxy signal
+  public get isDraggingGizmo() { return this.gizmoManager.isDraggingGizmo; }
 
   init(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
     
-    // Default Camera Setup
+    // Default Camera Setup - Wide FOV for immersion, Low Near Plane for scale detail
     this.camera = new THREE.PerspectiveCamera(
-      60, window.innerWidth / window.innerHeight, 0.1, 500
+      75, window.innerWidth / window.innerHeight, 0.05, 500
     );
     this.camera.position.set(0, 10, 20);
     this.camera.lookAt(0, 0, 0);
 
-    // Renderer Setup
-    this.renderer = new THREE.WebGLRenderer({ 
-      canvas, 
-      antialias: true,
-      powerPreference: 'high-performance',
-      logarithmicDepthBuffer: true
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Delegate Renderer Setup
+    this.rendererService.init(canvas);
 
     // Delegate Environment Setup
     this.envManager.init(this.scene);
+    
+    // Generate IBL for PBR
+    this.envManager.generateDefaultEnvironment(this.rendererService.pmremGenerator);
 
     // Ground Plane
     const groundGeo = new THREE.PlaneGeometry(200, 200);
@@ -59,22 +57,24 @@ export class SceneService {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    // Reference Grid
+    // Reference Grid - Lower opacity for realism
     const grid = new THREE.GridHelper(200, 100, 0x475569, 0x1e293b);
+    (grid.material as THREE.Material).opacity = 0.2;
+    (grid.material as THREE.Material).transparent = true;
     this.scene.add(grid);
 
-    // Gizmo / Transform Controls
-    this.transformControl = new TransformControls(this.camera, this.renderer.domElement);
-    this.transformControl.addEventListener('dragging-changed', (event: any) => {
-        this.isDraggingGizmo.set(event.value);
-    });
-    this.scene.add(this.transformControl);
+    // Initialize Gizmo Manager
+    this.gizmoManager.init(this.camera, this.rendererService.domElement, this.scene);
   }
 
   // --- Environment Delegates ---
 
-  setAtmosphere(preset: 'clear'|'fog'|'night'|'forest'|'ice') {
+  setAtmosphere(preset: 'clear'|'fog'|'night'|'forest'|'ice'|'space'|'city'|'blizzard') {
     this.envManager.setAtmosphere(preset);
+  }
+
+  setTimeOfDay(hour: number) {
+    this.envManager.setTimeOfDay(hour);
   }
 
   setLightSettings(settings: { ambientIntensity?: number; dirIntensity?: number; dirColor?: string }) {
@@ -84,7 +84,7 @@ export class SceneService {
   // --- Accessors ---
   getScene(): THREE.Scene { return this.scene; }
   getCamera(): THREE.PerspectiveCamera { return this.camera; }
-  getDomElement(): HTMLCanvasElement { return this.renderer.domElement; }
+  getDomElement(): HTMLCanvasElement { return this.rendererService.domElement; }
 
   // --- Object Management ---
 
@@ -96,45 +96,51 @@ export class SceneService {
   
   removeEntityVisual(mesh: THREE.Mesh) {
     this.scene.remove(mesh);
-    if (this.transformControl?.object === mesh) {
-        this.transformControl.detach();
+    // Detach gizmo if this was the selected object
+    if (this.gizmoManager.getControl()?.object === mesh) {
+        this.setSelection(null);
     }
     this.visualsFactory.disposeMesh(mesh);
   }
 
   setSelection(mesh: THREE.Mesh | null) {
-    if (this.selectionHelper) {
-      this.scene.remove(this.selectionHelper);
-      this.selectionHelper.dispose();
-      this.selectionHelper = null;
+    // 1. Clean up existing selection visual
+    if (this.selectionMesh) {
+      this.scene.remove(this.selectionMesh);
+      this.selectionFactory.dispose(this.selectionMesh);
+      this.selectionMesh = null;
     }
+
+    // 2. Setup new selection
     if (mesh) {
-      this.transformControl?.attach(mesh);
-      this.selectionHelper = new THREE.BoxHelper(mesh, 0x22d3ee);
-      this.scene.add(this.selectionHelper);
+      this.gizmoManager.attach(mesh);
+      this.selectionMesh = this.selectionFactory.createSelectionVisuals(mesh);
+      this.scene.add(this.selectionMesh);
     } else {
-      this.transformControl?.detach();
+      this.gizmoManager.detach();
     }
   }
 
   setTransformMode(mode: 'translate' | 'rotate' | 'scale') {
-      this.transformControl?.setMode(mode);
+     this.gizmoManager.setMode(mode);
+  }
+
+  setGizmoConfig(config: GizmoConfig) {
+     this.gizmoManager.setConfig(config);
   }
 
   updateSelectionHelper() {
-    this.selectionHelper?.update();
+    this.gizmoManager.updateSelectionHelper(this.selectionMesh);
   }
 
   // --- Rendering Lifecycle ---
   resize(width: number, height: number) {
-    if (!this.camera || !this.renderer) return;
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    if (!this.camera) return;
+    this.rendererService.resize(width, height, this.camera);
   }
 
   render() {
-    if (!this.renderer || !this.scene || !this.camera) return;
-    this.renderer.render(this.scene, this.camera);
+    if (!this.scene || !this.camera) return;
+    this.rendererService.render(this.scene, this.camera);
   }
 }

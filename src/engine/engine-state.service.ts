@@ -1,6 +1,7 @@
 
 import { Injectable, signal } from '@angular/core';
-import { CameraViewPreset } from '../services/camera-control.service';
+import { CameraViewPreset } from '../engine/controllers/camera-control.service';
+import { WeatherType } from '../services/particle.service';
 
 export interface DebugState {
     paused: boolean;
@@ -22,10 +23,19 @@ export class EngineStateService {
   readonly isPaused = signal(false);
   readonly mainMenuVisible = signal(true);
   
+  // UI State
+  readonly hudVisible = signal(true);
+  
   // World Settings
   readonly gravityY = signal(-9.81);
   readonly wireframe = signal(false);
   readonly texturesEnabled = signal(false);
+  readonly showPhysicsDebug = signal(false);
+  
+  // Environment State
+  readonly timeOfDay = signal(12); // 0-24
+  readonly weather = signal<WeatherType>('clear');
+  readonly atmosphere = signal('clear');
   
   // Interaction Modes
   readonly transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');

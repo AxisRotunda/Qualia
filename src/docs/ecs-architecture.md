@@ -1,3 +1,4 @@
+
 # ECS Architecture
 > **Scope**: Data Layer, Entity Lifecycle, Component Schema.
 > **Source**: `src/engine/core.ts`, `src/engine/entity-manager.service.ts`
@@ -9,13 +10,12 @@ The `World` class is a container for all game state. It holds a Set of active En
 
 ### 1.2 Entity
 Type: `number` (Opaque ID).
-Entities are simply keys used to look up data across Component Stores.
+Entities are keys used to look up data across Component Stores.
 
 ### 1.3 ComponentStore<T>
-A wrapper around `Map<Entity, T>`.
+Wrapper around `Map<Entity, T>`.
 *   **Access**: O(1) `get`, `has`, `add`, `remove`.
-*   **Iteration**: `forEach((val, entity) => void)`.
-*   **Memory**: Dynamic allocation (JavaScript Map). Not a fixed-size array buffer (for simplicity/flexibility over raw perf).
+*   **Memory**: Dynamic allocation.
 
 ## 2. Component Schema
 
@@ -24,42 +24,47 @@ A wrapper around `Map<Entity, T>`.
 | `transforms` | `Transform` | Canonical Position/Rotation/Scale. | **Saved** |
 | `rigidBodies` | `RigidBodyRef` | `{ handle: number }`. Link to Rapier. | Runtime |
 | `meshes` | `MeshRef` | `{ mesh: THREE.Mesh }`. Link to Three.js. | Runtime |
-| `bodyDefs` | `PhysicsBodyDef` | Config used to spawn the body. Used for reconstruction. | **Saved** |
-| `physicsProps` | `PhysicsProps` | `{ friction, restitution }`. Material logic. | **Saved** |
-| `names` | `string` | User-facing label in Scene Tree. | **Saved** |
-| `templateIds` | `string` | ID of the `EntityTemplate` used to spawn. | **Saved** |
+| `bodyDefs` | `PhysicsBodyDef` | Config used to spawn the body. | **Saved** |
+| `physicsProps` | `PhysicsProps` | `{ friction, restitution }`. | **Saved** |
+| `names` | `string` | User-facing label. | **Saved** |
+| `templateIds` | `string` | ID of the `EntityTemplate`. | **Saved** |
+
+### 2.1 PhysicsBodyDef Schema
+```typescript
+interface PhysicsBodyDef {
+  handle: number;
+  type: 'box' | 'sphere' | 'cylinder' | 'capsule' | 'cone' | 'trimesh' | 'convex-hull';
+  position: { x, y, z };
+  rotation: { x, y, z, w };
+  size?: { w, h, d };
+  radius?: number;
+  height?: number;
+  mass?: number;
+  lockRotation?: boolean; // New in v0.8.0
+}
+```
 
 ## 3. Entity Lifecycle
 
 ### 3.1 Creation (`createEntityFromDef`)
 1.  **Input**: `PhysicsBodyDef`, Visual Options, Name, TemplateID.
-2.  **Mesh Gen**: `MeshFactory` creates `THREE.Mesh` -> Added to Scene.
-3.  **ECS Entry**: `world.createEntity()` mints ID.
-4.  **Registration**: Components added to `transforms`, `rigidBodies`, `meshes`, `bodyDefs`, etc.
-5.  **Signal Update**: `objectCount` incremented.
+2.  **Mesh Gen**: `VisualsFactory` creates `THREE.Mesh` -> Scene.
+3.  **Physics Gen**: `PhysicsFactory` (if called via Lib) or Manual creation.
+4.  **ECS Entry**: `world.createEntity()`.
+5.  **Registration**: `physics.registerEntity(handle, id)` for Event mapping.
 
 ### 3.2 Duplication (`duplicateEntity`)
 1.  **Source**: Existing Entity ID.
-2.  **Read**: Fetches `bodyDef`, `transform`, `physicsProps` of source.
-3.  **Offset**: New position calculated (x + 1).
-4.  **Physics Gen**: `PhysicsFactory` creates new Rapier Body based on source Def.
-5.  **Scale**: Physics colliders scaled to match source transform scale.
-6.  **Lifecycle**: Calls `createEntityFromDef` with new body.
+2.  **Read**: `bodyDef`, `transform`, `physicsProps`, `templateId`.
+3.  **Recreate**: `PhysicsFactory.recreateBody` handles cloning logic (including convex hull fallback if geom missing).
+4.  **Scale**: Applies `updateBodyScale` to match source transform.
+5.  **Visuals**: Clones material properties (Color/Texture).
 
 ### 3.3 Destruction (`destroyEntity`)
-1.  **Cleanup Physics**: `PhysicsService.removeBody(handle)`.
-2.  **Cleanup Visuals**: `SceneService.removeMesh(mesh)`.
-3.  **Cleanup Data**: `world.destroyEntity(id)` removes all component entries.
-4.  **Signal Update**: `objectCount` decremented, `selectedEntity` cleared if match.
+1.  **Cleanup Physics**: `PhysicsService.removeBody`.
+2.  **Cleanup Visuals**: `SceneService.removeEntityVisual` (Disposes mesh).
+3.  **Cleanup Data**: `world.destroyEntity`.
 
 ## 4. Synchronization Pipeline
-The `EngineService` runs a loop that keeps ECS, Physics, and Visuals in sync.
-
-**Flow**:
-1.  **Physics Step**: Rapier world simulates one step.
-2.  **Sync (EntityManager.syncPhysicsTransforms)**:
-    *   Iterate `world.rigidBodies`.
-    *   **Get Pose**: `PhysicsService.getBodyPose(handle)`.
-    *   **Update ECS**: `world.transforms.set(pos, rot)`.
-    *   **Update Mesh**: `mesh.position.copy(pos)`, `mesh.quaternion.copy(rot)`.
-3.  **Edit Mode Exception**: If Gizmo is dragging, Visual Transform overrides Physics Transform.
+**System**: `EntityTransformSystem`.
+See [Runtime Architecture](./runtime-architecture.md) for sync logic details.
