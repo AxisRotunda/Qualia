@@ -3,7 +3,6 @@ import { Injectable, inject } from '@angular/core';
 import { EntityStoreService } from '../ecs/entity-store.service';
 import { PhysicsService } from '../../services/physics.service';
 import { SceneService } from '../../services/scene.service';
-import { SpatialHashService } from '../physics/spatial-hash.service';
 import { Entity } from '../core';
 
 @Injectable({
@@ -13,7 +12,9 @@ export class EntityTransformSystem {
   private entityStore = inject(EntityStoreService);
   private physics = inject(PhysicsService);
   private scene = inject(SceneService); 
-  private spatialHash = inject(SpatialHashService);
+  
+  // SpatialHashService removed from injection as it is currently unused in queries
+  // and adds overhead to the sync loop.
 
   // ECS <-> Physics Sync
   syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {
@@ -46,8 +47,7 @@ export class EntityTransformSystem {
                 meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
             }
 
-            // Update Spatial Hash for active entities
-            this.spatialHash.update(entity, x, y, z);
+            // SpatialHash update removed for performance (Dead code elimination)
         }
     });
   }
@@ -69,9 +69,6 @@ export class EntityTransformSystem {
               this.physics.world.updateBodyTransform(rb.handle, transform.position, transform.rotation);
               if (def) this.physics.shapes.updateBodyScale(rb.handle, def, transform.scale);
           }
-          
-          // Update Spatial Hash for manipulated entity
-          this.spatialHash.update(entity, transform.position.x, transform.position.y, transform.position.z);
       }
   }
 }

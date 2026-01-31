@@ -1,13 +1,15 @@
 
 # Physics Optimization Report
 > **Scope**: Performance tuning, Algorithm selection, Benchmark heuristics.
-> **Date**: Phase 2 Refactor.
+> **Date**: Phase 3 Refactor.
 
 ## 1. Bottlenecks Identified
 1.  **Trimesh Conversion**: `ShapesFactory` was converting heightfield data into explicit Triangle Meshes (`trimesh`). This caused massive memory bloat and slow collider build times for terrain chunks.
 2.  **Unfiltered Collisions**: Every dynamic object was checking collision against every other object, including small debris.
 3.  **Scaler Rebuilds**: Resizing an object caused a loss of optimization properties (collision groups) because they weren't persisted during the destroy-create cycle.
 4.  **GC Pressure in Sync Loop**: `PhysicsWorldService` was allocating 2 objects ({x,y,z}, {x,y,z,w}) per entity per frame during ECS synchronization.
+5.  **ECS Map Overhead (Phase 3)**: `ComponentStore` was using `Map<number, T>` for sparse lookups. For 1000+ entities, hashing overhead during the physics sync loop became measurable.
+6.  **Vestigial Spatial Hash (Phase 3)**: `SpatialHashService` was being updated for every active rigid body every frame, but was never queried by any active system.
 
 ## 2. Optimizations Implemented
 
@@ -31,6 +33,14 @@
 *   **Change**: Refactored `syncActiveBodies` to pass raw scalars (x,y,z,qx...) instead of Vector/Quaternion objects.
 *   **Impact**: Eliminated ~120,000 object allocations per second at 60FPS with 1000 entities.
 
+### 2.5 Sparse Set Array (Phase 3)
+*   **Change**: Replaced `Map<Entity, Index>` in `ComponentStore` with `Int32Array`.
+*   **Impact**: Replaced hashing lookups with direct memory access (O(1)). Eliminates Map iterator allocation overhead during internal operations.
+
+### 2.6 Dead Code Elimination (Phase 3)
+*   **Change**: Removed `SpatialHashService.update()` call from `EntityTransformSystem`.
+*   **Impact**: Saved ~1000 unnecessary grid calculation checks per frame.
+
 ## 3. Heuristic Uplift
 | Metric | Before | After | Notes |
 |--------|--------|-------|-------|
@@ -38,7 +48,8 @@
 | Debris (100 objs) | ~14ms step | ~4ms step | Collision group filtering. |
 | Memory (City) | High | Medium | Reduced vertex duplication in physics. |
 | GC Overhead | High | Low | Flattened sync loop arguments. |
+| ECS Access | Medium | Low | Int32Array vs Map lookup. |
 
 ## 4. Future Targets
 *   **Solver Iterations**: Expose solver iteration counts in `PhysicsOptimizer` to lower precision for background objects.
-*   **SoA ECS**: Move Transform storage to TypedArrays to improve `EntityTransformSystem` sync speed.
+*   **SoA ECS**: Move Transform storage to TypedArrays to improve `EntityTransformSystem` sync speed further (Data Locality).
