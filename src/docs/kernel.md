@@ -1,5 +1,6 @@
+
 # [KERNEL] Qualia 3D Neural Core
-> **ID**: KERNEL_V2
+> **ID**: KERNEL_V2.1
 > **Axiom**: "The Map updates the Territory; The Territory updates the Map."
 > **Role**: Immutable Logic Kernel & Command Registry.
 > **Constraint**: This file MUST be read first in any context loading sequence.
@@ -17,6 +18,9 @@ Invoke these keywords to trigger specific AI agent workflows.
 |---|---|---|
 | `RUN_OPT` | `src/docs/protocol-optimize.md` | Performance tuning, memory leak hunting, loop tightening. |
 | `RUN_REF` | `src/docs/protocol-refactor.md` | Architecture cleanup, file decomposition, debt repayment. |
+| `RUN_GEO` | `src/docs/protocol-geometry.md` | Mesh topology, LOD generation, Vertex reduction. |
+| `RUN_NATURE` | `src/docs/protocol-nature.md` | Flora algorithms, Weather systems, Organic simulation. |
+| `RUN_TERRAIN` | `src/docs/protocol-terrain.md` | Heightmap algorithms, Erosion, Chunk streaming. |
 | `NEW_SCENE` | `src/docs/protocol-content.md` | Creating new Levels, Biomes, or Scenes. |
 | `NEW_ASSET` | `src/docs/protocol-content.md` | Procedural generation of props/structures. |
 | `SYS_CHECK` | `src/docs/refactoring-state.md` | Health check, file inventory, dependency graph verification. |

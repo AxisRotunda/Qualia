@@ -18,19 +18,25 @@ export class VisibilityManagerService {
   // Spatial Partitioning for Static Objects
   private staticGrid = new SpatialGrid(32); // 32m chunks
   
-  // Linear List for Dynamic Objects (Characters, Vehicles, Debris)
-  private dynamicEntities = new Set<Entity>();
+  // Optimization: Use Array instead of Set for faster iteration in hot loop
+  private dynamicEntities: Entity[] = [];
+  private dynamicEntityIndices = new Int32Array(10000).fill(-1); 
 
   // Config
   private readonly CULL_DIST = 150; 
   private readonly CULL_DIST_SQ = this.CULL_DIST * this.CULL_DIST;
-  private readonly UPDATE_THRESHOLD = 2.0; // Meters moved before re-culling static
+  private readonly UPDATE_THRESHOLD = 2.0;
 
   // State
   private lastUpdatePos = new THREE.Vector3(Infinity, Infinity, Infinity);
   
   // Cache the visible set to compare against
   private visibleSet = new Set<Entity>();
+
+  // Scratch Context for Query Callbacks (Zero-Allocation)
+  private _queryCamPos = new THREE.Vector3();
+  private _queryDistSq = 0;
+  private _scratchPos = { x: 0, y: 0, z: 0 };
 
   constructor() {
       this.lifecycle.onEntityCreated.subscribe(e => this.handleCreation(e));
@@ -46,19 +52,20 @@ export class VisibilityManagerService {
         this.staticGrid.insert(entity, t.position.x, t.position.z);
       }
     } else {
-      this.dynamicEntities.add(entity);
+      this.addDynamic(entity);
     }
   }
 
   private handleDestruction(entity: Entity) {
     this.staticGrid.remove(entity);
-    this.dynamicEntities.delete(entity);
+    this.removeDynamic(entity);
     this.visibleSet.delete(entity);
   }
 
   private reset() {
     this.staticGrid.clear();
-    this.dynamicEntities.clear();
+    this.dynamicEntities.length = 0;
+    this.dynamicEntityIndices.fill(-1);
     this.visibleSet.clear();
     this.lastUpdatePos.set(Infinity, Infinity, Infinity);
   }
@@ -68,7 +75,6 @@ export class VisibilityManagerService {
     const camPos = cam.position;
     
     // 1. Check if we need to update Static Culling
-    // Only update static objects if camera moved significantly
     const distMoved = camPos.distanceTo(this.lastUpdatePos);
     const updateStatic = distMoved > this.UPDATE_THRESHOLD;
 
@@ -86,17 +92,18 @@ export class VisibilityManagerService {
   private cullStatic(camPos: THREE.Vector3) {
     // A. Prune current visible static
     for (const entity of this.visibleSet) {
-        // Skip dynamic (handled elsewhere)
-        if (this.dynamicEntities.has(entity)) continue;
+        if (this.isDynamic(entity)) continue;
         
-        const t = this.entityStore.world.transforms.get(entity);
-        if (!t) {
+        // Optimized check: Use copyPosition to avoid object allocation
+        if (!this.entityStore.world.transforms.has(entity)) {
             this.visibleSet.delete(entity);
             continue;
         }
         
-        const dx = t.position.x - camPos.x;
-        const dz = t.position.z - camPos.z;
+        this.entityStore.world.transforms.copyPosition(entity, this._scratchPos);
+        
+        const dx = this._scratchPos.x - camPos.x;
+        const dz = this._scratchPos.z - camPos.z;
         if ((dx*dx + dz*dz) > this.CULL_DIST_SQ) {
             this.setVisible(entity, false);
             this.visibleSet.delete(entity);
@@ -104,27 +111,33 @@ export class VisibilityManagerService {
     }
 
     // B. Query Grid & Add new visible
-    // Uses callback to avoid allocating a candidate Set
-    this.staticGrid.query(camPos.x, camPos.z, this.CULL_DIST, (entity) => {
-        if (this.visibleSet.has(entity)) return; // Already processed
+    this._queryCamPos.copy(camPos);
+    this._queryDistSq = this.CULL_DIST_SQ;
 
-        const t = this.entityStore.world.transforms.get(entity);
-        if (!t) return;
-        
-        const dx = t.position.x - camPos.x;
-        const dz = t.position.z - camPos.z;
-        if ((dx*dx + dz*dz) <= this.CULL_DIST_SQ) {
-            this.setVisible(entity, true);
-            this.visibleSet.add(entity);
-        }
-    });
+    this.staticGrid.query(camPos.x, camPos.z, this.CULL_DIST, this.onStaticQueryHit);
+  }
+
+  private onStaticQueryHit = (entity: number): void => {
+      if (this.visibleSet.has(entity)) return;
+
+      if (!this.entityStore.world.transforms.has(entity)) return;
+      
+      this.entityStore.world.transforms.copyPosition(entity, this._scratchPos);
+      
+      const dx = this._scratchPos.x - this._queryCamPos.x;
+      const dz = this._scratchPos.z - this._queryCamPos.z;
+      
+      if ((dx*dx + dz*dz) <= this._queryDistSq) {
+          this.setVisible(entity, true);
+          this.visibleSet.add(entity);
+      }
   }
 
   private cullDynamic(camPos: THREE.Vector3) {
-      for (const entity of this.dynamicEntities) {
-          const t = this.entityStore.world.transforms.get(entity);
-          if (!t) continue;
-
+      const len = this.dynamicEntities.length;
+      for (let i = 0; i < len; i++) {
+          const entity = this.dynamicEntities[i];
+          
           // Always show selected
           if (this.entityStore.selectedEntity() === entity) {
               this.setVisible(entity, true);
@@ -132,7 +145,15 @@ export class VisibilityManagerService {
               continue;
           }
 
-          const distSq = camPos.distanceToSquared(t.position as any);
+          if (!this.entityStore.world.transforms.has(entity)) continue;
+          
+          this.entityStore.world.transforms.copyPosition(entity, this._scratchPos);
+
+          const dx = this._scratchPos.x - camPos.x;
+          const dy = this._scratchPos.y - camPos.y;
+          const dz = this._scratchPos.z - camPos.z;
+          const distSq = dx*dx + dy*dy + dz*dz;
+          
           const isVisible = distSq <= this.CULL_DIST_SQ;
           
           this.setVisible(entity, isVisible);
@@ -145,6 +166,51 @@ export class VisibilityManagerService {
       const meshRef = this.entityStore.world.meshes.get(entity);
       if (meshRef) {
           meshRef.mesh.visible = visible;
+      }
+  }
+
+  // --- Dynamic Array Management ---
+
+  private addDynamic(entity: Entity) {
+      this.ensureCapacity(entity);
+      if (this.dynamicEntityIndices[entity] !== -1) return; 
+
+      const idx = this.dynamicEntities.length;
+      this.dynamicEntities.push(entity);
+      this.dynamicEntityIndices[entity] = idx;
+  }
+
+  private removeDynamic(entity: Entity) {
+      if (entity >= this.dynamicEntityIndices.length) return;
+      
+      const idx = this.dynamicEntityIndices[entity];
+      if (idx === -1) return;
+
+      const lastIdx = this.dynamicEntities.length - 1;
+      const lastEntity = this.dynamicEntities[lastIdx];
+
+      if (idx !== lastIdx) {
+          this.dynamicEntities[idx] = lastEntity;
+          this.dynamicEntityIndices[lastEntity] = idx;
+      }
+
+      this.dynamicEntities.pop();
+      this.dynamicEntityIndices[entity] = -1;
+  }
+
+  private isDynamic(entity: Entity): boolean {
+      if (entity >= this.dynamicEntityIndices.length) return false;
+      return this.dynamicEntityIndices[entity] !== -1;
+  }
+
+  private ensureCapacity(entityId: number) {
+      if (entityId >= this.dynamicEntityIndices.length) {
+          let newSize = this.dynamicEntityIndices.length;
+          while (newSize <= entityId) newSize *= 2;
+          
+          const newArr = new Int32Array(newSize).fill(-1);
+          newArr.set(this.dynamicEntityIndices);
+          this.dynamicEntityIndices = newArr;
       }
   }
 }

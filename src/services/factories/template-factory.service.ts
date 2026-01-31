@@ -26,7 +26,7 @@ export class TemplateFactoryService {
   private shapesFactory = inject(ShapesFactory);
 
   spawn(
-      entityMgr: any, // Typed as any to avoid circular imports in some contexts, effectively EntityStore
+      entityMgr: EntityStoreService, 
       template: EntityTemplate, 
       position: THREE.Vector3, 
       rotation?: THREE.Quaternion, 
@@ -86,8 +86,7 @@ export class TemplateFactoryService {
     );
 
     // 8. Store Physics Props in ECS
-    const store = (entityMgr as EntityStoreService); 
-    if (store && store.world) {
+    if (entityMgr && entityMgr.world) {
         // Resolve Density for Hard Realism Buoyancy
         let density = 1000; // Default water-like
         if (template.physicsMaterial) {
@@ -95,7 +94,7 @@ export class TemplateFactoryService {
             density = matData.density;
         }
 
-        store.world.physicsProps.add(entity, { 
+        entityMgr.world.physicsProps.add(entity, { 
             friction: template.friction, 
             restitution: template.restitution,
             density: density
@@ -104,9 +103,9 @@ export class TemplateFactoryService {
 
     // 9. Handle Post-Spawn Scaling
     if (options?.scale && options.scale !== 1) {
-        const t = store.world.transforms.get(entity);
-        const def = store.world.bodyDefs.get(entity);
-        const rb = store.world.rigidBodies.get(entity);
+        const t = entityMgr.world.transforms.get(entity);
+        const def = entityMgr.world.bodyDefs.get(entity);
+        const rb = entityMgr.world.rigidBodies.get(entity);
         if (t && def && rb) {
             t.scale = { x: options.scale, y: options.scale, z: options.scale };
             this.shapesFactory.updateBodyScale(rb.handle, def, t.scale);

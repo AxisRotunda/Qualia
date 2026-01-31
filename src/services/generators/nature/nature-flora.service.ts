@@ -8,13 +8,14 @@ import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
 })
 export class NatureFloraService {
   
-  // Recursive Tree Generation with Organic Noise
-  generateTree(): THREE.BufferGeometry | null {
+  // Recursive Tree Generation with Organic Noise & Complexity Scalar
+  generateTree(complexity: number = 1.0): THREE.BufferGeometry | null {
     const branches: THREE.BufferGeometry[] = [];
     const foliage: THREE.BufferGeometry[] = [];
 
-    // Configuration
-    const maxDepth = 3;
+    // Configuration derived from Complexity
+    // High complexity = 3 recursion depth, Low = 2
+    const maxDepth = complexity > 0.8 ? 3 : 2;
     const trunkRadius = 0.3;
     const trunkLength = 1.8;
     
@@ -26,37 +27,35 @@ export class NatureFloraService {
         radius: number, 
         depth: number
     ) => {
-        // Create Geometry - Convert to Non-Indexed to guarantee safe merging
-        // Increased radial segments for better noise displacement
-        let geo: THREE.BufferGeometry = new THREE.CylinderGeometry(radius * 0.7, radius, length, 8, 5);
+        // LOD for segments: High complexity = 8, Low = 5
+        const radialSegs = complexity > 0.5 ? 8 : 5;
+        
+        let geo: THREE.BufferGeometry = new THREE.CylinderGeometry(radius * 0.7, radius, length, radialSegs, 1);
         geo = geo.toNonIndexed(); 
         
         // Pivot to Base
         geo.translate(0, length / 2, 0);
         
-        // Apply Organic Noise (Knobbly Bark & Taper)
-        const pos = geo.getAttribute('position');
-        const v = new THREE.Vector3();
-        for(let i=0; i<pos.count; i++) {
-            v.fromBufferAttribute(pos, i);
-            
-            // Skip the very bottom vertices (y=0) to keep connection clean
-            if (v.y > 0.1) {
-                // High frequency bark noise
-                const barkNoise = Math.sin(v.y * 12) * Math.cos(v.x * 12) * 0.03;
-                // Low frequency trunk swell
-                const swell = Math.sin(v.y * 2) * 0.05;
+        // Apply Organic Noise (Only at high complexity)
+        if (complexity > 0.5) {
+            const pos = geo.getAttribute('position');
+            const v = new THREE.Vector3();
+            for(let i=0; i<pos.count; i++) {
+                v.fromBufferAttribute(pos, i);
                 
-                v.x += barkNoise + swell;
-                v.z += barkNoise + swell;
-                
-                // Irregularity
-                v.x += (Math.random()-0.5) * radius * 0.1;
-                v.z += (Math.random()-0.5) * radius * 0.1;
+                // Skip the very bottom vertices to keep connection clean
+                if (v.y > 0.1) {
+                    const barkNoise = Math.sin(v.y * 12) * Math.cos(v.x * 12) * 0.03;
+                    const swell = Math.sin(v.y * 2) * 0.05;
+                    v.x += barkNoise + swell;
+                    v.z += barkNoise + swell;
+                    v.x += (Math.random()-0.5) * radius * 0.1;
+                    v.z += (Math.random()-0.5) * radius * 0.1;
+                }
+                pos.setXYZ(i, v.x, v.y, v.z);
             }
-            pos.setXYZ(i, v.x, v.y, v.z);
+            geo.computeVertexNormals();
         }
-        geo.computeVertexNormals();
 
         // Align to direction
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
@@ -70,13 +69,15 @@ export class NatureFloraService {
 
         // Leaf clusters at terminals or high depth
         if (depth >= maxDepth - 1) {
-            // Flattened Dodecahedron for fuller foliage
-            let leafGeo: THREE.BufferGeometry = new THREE.DodecahedronGeometry(0.6 + Math.random() * 0.4, 0);
+            // Low poly foliage for low complexity
+            let leafGeo: THREE.BufferGeometry;
+            if (complexity > 0.5) {
+                leafGeo = new THREE.DodecahedronGeometry(0.6 + Math.random() * 0.4, 0);
+            } else {
+                leafGeo = new THREE.BoxGeometry(1, 0.5, 1); // Cheaper box for distance
+            }
             leafGeo = leafGeo.toNonIndexed();
-            
-            // Squish y axis to make it feel like a canopy layer
             leafGeo.scale(1.2, 0.6, 1.2);
-            
             leafGeo.translate(endPos.x, endPos.y, endPos.z);
             leafGeo.rotateY(Math.random() * Math.PI);
             foliage.push(leafGeo);
@@ -84,7 +85,11 @@ export class NatureFloraService {
 
         // Recursion
         if (depth < maxDepth) {
-            const numBranches = 2 + Math.floor(Math.random() * 2); 
+            // Branch count reduced at low complexity
+            const minB = complexity > 0.5 ? 2 : 1;
+            const maxB = complexity > 0.5 ? 2 : 1;
+            const numBranches = minB + Math.floor(Math.random() * maxB); 
+            
             for (let i = 0; i < numBranches; i++) {
                 const angleX = (Math.random() - 0.5) * 1.5; 
                 const angleZ = (Math.random() - 0.5) * 1.5;
@@ -201,7 +206,7 @@ export class NatureFloraService {
           const v = new THREE.Vector3();
           for(let k=0; k<pos.count; k++) {
               v.fromBufferAttribute(pos, k);
-              const scale = 1 + (Math.random() - 0.5) * 0.1; // Rough bark
+              // Rough bark
               v.x += (Math.random()-0.5)*0.05;
               v.z += (Math.random()-0.5)*0.05;
               pos.setXYZ(k, v.x, v.y, v.z);

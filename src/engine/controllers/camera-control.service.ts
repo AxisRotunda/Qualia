@@ -1,7 +1,8 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GameInputService } from '../../services/game-input.service';
 
 export type CameraViewPreset = 'top' | 'front' | 'side';
 
@@ -15,6 +16,8 @@ export interface CameraTweenConfig {
   providedIn: 'root'
 })
 export class CameraControlService {
+  private gameInput = inject(GameInputService);
+
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   
@@ -26,6 +29,12 @@ export class CameraControlService {
   private startTarget = new THREE.Vector3();
   private endPos = new THREE.Vector3();
   private endTarget = new THREE.Vector3();
+
+  // Scratch vectors for Zero-Allocation loop
+  private readonly _vRight = new THREE.Vector3();
+  private readonly _vUp = new THREE.Vector3();
+  private readonly _vOffset = new THREE.Vector3();
+  private readonly _spherical = new THREE.Spherical();
 
   init(camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement) {
     this.camera = camera;
@@ -63,14 +72,18 @@ export class CameraControlService {
             this.isTransitioning = false;
             this.controls.enabled = true;
         }
-    } else if (this.controls) {
+    } else if (this.controls && this.controls.enabled) {
+        // Poll Virtual Inputs autonomously
+        this.processVirtualInput();
         this.controls.update();
     }
   }
 
-  // Called by InputManager to pipe virtual inputs
-  updateInput(moveDelta: {x: number, y: number}, lookDelta: {x: number, y: number}) {
+  private processVirtualInput() {
      if (!this.controls || !this.camera || !this.controls.enabled || this.isTransitioning) return;
+
+     const moveDelta = this.gameInput.virtualMove;
+     const lookDelta = this.gameInput.virtualLook;
 
      // If no input, just return (Damping continues in update)
      if (moveDelta.x === 0 && moveDelta.y === 0 && lookDelta.x === 0 && lookDelta.y === 0) return;
@@ -81,40 +94,40 @@ export class CameraControlService {
 
      // 1. Pan (Left Joystick)
      if (Math.abs(moveDelta.x) > 0.01 || Math.abs(moveDelta.y) > 0.01) {
-         const offset = new THREE.Vector3();
+         this._vOffset.set(0, 0, 0);
          
          // Get Camera Basis
-         const vRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-         const vUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+         this._vRight.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+         this._vUp.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
          
          // Project to view plane logic for Pan
-         offset.addScaledVector(vRight, moveDelta.x * panSpeed);
+         this._vOffset.addScaledVector(this._vRight, moveDelta.x * panSpeed);
          
          // Normally Pan Up moves camera Up. 
          // Joy Up (+1) -> moveDelta.y is +1.
          // We want camera to move Up (so world goes down).
-         offset.addScaledVector(vUp, moveDelta.y * panSpeed);
+         this._vOffset.addScaledVector(this._vUp, moveDelta.y * panSpeed);
          
-         this.camera.position.add(offset);
-         this.controls.target.add(offset);
+         this.camera.position.add(this._vOffset);
+         this.controls.target.add(this._vOffset);
      }
 
      // 2. Orbit (Right Joystick)
      if (Math.abs(lookDelta.x) > 0.01 || Math.abs(lookDelta.y) > 0.01) {
-         const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
-         const spherical = new THREE.Spherical().setFromVector3(offset);
+         this._vOffset.subVectors(this.camera.position, this.controls.target);
+         this._spherical.setFromVector3(this._vOffset);
          
-         spherical.theta -= lookDelta.x * rotateSpeed;
-         spherical.phi -= lookDelta.y * rotateSpeed;
+         this._spherical.theta -= lookDelta.x * rotateSpeed;
+         this._spherical.phi -= lookDelta.y * rotateSpeed;
          
-         spherical.makeSafe();
+         this._spherical.makeSafe();
          
-         spherical.phi = Math.max(0, Math.min(Math.PI / 1.95, spherical.phi)); 
-         spherical.radius = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, spherical.radius));
+         this._spherical.phi = Math.max(0, Math.min(Math.PI / 1.95, this._spherical.phi)); 
+         this._spherical.radius = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, this._spherical.radius));
 
-         offset.setFromSpherical(spherical);
+         this._vOffset.setFromSpherical(this._spherical);
          
-         this.camera.position.copy(this.controls.target).add(offset);
+         this.camera.position.copy(this.controls.target).add(this._vOffset);
          this.camera.lookAt(this.controls.target);
      }
   }
@@ -146,10 +159,11 @@ export class CameraControlService {
     
     this.controls.target.copy(target);
     
-    const currentOffset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize();
-    if (currentOffset.lengthSq() < 0.1) currentOffset.set(0, 0.5, 1).normalize();
+    // Reuse scratch for calculation
+    this._vOffset.subVectors(this.camera.position, this.controls.target).normalize();
+    if (this._vOffset.lengthSq() < 0.1) this._vOffset.set(0, 0.5, 1).normalize();
     
-    const offset = currentOffset.multiplyScalar(distance);
+    const offset = this._vOffset.multiplyScalar(distance);
     this.camera.position.copy(target).add(offset);
     this.camera.lookAt(target);
   }

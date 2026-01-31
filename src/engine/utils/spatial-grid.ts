@@ -1,7 +1,8 @@
 
 export class SpatialGrid {
   // Use number (packed int) instead of string for zero-allocation keys
-  private cells = new Map<number, Set<number>>();
+  // Optimization: Use Array instead of Set for faster iteration (Data Locality)
+  private cells = new Map<number, number[]>();
   private entityCellMap = new Map<number, number>();
 
   constructor(private cellSize: number = 20) {}
@@ -21,11 +22,11 @@ export class SpatialGrid {
     
     let cell = this.cells.get(key);
     if (!cell) {
-      cell = new Set();
+      cell = [];
       this.cells.set(key, cell);
     }
     
-    cell.add(id);
+    cell.push(id);
     this.entityCellMap.set(id, key);
   }
 
@@ -35,8 +36,15 @@ export class SpatialGrid {
 
     const cell = this.cells.get(key);
     if (cell) {
-      cell.delete(id);
-      if (cell.size === 0) {
+      // Swap-and-Pop Removal (O(1))
+      const idx = cell.indexOf(id);
+      if (idx !== -1) {
+          const last = cell[cell.length - 1];
+          cell[idx] = last;
+          cell.pop();
+      }
+
+      if (cell.length === 0) {
         this.cells.delete(key);
       }
     }
@@ -60,8 +68,10 @@ export class SpatialGrid {
         const key = (cx & 0xFFFF) | ((cz & 0xFFFF) << 16);
         const cell = this.cells.get(key);
         if (cell) {
-          for (const id of cell) {
-            callback(id);
+          // Iterate Array (Fast)
+          const len = cell.length;
+          for (let i = 0; i < len; i++) {
+            callback(cell[i]);
           }
         }
       }

@@ -30,16 +30,24 @@ export class InteriorStructureService {
       const stepParts: THREE.BufferGeometry[] = [];
       const structureParts: THREE.BufferGeometry[] = [];
 
+      // Optimization: Create base geometry templates once and clone
+      const baseStep = new THREE.BoxGeometry(width, stepHeight * 0.8, stepDepth + 0.05);
+      const baseRiser = new THREE.BoxGeometry(width, stepHeight, 0.05);
+
       // Steps
       for(let i=0; i<steps; i++) {
-          const s = new THREE.BoxGeometry(width, stepHeight * 0.8, stepDepth + 0.05);
+          const s = baseStep.clone();
           s.translate(0, (i * stepHeight) + (stepHeight*0.4), -(i * stepDepth) - stepDepth/2);
           stepParts.push(s);
 
-          const riser = new THREE.BoxGeometry(width, stepHeight, 0.05);
+          const riser = baseRiser.clone();
           riser.translate(0, (i * stepHeight) + stepHeight/2, -(i * stepDepth));
           structureParts.push(riser);
       }
+      
+      // Cleanup templates
+      baseStep.dispose();
+      baseRiser.dispose();
 
       // Stringers
       const stringerW = 0.2;

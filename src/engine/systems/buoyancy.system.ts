@@ -11,6 +11,11 @@ export class BuoyancySystem {
   private physicsService = inject(PhysicsService);
   private entityStore = inject(EntityStoreService);
 
+  // Optimization: Scratch objects for Rapier impulse/torque
+  // Rapier takes {x: number, y: number, z: number}, so we reuse these containers
+  private readonly _impulse = { x: 0, y: 0, z: 0 };
+  private readonly _torque = { x: 0, y: 0, z: 0 };
+
   // CPU Wave Calculation using Shared Config
   getWaveHeight(x: number, z: number, time: number): number {
       const c = WATER_CONFIG;
@@ -92,7 +97,11 @@ export class BuoyancySystem {
           const avgForce = totalBuoyantForceY / substeps;
           if (avgForce > 0) {
               const impulse = avgForce * dt;
-              body.applyImpulse({ x: 0, y: impulse, z: 0 }, true);
+              
+              this._impulse.x = 0;
+              this._impulse.y = impulse;
+              this._impulse.z = 0;
+              body.applyImpulse(this._impulse, true);
 
               // Hydrodynamic Drag (Simplistic linear drag based on current velocity)
               // Only apply drag if submerged (avgForce > 0 implies at least partially submerged)
@@ -102,20 +111,22 @@ export class BuoyancySystem {
                   const area = Math.pow(volumeTotal, 0.66); 
                   const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * dt; 
                   
-                  body.applyImpulse({ 
-                      x: -vel.x / speed * dragFactor, 
-                      y: -vel.y / speed * dragFactor, 
-                      z: -vel.z / speed * dragFactor 
-                  }, true);
+                  this._impulse.x = -vel.x / speed * dragFactor;
+                  this._impulse.y = -vel.y / speed * dragFactor;
+                  this._impulse.z = -vel.z / speed * dragFactor;
+                  
+                  body.applyImpulse(this._impulse, true);
               }
               
               // Angular Drag
               const ang = body.angvel();
-              body.applyTorqueImpulse({
-                  x: -ang.x * 0.02 * mass * (dt * 60), 
-                  y: -ang.y * 0.02 * mass * (dt * 60),
-                  z: -ang.z * 0.02 * mass * (dt * 60)
-              }, true);
+              const factor = 0.02 * mass * (dt * 60);
+              
+              this._torque.x = -ang.x * factor;
+              this._torque.y = -ang.y * factor;
+              this._torque.z = -ang.z * factor;
+              
+              body.applyTorqueImpulse(this._torque, true);
           }
       });
   }

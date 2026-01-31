@@ -4,6 +4,7 @@ import { EngineStateService } from '../engine-state.service';
 import { SceneRegistryService } from '../../services/scene-registry.service';
 import { AssetService } from '../../services/asset.service';
 import { yieldToMain, wait } from '../utils/thread.utils';
+import type { EngineService } from '../../services/engine.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,7 @@ export class SceneLoaderService {
   private sceneRegistry = inject(SceneRegistryService);
   private assetService = inject(AssetService);
 
-  async load(engineContext: any, sceneId: string): Promise<boolean> {
+  async load(engine: EngineService, sceneId: string): Promise<boolean> {
     const preset = this.sceneRegistry.getPreset(sceneId);
     if (!preset) {
       console.error(`SceneLoader: Preset '${sceneId}' not found.`);
@@ -44,7 +45,7 @@ export class SceneLoaderService {
       this.state.loadingProgress.set(50);
       this.state.loadingStage.set('INITIALIZING WORLD');
       
-      await this.sceneRegistry.loadScene(engineContext, sceneId);
+      await this.sceneRegistry.loadScene(engine, sceneId);
       
       return true;
     } catch (err) {

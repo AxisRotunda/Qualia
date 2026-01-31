@@ -91,6 +91,17 @@ export const NOISE_FUNCTIONS = `
         return n * 12.0 + ripples; 
     }
 
+    // --- Biome Logic (Self-Optimizing Protocol) ---
+    // Returns mixture weights. [0] = Mountains, [1] = Plains
+    function getBiome(x, z) {
+        // Large scale noise for biome transitions (e.g. 500m)
+        const scale = 0.002; 
+        const val = noise(x * scale, z * scale);
+        // Smoothstep for sharper transition
+        const t = val * val * (3 - 2 * val); 
+        return t; // 0 = Plains, 1 = Mountains
+    }
+
     function getHeight(x, z, type) {
         if (type === 'dunes') {
             const distSq = x*x + z*z;
@@ -109,8 +120,23 @@ export const NOISE_FUNCTIONS = `
                 }
             }
             return h;
+        } else if (type === 'biome') {
+            // Mixed Terrain Logic
+            const mix = getBiome(x, z);
+            
+            // 1. Plains (Low FBM)
+            const hPlains = fbm(x * 0.01, z * 0.01, 3) * 5.0;
+            
+            // 2. Mountains (Warped Ridges)
+            const hMount = warp(x * 0.015, z * 0.015);
+            const hMountScaled = (hMount - 0.5) * 2.0; 
+            const hMountFinal = Math.sign(hMountScaled) * Math.pow(Math.abs(hMountScaled), 1.2) * 40;
+
+            // Blend
+            return (hPlains * (1.0 - mix)) + (hMountFinal * mix);
+
         } else {
-            // Hard Realism: Glacial/Rocky
+            // Hard Realism: Glacial/Rocky (Standard)
             const scale = 0.015; // Slightly larger scale features
             const nx = x * scale;
             const nz = z * scale;

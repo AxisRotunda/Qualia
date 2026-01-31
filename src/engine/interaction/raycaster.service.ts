@@ -73,16 +73,13 @@ export class RaycasterService {
     this.updateLookupCache();
     
     // Raycast against the Entity Group directly.
-    // This allows Three.js to optimize spatial checks if it implements BVH internally (or we add it later).
-    // It avoids us allocating a new array of objects every frame.
     const intersects = this.raycaster.intersectObjects(this.sceneGraph.entityGroup.children, true);
     
-    // Filter visible only
-    const visibleHits = intersects.filter(h => h.object.visible);
+    // Optimization: Use .find() instead of .filter() to avoid allocating a new array
+    // intersectObjects returns results sorted by distance, so the first visible one is the closest.
+    const hit = intersects.find(h => h.object.visible);
 
-    if (visibleHits.length > 0) {
-        const hit = visibleHits[0];
-        
+    if (hit) {
         if (hit.object instanceof THREE.InstancedMesh && hit.instanceId !== undefined) {
             return this.instancedService.getEntityId(hit.object, hit.instanceId);
         }
@@ -99,10 +96,9 @@ export class RaycasterService {
       
       // Check entities first
       const intersects = this.raycaster.intersectObjects(this.sceneGraph.entityGroup.children, true);
-      const visibleHits = intersects.filter(h => h.object.visible);
+      const hit = intersects.find(h => h.object.visible);
 
-      if (visibleHits.length > 0) {
-          const hit = visibleHits[0];
+      if (hit) {
           let entity: Entity | null = null;
 
           if (hit.object instanceof THREE.InstancedMesh && hit.instanceId !== undefined) {

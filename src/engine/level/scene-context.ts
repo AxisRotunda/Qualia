@@ -78,8 +78,9 @@ export class SceneContext {
 
   private applyModification(entity: Entity, props: ModifyProps) {
       const store = this.engine.entityMgr;
-      const t = store.world.transforms.get(entity);
-      if (!t) return;
+      
+      // We check existence
+      if (!store.world.transforms.has(entity)) return;
 
       // 1. Handle Scale (Requires Physics Rebuild)
       if (props.scale !== undefined) {
@@ -88,31 +89,40 @@ export class SceneContext {
               : props.scale;
           
           // Update ECS
-          t.scale = { ...s };
+          store.world.transforms.setScale(entity, s.x, s.y, s.z);
           
           // Update Physics Collider
           const rb = store.world.rigidBodies.get(entity);
           const def = store.world.bodyDefs.get(entity);
           if (rb && def) {
-              this.engine.sys.physicsFactory['shapes'].updateBodyScale(rb.handle, def, t.scale);
+              this.engine.sys.physicsFactory['shapes'].updateBodyScale(rb.handle, def, s);
           }
       }
 
       // 2. Handle Transform (Position / Rotation)
       let updatePhysicsTransform = false;
+      let pos = { x: 0, y: 0, z: 0 };
+      let rot = { x: 0, y: 0, z: 0, w: 1 };
+      
+      // Get current values first (Snapshot)
+      const current = store.world.transforms.get(entity)!;
+      pos = { ...current.position };
+      rot = { ...current.rotation };
 
       if (props.position) {
-          t.position = { ...props.position };
+          pos = { ...props.position };
+          store.world.transforms.setPosition(entity, pos.x, pos.y, pos.z);
           updatePhysicsTransform = true;
       }
 
       if (props.rotation) {
           if (props.rotation instanceof THREE.Euler) {
               const q = new THREE.Quaternion().setFromEuler(props.rotation);
-              t.rotation = { x: q.x, y: q.y, z: q.z, w: q.w };
+              rot = { x: q.x, y: q.y, z: q.z, w: q.w };
           } else {
-              t.rotation = { x: props.rotation.x, y: props.rotation.y, z: props.rotation.z, w: props.rotation.w };
+              rot = { x: props.rotation.x, y: props.rotation.y, z: props.rotation.z, w: props.rotation.w };
           }
+          store.world.transforms.setRotation(entity, rot.x, rot.y, rot.z, rot.w);
           updatePhysicsTransform = true;
       }
 
@@ -120,16 +130,19 @@ export class SceneContext {
       if (updatePhysicsTransform) {
           const rb = store.world.rigidBodies.get(entity);
           if (rb) {
-              this.engine.physicsService.world.updateBodyTransform(rb.handle, t.position, t.rotation);
+              this.engine.physicsService.world.updateBodyTransform(rb.handle, pos, rot);
           }
       }
 
       // 3. Sync Visuals Immediately (Avoids 1-frame lag)
       const meshRef = store.world.meshes.get(entity);
       if (meshRef) {
-          meshRef.mesh.position.set(t.position.x, t.position.y, t.position.z);
-          meshRef.mesh.quaternion.set(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w);
-          meshRef.mesh.scale.set(t.scale.x, t.scale.y, t.scale.z);
+          // Re-read scale as it might have changed in step 1
+          const updated = store.world.transforms.get(entity)!;
+          
+          meshRef.mesh.position.set(pos.x, pos.y, pos.z);
+          meshRef.mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+          meshRef.mesh.scale.set(updated.scale.x, updated.scale.y, updated.scale.z);
           meshRef.mesh.updateMatrix();
       }
   }

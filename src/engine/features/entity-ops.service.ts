@@ -58,8 +58,7 @@ export class EntityOpsService {
       const newEntity = this.assembler.createEntityFromDef(bodyDef, visualOpts, `${name}_copy`, tplId);
       
       // 5. Apply Scale to ECS Transform (Assembler defaults to 1,1,1)
-      const newT = world.transforms.get(newEntity);
-      if (newT) newT.scale = { ...t.scale };
+      world.transforms.setScale(newEntity, t.scale.x, t.scale.y, t.scale.z);
       
       // 6. Copy Physics Material Properties
       const oldProps = world.physicsProps.get(e);

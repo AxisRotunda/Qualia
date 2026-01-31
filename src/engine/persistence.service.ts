@@ -39,7 +39,7 @@ export class PersistenceService {
     
     this.entityStore.world.entities.forEach(e => {
         const tplId = this.entityStore.world.templateIds.get(e);
-        const t = this.entityStore.world.transforms.get(e);
+        const t = this.entityStore.world.transforms.get(e); // Snapshot
         if (tplId && t) {
             entities.push({
                 tplId,
@@ -94,12 +94,13 @@ export class PersistenceService {
                   const ent = this.factory.spawn(this.entityStore, tpl, pos, rot);
                   
                   if (e.scale.x !== 1 || e.scale.y !== 1 || e.scale.z !== 1) {
-                       const t = this.entityStore.world.transforms.get(ent);
+                       // Apply scale to ECS & Physics
+                       this.entityStore.world.transforms.setScale(ent, e.scale.x, e.scale.y, e.scale.z);
+                       
                        const def = this.entityStore.world.bodyDefs.get(ent);
                        const rb = this.entityStore.world.rigidBodies.get(ent);
-                       if(t && def && rb) {
-                           t.scale = { ...e.scale };
-                           engine.physicsService.shapes.updateBodyScale(rb.handle, def, t.scale);
+                       if(def && rb) {
+                           engine.physicsService.shapes.updateBodyScale(rb.handle, def, e.scale);
                        }
                   }
               }

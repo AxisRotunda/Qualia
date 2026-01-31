@@ -50,6 +50,9 @@ export class NatureGeologyService {
     // Creates sharp, flat faces typical of hard rock cleavage
     const numPlanes = type === 'sedimentary' ? 3 : 6;
     
+    // Optimization: Pre-allocate projection target to avoid N*P allocations
+    const projected = new THREE.Vector3();
+
     for (let p = 0; p < numPlanes; p++) {
         // Random plane definition
         const planeNormal = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
@@ -68,7 +71,6 @@ export class NatureGeologyService {
         for (let i = 0; i < pos.count; i++) {
             vertex.fromBufferAttribute(pos, i);
             if (plane.distanceToPoint(vertex) > 0) {
-                const projected = new THREE.Vector3();
                 plane.projectPoint(vertex, projected);
                 pos.setXYZ(i, projected.x, projected.y, projected.z);
             }

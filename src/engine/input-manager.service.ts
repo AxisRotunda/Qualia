@@ -42,15 +42,6 @@ export class InputManagerService {
         // Disable camera control if dragging gizmo or if menu is open
         const camActive = !dragging && !this.state.mainMenuVisible();
         this.cameraControl.setEnabled(camActive);
-        
-        // Handle Virtual Joystick Input via Delegation
-        if (camActive) {
-            this.cameraControl.updateInput(
-                this.gameInput.virtualMove, 
-                this.gameInput.virtualLook
-            );
-        }
-        
         this.cameraControl.update();
     }
   }

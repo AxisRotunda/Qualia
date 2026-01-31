@@ -17,6 +17,7 @@ These files have been successfully removed to reduce cognitive load.
 *   `src/services/character-controller.service.ts` (Old version)
 *   `src/engine/entity-manager.service.ts`
 *   `src/services/object-control.service.ts`
+*   `src/physics/logic/physics-scaler.ts` (Merged into ShapesFactory)
 
 ## 2. Monolith Watch
 Classes approaching high complexity. Refactor if adding > 3 new methods.
@@ -25,19 +26,17 @@ Classes approaching high complexity. Refactor if adding > 3 new methods.
 *   **`EntityAssemblerService`**: [WATCH] High coupling. Manages Physics, Visuals, and ECS. Candidate for decomposition into `EntityFactory`.
 
 ## 3. Optimization Queue (Bottlenecks)
-*   **`ECS ComponentStore`**: Uses `Map<number, T>`.
-    *   *Issue*: Iteration overhead.
-    *   *Fix*: Move hot components (Transform) to TypedArrays (SoA).
+*   **[COMPLETED] `ECS ComponentStore`**: Moved hot components (Transform) to `Float32Array` (SoA) in `TransformStore`.
 
 ## 4. Pending Architecture Changes
-1.  **Strict Typing**: Refactor `inject()` calls to use explicit types where inference is weak.
+*   **[COMPLETED] Strict Typing**: Refactored `LevelManager` and `SceneLoader` to use `import type { EngineService }` to resolve circular dependencies without using `any`.
 
 ## 5. Completed Refactors
-*   **Level Management**: Extracted `SceneLoaderService` from `LevelManagerService`. Loading logic is now separate from Game State logic.
-*   **Physics Loop**: Extracted `PhysicsStepService` from `PhysicsWorldService`. Simulation accumulator logic is now isolated.
+*   **Physics Scaling**: Merged `PhysicsScaler` logic into `ShapesFactory` to consolidate collider generation.
+*   **Controller Input**: `CameraControlService` now autonomously polls `GameInputService`, removing plumbing code from `InputManagerService`.
+*   **ECS Transform SoA**: Implemented `TransformStore` with `Float32Array` buffers for zero-allocation position/rotation updates.
+*   **Level Management**: Extracted `SceneLoaderService` from `LevelManagerService`.
+*   **Physics Loop**: Extracted `PhysicsStepService` from `PhysicsWorldService`.
 *   **Entity Management**: Extracted `duplicateEntity` logic from `EntityAssembler` to `EntityOpsService`.
-*   **Terrain Generation**: Broken down monolithic `TERRAIN_WORKER_SCRIPT` into modular constants.
-*   **Instancing**: `InstancedMeshService` logic extracted to `InstancedGroup`.
-*   **Input Handling**: `PointerListenerService` now uses Lazy Binding.
-*   **Worker Utilities**: `createInlineWorker` implemented.
-*   **Graphics Pipeline**: `StageService` created to handle static world generation.
+*   **Terrain Generation**: Modularized worker scripts.
+*   **Instancing**: Refactored `InstancedMeshService` logic.

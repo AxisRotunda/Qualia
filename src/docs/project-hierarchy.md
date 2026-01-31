@@ -38,7 +38,7 @@ src/
 │       └── texture-worker.const.ts # [Assembler] Texture Worker
 ├── physics/                        # [Core] Rapier3D integration
 │   ├── optimization/               # [Opt] Collision Groups & Tuning (**NEW**)
-│   ├── logic/                      # [Logic] Mass & Scaling
+│   ├── logic/                      # [Logic] Mass Calc
 │   └── ...
 ├── services/                       # [Glue] Angular Services (Facades & Factories)
 │   ├── engine.service.ts           # [Facade] Main API Entry point

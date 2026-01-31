@@ -43,13 +43,13 @@ export class TransformLogicService {
       q.premultiply(rot);
 
       // Apply to ECS
-      t.position = newPos;
-      t.rotation = { x: q.x, y: q.y, z: q.z, w: q.w };
+      this.entityStore.world.transforms.setPosition(e, newPos.x, newPos.y, newPos.z);
+      this.entityStore.world.transforms.setRotation(e, q.x, q.y, q.z, q.w);
       
       // Apply to Physics
       const rb = this.entityStore.world.rigidBodies.get(e);
       if (rb) {
-          this.physics.world.updateBodyTransform(rb.handle, t.position, t.rotation);
+          this.physics.world.updateBodyTransform(rb.handle, newPos, q);
       }
       
       // Apply to Visuals immediately for smoothness
@@ -69,7 +69,8 @@ export class TransformLogicService {
 
       const newScale = Math.max(0.1, t.scale.x + dScale); // Uniform scaling for simplicity
       
-      t.scale = { x: newScale, y: newScale, z: newScale };
+      // Apply to ECS
+      this.entityStore.world.transforms.setScale(e, newScale, newScale, newScale);
       
       // Visuals
       const meshRef = this.entityStore.world.meshes.get(e);
@@ -81,7 +82,7 @@ export class TransformLogicService {
       const rb = this.entityStore.world.rigidBodies.get(e);
       const def = this.entityStore.world.bodyDefs.get(e);
       if (rb && def) {
-           this.physics.shapes.updateBodyScale(rb.handle, def, t.scale);
+           this.physics.shapes.updateBodyScale(rb.handle, def, { x: newScale, y: newScale, z: newScale });
       }
 
       // Sync Selection Helper
@@ -92,9 +93,12 @@ export class TransformLogicService {
       const t = this.entityStore.world.transforms.get(e);
       if (!t) return;
 
-      if (pos) t.position = { ...pos };
-      if (rot) t.rotation = { ...rot };
-      if (scale) t.scale = { ...scale };
+      if (pos) this.entityStore.world.transforms.setPosition(e, pos.x, pos.y, pos.z);
+      if (rot) this.entityStore.world.transforms.setRotation(e, rot.x, rot.y, rot.z, rot.w);
+      if (scale) this.entityStore.world.transforms.setScale(e, scale.x, scale.y, scale.z);
+
+      // Re-read updated state for sync
+      const updated = this.entityStore.world.transforms.get(e)!;
 
       // Physics Sync
       const rb = this.entityStore.world.rigidBodies.get(e);
@@ -102,10 +106,10 @@ export class TransformLogicService {
       
       if (rb) {
           if (pos || rot) {
-             this.physics.world.updateBodyTransform(rb.handle, t.position, t.rotation);
+             this.physics.world.updateBodyTransform(rb.handle, updated.position, updated.rotation);
           }
           if (scale && def) {
-             this.physics.shapes.updateBodyScale(rb.handle, def, t.scale);
+             this.physics.shapes.updateBodyScale(rb.handle, def, updated.scale);
           }
       }
 

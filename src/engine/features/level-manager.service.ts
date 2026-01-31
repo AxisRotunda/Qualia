@@ -11,6 +11,7 @@ import { VisualsFactoryService } from '../graphics/visuals-factory.service';
 import { EntityLifecycleService } from '../ecs/entity-lifecycle.service';
 import { SceneLoaderService } from '../level/scene-loader.service';
 import { wait } from '../utils/thread.utils';
+import type { EngineService } from '../../services/engine.service';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +28,7 @@ export class LevelManagerService {
   private lifecycle = inject(EntityLifecycleService);
   private loader = inject(SceneLoaderService);
 
-  async loadScene(engineContext: any, id: string) {
+  async loadScene(engine: EngineService, id: string) {
       this.state.loading.set(true);
       this.state.loadingProgress.set(0);
       this.state.loadingStage.set('BOOT SEQUENCE');
@@ -36,7 +37,7 @@ export class LevelManagerService {
       // Brief delay to allow UI to render the loading screen
       await wait(50);
 
-      const success = await this.loader.load(engineContext, id);
+      const success = await this.loader.load(engine, id);
 
       if (success) {
           this.state.loadingProgress.set(100);
@@ -95,9 +96,9 @@ export class LevelManagerService {
       ); 
   }
 
-  quickLoad(engineContext: any) { 
+  quickLoad(engine: EngineService) { 
       const data = this.persistence.loadFromLocal(); 
-      if(data) this.persistence.loadSceneData(data, engineContext); 
+      if(data) this.persistence.loadSceneData(data, engine); 
   }
 
   hasSavedState() { return !!this.persistence.loadFromLocal(); }

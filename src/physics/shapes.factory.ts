@@ -4,14 +4,12 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { PhysicsWorldService } from './world.service';
 import { PhysicsBodyDef } from '../engine/schema'; 
 import { MassCalculator } from './logic/mass-calculator';
-import { PhysicsScaler } from './logic/physics-scaler';
 import { PhysicsOptimizerService } from './optimization/physics-optimizer.service';
 
 @Injectable({ providedIn: 'root' })
 export class ShapesFactory {
   private worldService = inject(PhysicsWorldService);
   private massCalc = inject(MassCalculator);
-  private scaler = inject(PhysicsScaler);
   private optimizer = inject(PhysicsOptimizerService);
 
   private get world() {
@@ -32,10 +30,6 @@ export class ShapesFactory {
           desc.lockRotations();
       }
   }
-
-  // Helper to attach tags via metadata or side-channel if needed, 
-  // but here we just use default tags for primitives or allow passing them in future.
-  // Currently primitive methods don't accept tags, so they get default static/dynamic grouping.
 
   createBox(x: number, y: number, z: number, w?: number, h?: number, d?: number, mass?: number, material?: string): PhysicsBodyDef {
     if (!this.world) throw new Error('Physics not initialized');
@@ -249,18 +243,7 @@ export class ShapesFactory {
   createHeightfield(x: number, y: number, z: number, nrows: number, ncols: number, heights: Float32Array, size: {x: number, y: number, z: number}): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
-      // Native Heightfield Implementation
-      // Rapier expects row-major heights
-      
-      // Calculate scale factors
-      // Rapier heightfield spans 0 to 1 on X and Z by default if scaling not applied, 
-      // but ColliderDesc.heightfield takes specific sizing args.
-      // Actually, ColliderDesc.heightfield(nrows, ncols, heights, scale) where scale is vector
-      const scale = {
-          x: size.x,
-          y: 1.0, 
-          z: size.z
-      };
+      const scale = { x: size.x, y: 1.0, z: size.z };
 
       const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
@@ -284,8 +267,83 @@ export class ShapesFactory {
       };
   }
 
+  /**
+   * Resizes the colliders of an existing rigid body by removing old colliders
+   * and creating new ones with scaled dimensions. Preserves mass proportional to volume change.
+   */
   updateBodyScale(handle: number, def: PhysicsBodyDef, scale: { x: number, y: number, z: number }) {
-      this.scaler.updateBodyScale(handle, def, scale);
+    if (!this.world) return;
+    const body = this.world.getRigidBody(handle);
+    if (!body) return;
+
+    // 1. Snapshot existing properties before removal
+    let oldGroups = 0xFFFF;
+    let oldEvents = RAPIER.ActiveEvents.NONE;
+    
+    if (body.numColliders() > 0) {
+        const c = body.collider(0);
+        oldGroups = c.collisionGroups();
+        oldEvents = c.activeEvents();
+    }
+
+    // 2. Remove existing colliders
+    const n = body.numColliders();
+    const collidersToRemove: RAPIER.Collider[] = [];
+    for(let i=0; i<n; i++) collidersToRemove.push(body.collider(i));
+    collidersToRemove.forEach(c => this.world!.removeCollider(c, false));
+
+    // 3. Create Scaled Collider Desc
+    let colliderDesc: RAPIER.ColliderDesc | null = null;
+
+    if (def.type === 'box' && def.size) {
+        const hx = (def.size.w / 2) * scale.x;
+        const hy = (def.size.h / 2) * scale.y;
+        const hz = (def.size.d / 2) * scale.z;
+        colliderDesc = RAPIER.ColliderDesc.cuboid(Math.abs(hx), Math.abs(hy), Math.abs(hz));
+    } else if (def.type === 'sphere' && def.radius) {
+        const s = Math.max(scale.x, Math.max(scale.y, scale.z));
+        colliderDesc = RAPIER.ColliderDesc.ball(def.radius * s);
+    } else if (def.type === 'cylinder' && def.height && def.radius) {
+        const h = (def.height / 2) * scale.y;
+        const r = def.radius * Math.max(scale.x, scale.z);
+        colliderDesc = RAPIER.ColliderDesc.cylinder(Math.abs(h), Math.abs(r));
+    } else if (def.type === 'cone' && def.height && def.radius) {
+        const h = (def.height / 2) * scale.y;
+        const r = def.radius * Math.max(scale.x, scale.z);
+        colliderDesc = RAPIER.ColliderDesc.cone(Math.abs(h), Math.abs(r));
+    } else if (def.type === 'heightfield' && def.heightData && def.fieldSize && def.size) {
+        const targetW = def.size.w * scale.x;
+        const targetD = def.size.d * scale.z;
+        const targetH = scale.y;
+        
+        colliderDesc = RAPIER.ColliderDesc.heightfield(
+            def.fieldSize.rows, 
+            def.fieldSize.cols, 
+            def.heightData, 
+            { x: targetW, y: targetH, z: targetD }
+        );
+    }
+
+    // 4. Apply & Reattach
+    if (colliderDesc) {
+        // Retrieve base mass from userdata if available
+        const userData = (body as any).userData;
+        const baseMass = userData?.baseMass ?? def.mass;
+
+        if (baseMass && baseMass > 0) {
+            colliderDesc.setMass(baseMass * scale.x * scale.y * scale.z);
+        } else {
+            colliderDesc.setDensity(1.0);
+        }
+        
+        colliderDesc.setRestitution(0.3).setFriction(0.6); 
+        
+        // Restore Optimization Config
+        colliderDesc.setCollisionGroups(oldGroups);
+        colliderDesc.setActiveEvents(oldEvents);
+
+        this.world.createCollider(colliderDesc, body);
+    }
   }
 
   setLockRotation(handle: number, locked: boolean) {

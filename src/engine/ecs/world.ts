@@ -1,6 +1,7 @@
 
 import { ComponentStore } from './component-store';
-import { Entity, Transform, RigidBodyRef, MeshRef, PhysicsBodyDef, PhysicsProps } from '../schema';
+import { TransformStore } from './transform-store';
+import { Entity, RigidBodyRef, MeshRef, PhysicsBodyDef, PhysicsProps } from '../schema';
 
 export class World {
   private nextId = 0;
@@ -9,7 +10,7 @@ export class World {
   entities = new Set<Entity>();
 
   // Component Storages
-  transforms = new ComponentStore<Transform>();
+  transforms = new TransformStore(); // Optimized SoA Store
   rigidBodies = new ComponentStore<RigidBodyRef>();
   meshes = new ComponentStore<MeshRef>();
   

@@ -36,6 +36,15 @@ export class CharacterControllerService {
   private bobFrequency = 10;
   private bobAmplitude = 0.08; 
 
+  // Optimization: Scratch Vectors (Zero-Allocation)
+  private readonly _vecForward = new THREE.Vector3();
+  private readonly _vecRight = new THREE.Vector3();
+  private readonly _vecMove = new THREE.Vector3();
+  private readonly _vecDisp = new THREE.Vector3();
+  private readonly _vecCam = new THREE.Vector3();
+  private readonly _euler = new THREE.Euler(0, 0, 0, 'YXZ');
+  private readonly _Y_AXIS = new THREE.Vector3(0, 1, 0);
+
   init(position: THREE.Vector3) {
     if (this.character) return;
     
@@ -46,9 +55,9 @@ export class CharacterControllerService {
     
     const cam = this.scene.getCamera();
     if (cam) {
-        const euler = new THREE.Euler().setFromQuaternion(cam.quaternion, 'YXZ');
-        this.yaw = euler.y;
-        this.pitch = euler.x;
+        this._euler.setFromQuaternion(cam.quaternion, 'YXZ');
+        this.yaw = this._euler.y;
+        this.pitch = this._euler.x;
     }
 
     this.verticalVelocity = 0;
@@ -88,14 +97,15 @@ export class CharacterControllerService {
     const speed = isRunning ? this.RUN_SPEED : this.WALK_SPEED;
     
     // Direction relative to Yaw
-    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0,1,0), this.yaw);
-    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0,1,0), this.yaw);
+    // Reuse scratch vectors to avoid 'new THREE.Vector3()'
+    this._vecForward.set(0, 0, -1).applyAxisAngle(this._Y_AXIS, this.yaw);
+    this._vecRight.set(1, 0, 0).applyAxisAngle(this._Y_AXIS, this.yaw);
     
-    const moveDir = new THREE.Vector3()
-        .addScaledVector(forward, moveInput.y)
-        .addScaledVector(right, moveInput.x);
+    this._vecMove.set(0, 0, 0)
+        .addScaledVector(this._vecForward, moveInput.y)
+        .addScaledVector(this._vecRight, moveInput.x);
         
-    if (moveDir.lengthSq() > 0) moveDir.normalize();
+    if (this._vecMove.lengthSq() > 0) this._vecMove.normalize();
     
     // 3. Jump & Gravity
     const grounded = this.charPhysics.isCharacterGrounded(this.character);
@@ -111,11 +121,12 @@ export class CharacterControllerService {
     }
     
     // 4. Compute Translation
-    const displacement = moveDir.clone().multiplyScalar(speed * dt);
-    displacement.y = this.verticalVelocity * dt;
+    this._vecDisp.copy(this._vecMove).multiplyScalar(speed * dt);
+    this._vecDisp.y = this.verticalVelocity * dt;
 
     // 5. Physics Step
-    this.charPhysics.moveCharacter(this.character, displacement, dt);
+    // Rapier expects a simple interface {x,y,z}, THREE.Vector3 satisfies this.
+    this.charPhysics.moveCharacter(this.character, this._vecDisp, dt);
     
     // 6. Head Bobbing Calculation
     if (isMoving && grounded) {
@@ -130,16 +141,19 @@ export class CharacterControllerService {
         : 0;
 
     // 7. Sync Camera
-    // FIXED: Use physics.world.getBodyPose
+    // Note: physics.world.getBodyPose allocates a new object return (p, q). 
+    // Optimization: In a future pass, we could use a zero-alloc getter if exposed by wrapper.
     const pose = this.physics.world.getBodyPose(this.character.bodyHandle);
     if (pose) {
-        const camPos = new THREE.Vector3(
+        this._vecCam.set(
             pose.p.x, 
             pose.p.y + this.EYE_HEIGHT - (this.HEIGHT/2) + bobOffset, 
             pose.p.z
         );
-        camera.position.copy(camPos);
-        camera.quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
+        camera.position.copy(this._vecCam);
+        
+        this._euler.set(this.pitch, this.yaw, 0, 'YXZ');
+        camera.quaternion.setFromEuler(this._euler);
     }
   }
 }

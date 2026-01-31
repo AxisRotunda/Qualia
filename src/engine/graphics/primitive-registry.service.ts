@@ -9,14 +9,19 @@ import { PhysicsBodyDef } from '../../engine/schema';
 export class PrimitiveRegistryService {
   private cache = new Map<string, THREE.BufferGeometry>();
 
-  getGeometry(data: PhysicsBodyDef): THREE.BufferGeometry {
-    const key = this.getCacheKey(data);
+  /**
+   * Retrieves geometry with support for Level of Detail (LOD).
+   * @param data Physics definition
+   * @param lod Level of Detail (0 = High, 1 = Med, 2 = Low)
+   */
+  getGeometry(data: PhysicsBodyDef, lod: number = 0): THREE.BufferGeometry {
+    const key = this.getCacheKey(data, lod);
     
     if (this.cache.has(key)) {
       return this.cache.get(key)!;
     }
 
-    const geometry = this.generateGeometry(data);
+    const geometry = this.generateGeometry(data, lod);
     this.cache.set(key, geometry);
     return geometry;
   }
@@ -26,6 +31,7 @@ export class PrimitiveRegistryService {
       if (this.cache.has(key)) return this.cache.get(key)!;
 
       let geo: THREE.BufferGeometry;
+      // Ghosts are always low poly (LOD 2 equivalent)
       if (type === 'box') geo = new THREE.BoxGeometry(size.x, size.y, size.z);
       else if (type === 'cylinder') geo = new THREE.CylinderGeometry(size.x, size.x, size.y, 16);
       else if (type === 'cone') geo = new THREE.ConeGeometry(size.x, size.y, 16);
@@ -35,21 +41,35 @@ export class PrimitiveRegistryService {
       return geo;
   }
 
-  private generateGeometry(data: PhysicsBodyDef): THREE.BufferGeometry {
+  private generateGeometry(data: PhysicsBodyDef, lod: number): THREE.BufferGeometry {
+    // LOD Heuristics (Self-Learning from Protocol)
+    // LOD 0: 32 segments
+    // LOD 1: 16 segments
+    // LOD 2: 8 segments
+    const radialSegs = lod === 0 ? 32 : (lod === 1 ? 16 : 8);
+    const heightSegs = lod === 0 ? 1 : 1; 
+
     switch (data.type) {
       case 'box':
+        // Boxes don't really have LODs unless we bevel them (not implemented yet)
         return new THREE.BoxGeometry(data.size!.w, data.size!.h, data.size!.d);
       case 'cylinder':
-        return new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+        return new THREE.CylinderGeometry(data.radius, data.radius, data.height, radialSegs, heightSegs);
       case 'cone':
-        return new THREE.ConeGeometry(data.radius, data.height, 32);
+        return new THREE.ConeGeometry(data.radius, data.height, radialSegs, heightSegs);
       case 'sphere':
       default:
-        return new THREE.SphereGeometry(data.radius!, 32, 32);
+        // Spheres degrade to 16x16 or 8x8
+        return new THREE.SphereGeometry(data.radius!, radialSegs, Math.max(8, radialSegs / 2));
     }
   }
 
-  private getCacheKey(data: PhysicsBodyDef): string {
+  private getCacheKey(data: PhysicsBodyDef, lod: number): string {
+    const base = this.getBaseKey(data);
+    return `${base}_lod${lod}`;
+  }
+
+  private getBaseKey(data: PhysicsBodyDef): string {
     if (data.type === 'box') return `box_${data.size?.w}_${data.size?.h}_${data.size?.d}`;
     if (data.type === 'cylinder') return `cyl_${data.radius}_${data.height}`;
     if (data.type === 'cone') return `cone_${data.radius}_${data.height}`;
