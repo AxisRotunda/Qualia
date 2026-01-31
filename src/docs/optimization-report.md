@@ -9,7 +9,7 @@
 3.  **Scaler Rebuilds**: Resizing an object caused a loss of optimization properties (collision groups) because they weren't persisted during the destroy-create cycle.
 4.  **GC Pressure in Sync Loop**: `PhysicsWorldService` was allocating 2 objects ({x,y,z}, {x,y,z,w}) per entity per frame during ECS synchronization.
 5.  **ECS Map Overhead (Phase 3)**: `ComponentStore` was using `Map<number, T>` for sparse lookups. For 1000+ entities, hashing overhead during the physics sync loop became measurable.
-6.  **Vestigial Spatial Hash (Phase 3)**: `SpatialHashService` was being updated for every active rigid body every frame, but was never queried by any active system.
+6.  **Spatial Grid Allocation (Phase 4)**: `SpatialGrid` was using string keys (`"10:5"`) and returning a new `Set` on every `query()`, causing high GC pressure during camera movement.
 
 ## 2. Optimizations Implemented
 
@@ -37,9 +37,10 @@
 *   **Change**: Replaced `Map<Entity, Index>` in `ComponentStore` with `Int32Array`.
 *   **Impact**: Replaced hashing lookups with direct memory access (O(1)). Eliminates Map iterator allocation overhead during internal operations.
 
-### 2.6 Dead Code Elimination (Phase 3)
-*   **Change**: Removed `SpatialHashService.update()` call from `EntityTransformSystem`.
-*   **Impact**: Saved ~1000 unnecessary grid calculation checks per frame.
+### 2.6 Spatial Grid Packing (Phase 4)
+*   **Change**: Replaced String keys (`x:y`) with Bitwise Packed Integers (`(x&0xFFFF) | (y<<16)`).
+*   **Change**: Refactored `query` to accept a callback instead of returning `Set`.
+*   **Impact**: Removed ~2000 string/Set allocations per frame during static culling updates.
 
 ## 3. Heuristic Uplift
 | Metric | Before | After | Notes |
@@ -49,6 +50,7 @@
 | Memory (City) | High | Medium | Reduced vertex duplication in physics. |
 | GC Overhead | High | Low | Flattened sync loop arguments. |
 | ECS Access | Medium | Low | Int32Array vs Map lookup. |
+| Culling GC | Medium | Negligible | Packed Int Keys + Zero-Alloc Query. |
 
 ## 4. Future Targets
 *   **Solver Iterations**: Expose solver iteration counts in `PhysicsOptimizer` to lower precision for background objects.

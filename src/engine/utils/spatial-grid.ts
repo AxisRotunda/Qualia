@@ -1,31 +1,37 @@
 
 export class SpatialGrid {
-  private cells = new Map<string, Set<number>>();
-  private entityCellMap = new Map<number, string>();
+  // Use number (packed int) instead of string for zero-allocation keys
+  private cells = new Map<number, Set<number>>();
+  private entityCellMap = new Map<number, number>();
 
   constructor(private cellSize: number = 20) {}
 
-  private getKey(x: number, z: number): string {
+  private getKey(x: number, z: number): number {
     const cx = Math.floor(x / this.cellSize);
     const cz = Math.floor(z / this.cellSize);
-    return `${cx}:${cz}`;
+    // Pack 2x 16-bit signed integers into one 32-bit integer.
+    // Supports range +/- 32,767 cells (~655km at 20m cell size).
+    // Note: JS bitwise operations cast to 32-bit signed int automatically.
+    return (cx & 0xFFFF) | ((cz & 0xFFFF) << 16);
   }
 
   insert(id: number, x: number, z: number) {
     this.remove(id); // Ensure no duplicates
     const key = this.getKey(x, z);
     
-    if (!this.cells.has(key)) {
-      this.cells.set(key, new Set());
+    let cell = this.cells.get(key);
+    if (!cell) {
+      cell = new Set();
+      this.cells.set(key, cell);
     }
     
-    this.cells.get(key)!.add(id);
+    cell.add(id);
     this.entityCellMap.set(id, key);
   }
 
   remove(id: number) {
     const key = this.entityCellMap.get(id);
-    if (!key) return;
+    if (key === undefined) return;
 
     const cell = this.cells.get(key);
     if (cell) {
@@ -37,9 +43,11 @@ export class SpatialGrid {
     this.entityCellMap.delete(id);
   }
 
-  query(x: number, z: number, radius: number): Set<number> {
-    const results = new Set<number>();
-    
+  /**
+   * Zero-Allocation Query.
+   * Iterates potential cells and executes callback for each entity found.
+   */
+  query(x: number, z: number, radius: number, callback: (entity: number) => void): void {
     // Calculate cell range
     const minX = Math.floor((x - radius) / this.cellSize);
     const maxX = Math.floor((x + radius) / this.cellSize);
@@ -48,17 +56,16 @@ export class SpatialGrid {
 
     for (let cx = minX; cx <= maxX; cx++) {
       for (let cz = minZ; cz <= maxZ; cz++) {
-        const key = `${cx}:${cz}`;
+        // Manually packing key to match getKey logic
+        const key = (cx & 0xFFFF) | ((cz & 0xFFFF) << 16);
         const cell = this.cells.get(key);
         if (cell) {
           for (const id of cell) {
-            results.add(id);
+            callback(id);
           }
         }
       }
     }
-    
-    return results;
   }
 
   clear() {

@@ -84,9 +84,6 @@ export class VisibilityManagerService {
   }
 
   private cullStatic(camPos: THREE.Vector3) {
-    // Broad Phase: Grid Query
-    const candidates = this.staticGrid.query(camPos.x, camPos.z, this.CULL_DIST);
-    
     // A. Prune current visible static
     for (const entity of this.visibleSet) {
         // Skip dynamic (handled elsewhere)
@@ -106,10 +103,13 @@ export class VisibilityManagerService {
         }
     }
 
-    // B. Add new visible
-    for (const entity of candidates) {
+    // B. Query Grid & Add new visible
+    // Uses callback to avoid allocating a candidate Set
+    this.staticGrid.query(camPos.x, camPos.z, this.CULL_DIST, (entity) => {
+        if (this.visibleSet.has(entity)) return; // Already processed
+
         const t = this.entityStore.world.transforms.get(entity);
-        if (!t) continue;
+        if (!t) return;
         
         const dx = t.position.x - camPos.x;
         const dz = t.position.z - camPos.z;
@@ -117,7 +117,7 @@ export class VisibilityManagerService {
             this.setVisible(entity, true);
             this.visibleSet.add(entity);
         }
-    }
+    });
   }
 
   private cullDynamic(camPos: THREE.Vector3) {
