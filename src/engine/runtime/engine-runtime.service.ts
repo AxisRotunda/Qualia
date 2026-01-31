@@ -10,6 +10,7 @@ import { SceneLogicSystem } from '../systems/scene-logic.system';
 import { PhysicsSystem } from '../systems/physics.system';
 import { RenderSystem } from '../systems/render.system';
 import { StatisticsSystem } from '../systems/statistics.system';
+import { BuoyancySystem } from '../systems/buoyancy.system';
 
 @Injectable({
   providedIn: 'root'
@@ -31,6 +32,7 @@ export class EngineRuntimeService {
       inject(InputSystem),
       inject(EnvironmentSystem),
       inject(SceneLogicSystem),
+      inject(BuoyancySystem), // Priority 190 (Before Physics)
       inject(PhysicsSystem),
       inject(RenderSystem),
       inject(StatisticsSystem)

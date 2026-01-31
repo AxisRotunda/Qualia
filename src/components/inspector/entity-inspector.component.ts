@@ -1,7 +1,6 @@
 
 import { Component, inject, signal, effect } from '@angular/core';
 import { EngineService } from '../../services/engine.service';
-import { TransformLogicService } from '../../engine/logic/transform-logic.service';
 import { Transform, PhysicsProps } from '../../engine/core';
 import { TransformPanelComponent } from './transform-panel.component';
 import { PhysicsPanelComponent } from './physics-panel.component';
@@ -51,7 +50,6 @@ import { PhysicsPanelComponent } from './physics-panel.component';
 })
 export class EntityInspectorComponent {
   engine = inject(EngineService);
-  transformLogic = inject(TransformLogicService);
   
   transformSnapshot = signal<Transform | null>(null);
   physicsPropsSnapshot = signal<PhysicsProps | null>(null);
@@ -93,7 +91,7 @@ export class EntityInspectorComponent {
   onPosUpdate(pos: {x:number, y:number, z:number}) {
       const id = this.engine.selectedEntity();
       if (id !== null) {
-          this.transformLogic.setEntityTransform(id, pos);
+          this.engine.transform.setEntityTransform(id, pos);
           this.refreshSnapshot(id); // Re-sync local signal
       }
   }
@@ -101,7 +99,7 @@ export class EntityInspectorComponent {
   onRotUpdate(rot: {x:number, y:number, z:number, w:number}) {
       const id = this.engine.selectedEntity();
       if (id !== null) {
-          this.transformLogic.setEntityTransform(id, undefined, rot);
+          this.engine.transform.setEntityTransform(id, undefined, rot);
           this.refreshSnapshot(id);
       }
   }
@@ -109,7 +107,7 @@ export class EntityInspectorComponent {
   onScaleUpdate(scale: {x:number, y:number, z:number}) {
       const id = this.engine.selectedEntity();
       if (id !== null) {
-          this.transformLogic.setEntityTransform(id, undefined, undefined, scale);
+          this.engine.transform.setEntityTransform(id, undefined, undefined, scale);
           this.refreshSnapshot(id);
       }
   }

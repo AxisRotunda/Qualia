@@ -43,7 +43,7 @@ import { MenuSidebarComponent, MenuTab } from './menu/menu-sidebar.component';
                   <app-menu-home-tab 
                     [canContinue]="canContinue"
                     [continueLabel]="levelManager.getQuickSaveLabel()"
-                    (resume)="levelManager.quickLoad(engine); engine.state.mainMenuVisible.set(false)"
+                    (resume)="levelManager.quickLoad(engine); engine.setMainMenuVisible(false)"
                     (newSandbox)="newSandbox()"
                   />
                 }
@@ -93,7 +93,7 @@ export class MainMenuComponent {
 
   newSandbox() {
       this.levelManager.reset();
-      this.engine.state.mainMenuVisible.set(false);
+      this.engine.setMainMenuVisible(false);
   }
 
   togglePerformance() {

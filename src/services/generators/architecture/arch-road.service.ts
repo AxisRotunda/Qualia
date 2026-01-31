@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { scaleUVs, projectPlanarUVs } from './architecture.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -15,21 +16,26 @@ export class ArchRoadService {
       const curbH = 0.15;
       
       const roadGeo = new THREE.BoxGeometry(roadW, 0.1, length);
+      scaleUVs(roadGeo, roadW, 0.1, length);
       roadGeo.translate(0, 0, 0); 
       
       const curbL = new THREE.BoxGeometry(curbW, curbH, length);
+      scaleUVs(curbL, curbW, curbH, length);
       curbL.translate(-roadW/2 - curbW/2, (curbH - 0.1)/2, 0);
       
       const curbR = new THREE.BoxGeometry(curbW, curbH, length);
+      scaleUVs(curbR, curbW, curbH, length);
       curbR.translate(roadW/2 + curbW/2, (curbH - 0.1)/2, 0);
 
       const mergedCurbs = BufferUtils.mergeGeometries([curbL, curbR]);
 
       const sidewalkH = 0.15;
       const walkL = new THREE.BoxGeometry(walkW - curbW, sidewalkH, length);
+      scaleUVs(walkL, walkW - curbW, sidewalkH, length);
       walkL.translate(-roadW/2 - curbW - (walkW - curbW)/2, (sidewalkH - 0.1)/2, 0);
 
       const walkR = new THREE.BoxGeometry(walkW - curbW, sidewalkH, length);
+      scaleUVs(walkR, walkW - curbW, sidewalkH, length);
       walkR.translate(roadW/2 + curbW + (walkW - curbW)/2, (sidewalkH - 0.1)/2, 0);
 
       const mergedWalks = BufferUtils.mergeGeometries([walkL, walkR]);
@@ -47,6 +53,7 @@ export class ArchRoadService {
 
       // Road Bed
       const road = new THREE.BoxGeometry(width, 0.5, length);
+      scaleUVs(road, width, 0.5, length);
       partsAsphalt.push(road);
 
       // Jersey Barriers
@@ -54,10 +61,12 @@ export class ArchRoadService {
       const barrierH = 1.2;
       
       const bLeft = new THREE.BoxGeometry(barrierW, barrierH, length);
+      scaleUVs(bLeft, barrierW, barrierH, length); // Tiling horizontal
       bLeft.translate(-width/2 + barrierW/2, barrierH/2 - 0.25, 0);
       partsConcrete.push(bLeft);
 
       const bRight = new THREE.BoxGeometry(barrierW, barrierH, length);
+      scaleUVs(bRight, barrierW, barrierH, length);
       bRight.translate(width/2 - barrierW/2, barrierH/2 - 0.25, 0);
       partsConcrete.push(bRight);
 
@@ -66,6 +75,7 @@ export class ArchRoadService {
       for(let i=0; i<beamCount; i++) {
           const z = -length/2 + i * 10;
           const beam = new THREE.BoxGeometry(width - 1, 0.8, 2);
+          // Beams don't need heavy tiling, standard is fine
           beam.translate(0, -0.6, z);
           partsConcrete.push(beam);
       }
@@ -73,11 +83,13 @@ export class ArchRoadService {
       // Structural Piers (Pillars) - Reaching down 12 units
       // T-Shape Pier for realism
       const pierStem = new THREE.BoxGeometry(4, 12, 4);
+      scaleUVs(pierStem, 4, 12, 4);
       pierStem.translate(0, -6.5, 0); 
       partsConcrete.push(pierStem);
       
       // Pier Cap
       const pierCap = new THREE.BoxGeometry(width - 2, 1.5, 5);
+      scaleUVs(pierCap, width-2, 1.5, 5);
       pierCap.translate(0, -1.25, 0); // Directly under beams
       // Taper the cap bottom
       const capPos = pierCap.getAttribute('position');
@@ -110,6 +122,7 @@ export class ArchRoadService {
 
       // Central Road Patch
       const center = new THREE.BoxGeometry(width, 0.1, width);
+      scaleUVs(center, width, 0.1, width);
       partsRoad.push(center);
 
       // Corner Sidewalks
@@ -124,6 +137,7 @@ export class ArchRoadService {
           
           // Sidewalk Block
           const walk = new THREE.BoxGeometry(cornerSize, walkH, cornerSize);
+          scaleUVs(walk, cornerSize, walkH, cornerSize);
           walk.translate(x, (walkH-0.1)/2, z);
           partsWalk.push(walk);
 
@@ -160,6 +174,7 @@ export class ArchRoadService {
 
       // Sloped Road Bed
       const rampGeo = new THREE.BoxGeometry(width, 0.5, length, 1, 1, 1);
+      scaleUVs(rampGeo, width, 0.5, length);
       const pos = rampGeo.getAttribute('position');
       
       // Slant geometry: shear Z to Y
@@ -183,20 +198,12 @@ export class ArchRoadService {
       const mkWall = (offsetX: number) => {
           // A box that we collapse into a triangle
           const w = new THREE.BoxGeometry(wallThick, height, length, 1, 1, 1);
+          scaleUVs(w, wallThick, height, length); // Map wall texture along length
           const wPos = w.getAttribute('position');
           for(let i=0; i<wPos.count; i++) {
               const y = wPos.getY(i);
               const z = wPos.getZ(i);
               const factor = (z + length/2) / length; // 0 at bottom z, 1 at top z
-              
-              // Map Top vertices to slope, Bottom vertices stay flat at base relative
-              // Original box is centered at Y=0, range -H/2 to H/2.
-              // We want bottom to be at Y= -H_RAMP_START? 
-              // Wait, we need the bottom of the wall to be at y=0 relative to the ramp root.
-              
-              // Easier: Just manipulate vertices of a box representing max bounds
-              // Top Y vertices -> match slope
-              // Bottom Y vertices -> 0
               
               const isTop = y > 0;
               if (isTop) {
@@ -220,6 +227,7 @@ export class ArchRoadService {
       
       const mkBarrier = (offsetX: number) => {
           const b = new THREE.BoxGeometry(barrierW, barrierH, length, 1, 1, 1);
+          scaleUVs(b, barrierW, barrierH, length);
           const bPos = b.getAttribute('position');
           for(let i=0; i<bPos.count; i++) {
               const y = bPos.getY(i);
@@ -260,6 +268,10 @@ export class ArchRoadService {
       // Extrude creates Non-Indexed geometry
       const roadGeo = new THREE.ExtrudeGeometry(ringShape, { depth: 0.1, bevelEnabled: false, curveSegments: segments });
       roadGeo.rotateX(Math.PI / 2);
+      
+      // Basic planar UV projection for ring
+      projectPlanarUVs(roadGeo, 0.1);
+      
       partsRoad.push(roadGeo);
 
       // Inner Curb
@@ -276,6 +288,7 @@ export class ArchRoadService {
 
       // Central Island
       const islandGeo = new THREE.CylinderGeometry(innerR - curbThick, innerR - curbThick, 0.5, segments);
+      projectPlanarUVs(islandGeo, 0.2);
       islandGeo.translate(0, 0.25, 0);
       partsIsland.push(islandGeo.toNonIndexed());
 

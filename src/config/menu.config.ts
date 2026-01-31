@@ -10,7 +10,7 @@ export function createMenuConfig(engine: EngineService): MenuAction[] {
         { id: 'new', label: 'New Empty', shortcut: 'Ctrl+N', execute: () => engine.level.reset() },
         { id: 'qsave', label: 'Quick Save', shortcut: 'Ctrl+S', execute: () => engine.level.quickSave() },
         { id: 'qload', label: 'Quick Load', shortcut: 'Ctrl+L', execute: () => engine.level.quickLoad(engine) },
-        { id: 'main-menu', label: 'Exit to Main Menu', execute: () => engine.state.mainMenuVisible.set(true) },
+        { id: 'main-menu', label: 'Exit to Main Menu', execute: () => engine.setMainMenuVisible(true) },
       ]
     },
     {

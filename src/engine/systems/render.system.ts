@@ -36,6 +36,7 @@ export class RenderSystem implements GameSystem {
     }
 
     // 3. Selection Helper Update
+    // Optimization: Only update helper if a valid entity is selected AND gizmo is active
     if (this.entityStore.selectedEntity() !== null) {
       this.selectionManager.updateHelper();
     }

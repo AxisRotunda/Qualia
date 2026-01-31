@@ -38,7 +38,7 @@
 
 ### 3.5 Optimization Cluster
 *   `PhysicsWorldService` --(Raw)--> `EntityTransformSystem` (Zero-Alloc).
-*   `SpatialHashService` --(Index Cache)--> `EntityTransformSystem`.
+*   `SpatialGrid` --(Index Cache)--> `VisibilityManagerService` (Culling).
 
 ## 4. Ripple Effects
 *   **Modifying `PhysicsBodyDef`**:

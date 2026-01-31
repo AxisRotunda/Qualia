@@ -9,6 +9,8 @@ import { RoadNetworkService } from '../../engine/features/road-network.service';
 import { CITY_CONFIG } from '../../config/asset-registry';
 
 export class CityAlgorithm {
+  // Optimization: Scratch Euler to avoid allocating new objects per parcel
+  private static readonly _rot = new THREE.Euler(0, 0, 0);
   
   static async generate(ctx: SceneContext, engine: EngineService) {
       // 1. Initialize Services (Transient for this generation)
@@ -20,8 +22,8 @@ export class CityAlgorithm {
       engine.state.loadingStage.set('PLANNING ZONES');
       grid.reset();
 
-      // Config
-      const cityRadius = 360; 
+      // Config (Performance Optimization: Reduced radius from 360 to 300)
+      const cityRadius = 300; 
       const highwayZ = -90; // Offset highway from center
 
       // 2. Phase I: Infrastructure (The Skeleton)
@@ -45,8 +47,8 @@ export class CityAlgorithm {
 
       for (let x = -range; x <= range; x += step) {
           
-          // Yield occasionally
-          if (x % (step * 10) === 0) {
+          // Yield more frequently (Every ~60m / 4 steps) to keep loading screen fluid
+          if (x % (step * 4) === 0) {
              engine.state.loadingProgress.set(30 + ((x + range) / (range * 2)) * 60);
              await yieldToMain();
           }
@@ -81,26 +83,26 @@ export class CityAlgorithm {
   private static spawnParcel(ctx: SceneContext, x: number, z: number, dist: number, rnd: number) {
       // Rotation aligned to grid (0, 90, 180, 270)
       const rotY = Math.floor(rnd * 4) * (Math.PI / 2);
-      const rot = new THREE.Euler(0, rotY, 0);
+      this._rot.set(0, rotY, 0);
 
       // Zoning Rules
       if (dist < 100) {
           // Downtown (Dense, Tall)
           if (rnd > 0.6) {
-              ctx.spawn('building-skyscraper', x, 0, z, { alignToBottom: true, rotation: rot });
+              ctx.spawn('building-skyscraper', x, 0, z, { alignToBottom: true, rotation: this._rot });
           } else if (rnd > 0.3) {
-              ctx.spawn('building-tall', x, 0, z, { alignToBottom: true, rotation: rot });
+              ctx.spawn('building-tall', x, 0, z, { alignToBottom: true, rotation: this._rot });
           } else {
               // Plaza
               ctx.spawn('terrain-platform', x, 0.2, z, { alignToBottom: true });
-              ctx.spawn('prop-scifi-hub', x, 0, z, { alignToBottom: true }); // Using hub as plaza feature
+              ctx.spawn('scifi-hub', x, 0, z, { alignToBottom: true }); // Fixed ID: scifi-hub
           }
       } else if (dist < 250) {
           // Midtown (Medium, Commercial)
           if (rnd > 0.7) {
-              ctx.spawn('building-wide', x, 0, z, { alignToBottom: true, rotation: rot });
+              ctx.spawn('building-wide', x, 0, z, { alignToBottom: true, rotation: this._rot });
           } else if (rnd > 0.4) {
-              ctx.spawn('building-small', x, 0, z, { alignToBottom: true, rotation: rot });
+              ctx.spawn('building-small', x, 0, z, { alignToBottom: true, rotation: this._rot });
           } else {
               // Parking / Open
               ctx.spawn('terrain-road', x, 0, z, { alignToBottom: true, scale: 1 }); // Asphalt lot
@@ -109,7 +111,7 @@ export class CityAlgorithm {
       } else {
           // Outskirts (Industrial, Sparse)
           if (rnd > 0.8) {
-              ctx.spawn('building-small', x, 0, z, { alignToBottom: true, rotation: rot });
+              ctx.spawn('building-small', x, 0, z, { alignToBottom: true, rotation: this._rot });
           } else if (rnd > 0.5) {
               // Industrial props
               ctx.spawn('terrain-platform', x, 0.1, z, { alignToBottom: true });

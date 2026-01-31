@@ -3,18 +3,22 @@ import { Injectable, inject } from '@angular/core';
 import { GameSystem } from '../system';
 import { ParticleService } from '../../services/particle.service';
 import { EngineStateService } from '../engine-state.service';
-import { EnvironmentManagerService } from '../graphics/environment-manager.service';
+import { EnvironmentControlService } from '../features/environment-control.service';
+import { CameraManagerService } from '../graphics/camera-manager.service';
 
 @Injectable({ providedIn: 'root' })
 export class EnvironmentSystem implements GameSystem {
   readonly priority = 100;
   private particleService = inject(ParticleService);
   private state = inject(EngineStateService);
-  private envManager = inject(EnvironmentManagerService);
+  private envControl = inject(EnvironmentControlService);
+  private cameraManager = inject(CameraManagerService);
 
   update(dt: number): void {
     // 1. Particle Physics (Weather)
-    this.particleService.update(dt);
+    // Pass camera position directly to avoid scene graph traversal
+    const cam = this.cameraManager.getCamera();
+    this.particleService.update(dt, cam.position);
 
     // 2. Day/Night Cycle
     if (this.state.dayNightActive() && !this.state.isPaused()) {
@@ -24,11 +28,9 @@ export class EnvironmentSystem implements GameSystem {
         let newTime = this.state.timeOfDay() + (speed * dtSec);
         if (newTime >= 24) newTime -= 24;
         
-        // Update Signal (triggers UI)
-        this.state.timeOfDay.set(newTime);
-        
-        // Update Visuals
-        this.envManager.setTimeOfDay(newTime);
+        // Update Signal (triggers UI) & Visuals via Feature Service
+        // Use envControl (Logic) not envManager (Renderer)
+        this.envControl.setTimeOfDay(newTime);
     }
   }
 }

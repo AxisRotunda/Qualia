@@ -31,6 +31,11 @@ export class ObjectManipulationService {
   private grabTargetPos = new THREE.Vector3();
   private grabbedEntity: number | null = null;
 
+  // Optimization: Scratch Vectors
+  private readonly _forward = new THREE.Vector3();
+  private readonly _right = new THREE.Vector3();
+  private readonly _dPos = new THREE.Vector3();
+
   setInput(move: {x: number, y: number}, rotLift: {x: number, y: number}) {
       this.move = move;
       this.rotLift = rotLift;
@@ -63,20 +68,21 @@ export class ObjectManipulationService {
           // Physics-based Drag
           if (!this.isGrabbing) this.startGrab(e);
 
-          // Calculate Delta relative to Camera
+          // Calculate Delta relative to Camera using Zero-Alloc scratch vectors
           const quat = camera.quaternion;
-          const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
-          const right = new THREE.Vector3(1, 0, 0).applyQuaternion(quat);
           
-          forward.y = 0; forward.normalize();
-          right.y = 0; right.normalize();
+          this._forward.set(0, 0, -1).applyQuaternion(quat);
+          this._right.set(1, 0, 0).applyQuaternion(quat);
           
-          const dPos = new THREE.Vector3();
-          dPos.addScaledVector(right, this.move.x * this.MOVE_SPEED * dt);
-          dPos.addScaledVector(forward, -this.move.y * this.MOVE_SPEED * dt); 
-          dPos.y += this.rotLift.y * this.MOVE_SPEED * dt;
+          this._forward.y = 0; this._forward.normalize();
+          this._right.y = 0; this._right.normalize();
+          
+          this._dPos.set(0, 0, 0);
+          this._dPos.addScaledVector(this._right, this.move.x * this.MOVE_SPEED * dt);
+          this._dPos.addScaledVector(this._forward, -this.move.y * this.MOVE_SPEED * dt); 
+          this._dPos.y += this.rotLift.y * this.MOVE_SPEED * dt;
 
-          this.grabTargetPos.add(dPos);
+          this.grabTargetPos.add(this._dPos);
           this.physics.interaction.moveHand(this.grabTargetPos);
 
       } else if (mode === 'rotate') {

@@ -122,9 +122,7 @@ export class MainLayoutComponent implements AfterViewInit {
   }
 
   selectEntity(e: number) {
-      if (this.engine.selectedEntity) {
-        this.engine.selectedEntity.set(e);
-      }
+      this.engine.interaction.selectEntity(e);
       this.closeContextMenu();
   }
 

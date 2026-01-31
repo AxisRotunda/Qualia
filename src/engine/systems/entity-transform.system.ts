@@ -15,6 +15,9 @@ export class EntityTransformSystem {
   
   // ECS <-> Physics Sync
   syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {
+    const transforms = this.entityStore.world.transforms;
+    const meshes = this.entityStore.world.meshes;
+
     // Optimization: Zero-allocation callback.
     // We receive raw scalars to avoid creating temporary Objects per entity per frame.
     this.physics.world.syncActiveBodies((entity, x, y, z, qx, qy, qz, qw) => {
@@ -22,25 +25,17 @@ export class EntityTransformSystem {
         // If dragging this specific entity in Edit mode, visual overrides physics
         if (isDragging && this.entityStore.selectedEntity() === entity) return;
 
-        // Check existence efficiently
-        if (this.entityStore.world.transforms.has(entity)) {
-            // Update ECS Data (Direct Array Access via SoA Store)
-            this.entityStore.world.transforms.setPosition(entity, x, y, z);
-            this.entityStore.world.transforms.setRotation(entity, qx, qy, qz, qw);
+        // Optimization: Removed redundant 'has' check. 
+        // setPosition/setRotation perform their own sparse check internally.
+        // This saves 1 lookup per entity per frame.
+        transforms.setPosition(entity, x, y, z);
+        transforms.setRotation(entity, qx, qy, qz, qw);
 
-            // Update Visuals Directly
-            const meshRef = this.entityStore.world.meshes.get(entity);
-            if (meshRef) {
-                meshRef.mesh.position.set(x, y, z);
-                meshRef.mesh.quaternion.set(qx, qy, qz, qw);
-                
-                // We need to read scale from store to ensure mesh matches ECS
-                // Since SoA store returns a copy on get(), we use a specific getter or assume
-                // scale hasn't changed by physics.
-                // Physics doesn't change scale, so current mesh scale *should* be correct,
-                // but for robustness in 'edit' mode where scale might change:
-                // We can skip updating scale here as it's not driven by physics simulation.
-            }
+        // Update Visuals Directly
+        const meshRef = meshes.get(entity);
+        if (meshRef) {
+            meshRef.mesh.position.set(x, y, z);
+            meshRef.mesh.quaternion.set(qx, qy, qz, qw);
         }
     });
   }

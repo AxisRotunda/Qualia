@@ -1,6 +1,6 @@
 
 # [KERNEL] Qualia 3D Neural Core
-> **ID**: KERNEL_V2.2
+> **ID**: KERNEL_V2.7
 > **Axiom**: "The Map updates the Territory; The Territory updates the Map."
 > **Role**: Immutable Logic Kernel & Command Registry.
 > **Constraint**: This file MUST be read first in any context loading sequence.
@@ -20,8 +20,14 @@ Invoke these keywords to trigger specific AI agent workflows.
 | `RUN_OPT` | `src/docs/protocol-optimize.md` | Performance tuning, memory leak hunting, loop tightening. |
 | `RUN_REF` | `src/docs/protocol-refactor.md` | Architecture cleanup, file decomposition, debt repayment. |
 | `RUN_GEO` | `src/docs/protocol-geometry.md` | Mesh topology, LOD generation, Vertex reduction. |
+| `RUN_TEXTURE` | `src/docs/protocol-texture.md` | Procedural texture synthesis, Worker migration, 2D Generation. |
+| `RUN_MAT` | `src/docs/protocol-material.md` | **[NEW]** Surface properties, PBR compliance, Shader injection. |
+| `RUN_RENDER` | `src/docs/protocol-render.md` | **[NEW]** Pipeline config, Shadow tuning, Draw call optimization. |
 | `RUN_NATURE` | `src/docs/protocol-nature.md` | Flora algorithms, Weather systems, Organic simulation. |
 | `RUN_TERRAIN` | `src/docs/protocol-terrain.md` | Heightmap algorithms, Erosion, Chunk streaming. |
+| `RUN_ARCH` | `src/docs/protocol-architecture.md` | Building placement realism, grid logic, navigable spaces. |
+| `RUN_UI` | `src/docs/protocol-ui.md` | UI/UX Architecture, Accessibility, Responsive Design. |
+| `RUN_SCENE_OPT`| `src/docs/protocol-scene-optimizer.md`| Scene-specific optimization, refactoring, and feature implementation. |
 | `NEW_SCENE` | `src/docs/protocol-content.md` | Creating new Levels, Biomes, or Scenes. |
 | `NEW_ASSET` | `src/docs/protocol-content.md` | Procedural generation of props/structures. |
 | `SYS_CHECK` | `src/docs/refactoring-state.md` | Health check, file inventory, dependency graph verification. |

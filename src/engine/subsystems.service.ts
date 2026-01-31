@@ -9,7 +9,6 @@ import { PhysicsFactoryService } from '../services/factories/physics-factory.ser
 import { VisualsFactoryService } from './graphics/visuals-factory.service';
 import { TemplateFactoryService } from '../services/factories/template-factory.service';
 import { ParticleService } from '../services/particle.service';
-import { BuoyancySystem } from './systems/buoyancy.system';
 
 @Injectable({
   providedIn: 'root'
@@ -29,7 +28,4 @@ export class SubsystemsService {
   public readonly physicsFactory = inject(PhysicsFactoryService);
   public readonly visualsFactory = inject(VisualsFactoryService);
   public readonly entityFactory = inject(TemplateFactoryService);
-  
-  // Systems
-  public readonly buoyancy = inject(BuoyancySystem);
 }

@@ -41,6 +41,17 @@ export class SceneContext {
     return this;
   }
 
+  /**
+   * Configures the global water simulation.
+   * @param level Y-level of the water surface. Pass null to disable.
+   * @param timeScale Speed of wave animation (default 1.0)
+   */
+  water(level: number | null, timeScale: number = 1.0) {
+      this.engine.state.waterLevel.set(level);
+      this.engine.state.waveTimeScale.set(timeScale);
+      return this;
+  }
+
   // --- Entity Management ---
 
   spawn(templateId: string, x: number, y: number, z: number, options?: SpawnOptions & { rotation?: THREE.Euler }): Entity {

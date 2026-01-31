@@ -11,11 +11,9 @@ export const WORKER_MAIN = `
       if (!ctx) throw new Error('No context');
 
       // Dispatch to domain-specific generators
-      // Note: These functions are available in scope due to string concatenation
-      
-      if (type.includes('concrete')) {
+      if (type.includes('concrete') || type === 'grid' || type === 'brick' || type === 'marble' || type === 'carpet' || type === 'city-window') {
           generateArch(ctx, type, params, size);
-      } else if (type.includes('metal')) {
+      } else if (type.includes('metal') || type.startsWith('tech-')) {
           generateTech(ctx, type, params, size);
       } else {
           generateNature(ctx, type, params, size);
@@ -26,7 +24,7 @@ export const WORKER_MAIN = `
 
     } catch (err) {
       console.error('TextureWorker Error:', err);
-      // Fallback: Return 1x1 pink pixel to indicate error visually without crashing
+      // Fallback: Return 1x1 pink pixel
       const errCanvas = new OffscreenCanvas(1,1);
       const errCtx = errCanvas.getContext('2d');
       errCtx.fillStyle = '#ff00ff';

@@ -139,6 +139,6 @@ export class TouchControlsComponent {
   }
 
   deselect() {
-      this.engine.entityMgr.selectedEntity.set(null);
+      this.engine.interaction.selectEntity(null);
   }
 }

@@ -17,10 +17,12 @@ Systems are injected and sorted by `priority` at initialization.
 | Priority | System | Responsibility |
 |----------|--------|----------------|
 | **0** | `InputSystem` | Updates Camera/Character controllers and Object Manipulation inputs. |
-| **100** | `EnvironmentSystem` | Updates Particle Systems (Weather). |
+| **100** | `EnvironmentSystem` | Updates Particle Systems (Weather) and Day/Night Cycle. |
 | **150** | `SceneLogicSystem` | Executes Scene-specific `onUpdate` hooks (e.g., Elevator logic). |
+| **190** | `BuoyancySystem` | Calculates fluid dynamics and applies impulses *before* physics step. |
 | **200** | `PhysicsSystem` | Steps Rapier World, Syncs Physics -> ECS. |
 | **900** | `RenderSystem` | Updates Gizmo visuals, Renders Three.js Scene. |
+| **1000** | `StatisticsSystem` | Gathers post-frame stats for Debug Overlay. |
 
 ## 3. Transform Synchronization (`EntityTransformSystem`)
 The most critical system for data consistency. It manages the bidirectional flow between the Physics World (Rapier) and the Visual World (Three.js), mediated by the ECS.

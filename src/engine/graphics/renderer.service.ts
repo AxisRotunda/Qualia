@@ -32,7 +32,8 @@ export class RendererService {
     
     // Tone Mapping & Color Space for Hard Realism
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0; // Standard exposure for high-intensity lighting
+    // Lowered exposure from 1.0 to 0.8 to help prevent whiteout in bright scenes
+    this.renderer.toneMappingExposure = 0.8; 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Essential for correct PBR colors
 
     // PMREM for IBL

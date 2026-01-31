@@ -66,19 +66,8 @@ export class NatureTextureService {
   }
 
   createIceTexture(): THREE.Texture {
-      const { canvas, ctx } = this.ctxService.getCanvas(512);
-      ctx.fillStyle = '#a5bfd1';
-      ctx.fillRect(0,0,512,512);
-      ctx.strokeStyle = '#ffffff';
-      ctx.globalAlpha = 0.3;
-      for(let i=0; i<40; i++) {
-          ctx.lineWidth = Math.random() * 2;
-          ctx.beginPath();
-          ctx.moveTo(Math.random()*512, Math.random()*512);
-          ctx.lineTo(Math.random()*512, Math.random()*512);
-          ctx.stroke();
-      }
-      return this.ctxService.finishTexture(canvas, 4);
+      // Migrated to Worker (PROTO_TEXTURE_V1)
+      return this.createAsyncTexture('ice', { size: 512 }, 4);
   }
 
   createWaterNormal(scale = 1): THREE.Texture {

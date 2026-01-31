@@ -1,20 +1,27 @@
 
 import { Injectable, inject } from '@angular/core';
+import { GameSystem } from '../system';
 import { PhysicsService } from '../../services/physics.service';
 import { EntityStoreService } from '../ecs/entity-store.service';
+import { EngineStateService } from '../engine-state.service';
 import { WATER_CONFIG } from '../../config/water.config';
 
 @Injectable({
   providedIn: 'root'
 })
-export class BuoyancySystem {
+export class BuoyancySystem implements GameSystem {
+  // Run before Physics (200) to apply forces
+  readonly priority = 190;
+
   private physicsService = inject(PhysicsService);
   private entityStore = inject(EntityStoreService);
+  private state = inject(EngineStateService);
 
-  // Optimization: Scratch objects for Rapier impulse/torque
-  // Rapier takes {x: number, y: number, z: number}, so we reuse these containers
+  // Optimization: Scratch objects for Rapier impulse/torque and position/velocity
   private readonly _impulse = { x: 0, y: 0, z: 0 };
   private readonly _torque = { x: 0, y: 0, z: 0 };
+  private readonly _pos = { x: 0, y: 0, z: 0 };
+  private readonly _vel = { x: 0, y: 0, z: 0 };
 
   // CPU Wave Calculation using Shared Config
   getWaveHeight(x: number, z: number, time: number): number {
@@ -38,10 +45,19 @@ export class BuoyancySystem {
       return y;
   }
 
-  update(baseWaterLevel: number, time: number, dt: number) {
+  update(dt: number, totalTime: number) {
+      const waterLevel = this.state.waterLevel();
+      
+      // If water is disabled, skip
+      if (waterLevel === null) return;
+
       const world = this.physicsService.rWorld;
       if (!world) return;
       
+      const timeScale = this.state.waveTimeScale();
+      const time = (totalTime / 1000) * timeScale;
+      const dtSec = dt / 1000;
+
       const fluidDensity = 1000.0; // Water density kg/m3
       const gravity = 9.81;
       const linearDrag = 0.05;
@@ -49,7 +65,7 @@ export class BuoyancySystem {
 
       // Substep config for stability
       const substeps = 3;
-      const dtSub = dt / substeps;
+      const dtSub = dtSec / substeps;
 
       // Optimization: Iterate ONLY entities marked as 'buoyant'
       this.entityStore.world.buoyant.forEach((isBuoyant, entity) => {
@@ -61,9 +77,10 @@ export class BuoyancySystem {
           const body = world.getRigidBody(rbRef.handle);
           if (!body || body.isFixed() || body.isKinematic()) return;
 
-          // Prediction Loop
-          const pos = body.translation();
-          const vel = body.linvel();
+          // Prediction Loop - Zero Alloc
+          this.physicsService.world.copyBodyPosition(rbRef.handle, this._pos);
+          this.physicsService.world.copyBodyLinVel(rbRef.handle, this._vel);
+          
           let totalBuoyantForceY = 0;
           
           const mass = body.mass();
@@ -75,11 +92,11 @@ export class BuoyancySystem {
           // Integrate force over multiple predicted substeps
           for (let i = 0; i < substeps; i++) {
               const tOffset = i * dtSub;
-              const predY = pos.y + (vel.y * tOffset);
+              const predY = this._pos.y + (this._vel.y * tOffset);
               const predTime = time + tOffset;
 
-              const waveHeight = this.getWaveHeight(pos.x, pos.z, predTime);
-              const currentWaterLevel = baseWaterLevel + waveHeight;
+              const waveHeight = this.getWaveHeight(this._pos.x, this._pos.z, predTime);
+              const currentWaterLevel = waterLevel + waveHeight;
 
               if (predY < currentWaterLevel) {
                   const depth = currentWaterLevel - predY;
@@ -96,7 +113,7 @@ export class BuoyancySystem {
           // Apply average impulse
           const avgForce = totalBuoyantForceY / substeps;
           if (avgForce > 0) {
-              const impulse = avgForce * dt;
+              const impulse = avgForce * dtSec;
               
               this._impulse.x = 0;
               this._impulse.y = impulse;
@@ -104,12 +121,12 @@ export class BuoyancySystem {
               body.applyImpulse(this._impulse, true);
 
               // Hydrodynamic Drag (Simplistic linear drag based on current velocity)
-              // Only apply drag if submerged (avgForce > 0 implies at least partially submerged)
+              const vel = this._vel;
               const speedSq = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
               if (speedSq > 0.001) {
                   const speed = Math.sqrt(speedSq);
                   const area = Math.pow(volumeTotal, 0.66); 
-                  const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * dt; 
+                  const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * dtSec; 
                   
                   this._impulse.x = -vel.x / speed * dragFactor;
                   this._impulse.y = -vel.y / speed * dragFactor;
@@ -120,7 +137,7 @@ export class BuoyancySystem {
               
               // Angular Drag
               const ang = body.angvel();
-              const factor = 0.02 * mass * (dt * 60);
+              const factor = 0.02 * mass * (dtSec * 60);
               
               this._torque.x = -ang.x * factor;
               this._torque.y = -ang.y * factor;

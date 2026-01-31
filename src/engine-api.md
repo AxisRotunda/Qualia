@@ -3,7 +3,7 @@
 
 > **Scope**: Public Facade methods of `EngineService`.
 > **Audience**: UI Component Developers / AI Agents generating UI code.
-> **Version**: 0.6.0 (Modular Refactor)
+> **Version**: 0.7.0 (Facade Complete)
 
 ## 1. Feature Modules (Service Access)
 The `EngineService` exposes specific feature services as public properties.
@@ -17,6 +17,9 @@ The `EngineService` exposes specific feature services as public properties.
 | `engine.input` | `InputManagerService` | Control modes, Camera presets, Focus. |
 | `engine.ops` | `EntityOpsService` | Delete, Duplicate, Rename, Physics Props. |
 | `engine.interaction` | `InteractionService` | Raycasting events (advanced usage only). |
+| `engine.transform` | `TransformLogicService` | **[NEW]** Entity Positioning, Rotation, Scaling. |
+| `engine.spawner` | `SpawnerService` | **[NEW]** Spawning Logic, Placement Mode. |
+| `engine.library` | `EntityLibraryService` | Access to Entity Templates. |
 
 ## 2. State Accessors (Read-Only Signals)
 Shortcuts on `engine` for common reactive state.
@@ -70,3 +73,5 @@ Shortcuts on `engine` for common reactive state.
 *   `engine.ops.deleteEntity(id)`
 *   `engine.ops.duplicateEntity(id)`
 *   `engine.ops.setEntityName(id, 'New Name')`
+*   `engine.transform.setEntityTransform(id, pos, rot, scale)`
+*   `engine.spawner.spawnFromTemplate('box')`

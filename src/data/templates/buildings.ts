@@ -11,27 +11,27 @@ export const BUILDING_TEMPLATES: EntityTemplate[] = [
     { id: 'building-small', label: 'Commercial Block', category: 'building', icon: 'location_city',
       geometry: 'mesh', meshId: 'gen-building-small', 
       physicsShape: 'box', size: new THREE.Vector3(5, 8, 5), 
-      mass: BLOCK_MASS, lockRotation: true, friction: 0.9, restitution: 0.05, tags: ['building', 'concrete'] },
+      mass: BLOCK_MASS, lockRotation: true, friction: 0.9, restitution: 0.05, tags: ['building', 'concrete', 'instanced'] },
     
     { id: 'building-tall', label: 'Office Tower', category: 'building', icon: 'business',
       geometry: 'mesh', meshId: 'gen-building-tall',
       physicsShape: 'box', size: new THREE.Vector3(6, 25, 6),
-      mass: SKYSCRAPER_MASS, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete'] },
+      mass: SKYSCRAPER_MASS, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete', 'instanced'] },
       
     { id: 'building-highway', label: 'Transit Tower', category: 'building', icon: 'tram',
       geometry: 'mesh', meshId: 'gen-building-highway',
       physicsShape: 'box', size: new THREE.Vector3(8, 30, 8), // Taller with connection
-      mass: SKYSCRAPER_MASS * 1.5, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete', 'infrastructure'] },
+      mass: SKYSCRAPER_MASS * 1.5, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete', 'infrastructure', 'instanced'] },
 
     { id: 'building-wide', label: 'Warehouse', category: 'building', icon: 'store',
       geometry: 'mesh', meshId: 'gen-building-wide',
       physicsShape: 'box', size: new THREE.Vector3(15, 6, 12),
-      mass: BLOCK_MASS * 1.5, lockRotation: true, friction: 0.9, restitution: 0.05, tags: ['building', 'industrial'] },
+      mass: BLOCK_MASS * 1.5, lockRotation: true, friction: 0.9, restitution: 0.05, tags: ['building', 'industrial', 'instanced'] },
 
     { id: 'building-skyscraper', label: 'Megastructure', category: 'building', icon: 'domain',
       geometry: 'mesh', meshId: 'gen-building-skyscraper',
       physicsShape: 'box', size: new THREE.Vector3(8, 45, 8),
-      mass: SKYSCRAPER_MASS * 3, lockRotation: true, friction: 0.9, restitution: 0.01, tags: ['building', 'hero'] },
+      mass: SKYSCRAPER_MASS * 3, lockRotation: true, friction: 0.9, restitution: 0.01, tags: ['building', 'hero', 'instanced'] },
 
     { id: 'structure-ramp', label: 'Ramp', category: 'building', icon: 'signal_cellular_0_bar',
       geometry: 'box', size: new THREE.Vector3(10, 0.5, 20), materialId: 'mat-metal',

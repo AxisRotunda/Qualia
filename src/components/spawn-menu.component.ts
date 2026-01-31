@@ -1,9 +1,8 @@
 
 import { Component, computed, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { EntityLibraryService } from '../services/entity-library.service';
+import { EngineService } from '../services/engine.service';
 import { EntityCategory, EntityTemplate } from '../data/entity-types';
-import { SpawnerService } from '../engine/features/spawner.service';
 
 @Component({
   selector: 'app-spawn-menu',
@@ -86,7 +85,7 @@ import { SpawnerService } from '../engine/features/spawner.service';
         </div>
         
         <!-- Mobile Footer Handle (Visual Only) -->
-        <div class="sm:hidden h-6 flex items-center justify-center shrink-0 border-t border-slate-800 bg-slate-950">
+        <div class="sm:hidden h-6 flex items-center justify-center shrink-0 border-t border-slate-800 bg-slate-900">
             <div class="w-12 h-1 bg-slate-700 rounded-full"></div>
         </div>
 
@@ -101,8 +100,7 @@ import { SpawnerService } from '../engine/features/spawner.service';
   `]
 })
 export class SpawnMenuComponent {
-  entityLib = inject(EntityLibraryService);
-  spawner = inject(SpawnerService);
+  engine = inject(EngineService);
   
   close = output<void>();
   
@@ -110,7 +108,7 @@ export class SpawnMenuComponent {
   activeCategory = signal<EntityCategory>('building');
 
   filteredTemplates = computed(() => {
-     return this.entityLib.templates.filter(t => t.category === this.activeCategory());
+     return this.engine.library.templates.filter(t => t.category === this.activeCategory());
   });
 
   getCategoryIcon(c: EntityCategory): string {
@@ -124,7 +122,7 @@ export class SpawnMenuComponent {
   }
 
   spawn(item: EntityTemplate) {
-      this.spawner.startPlacement(item.id);
+      this.engine.spawner.startPlacement(item.id);
       this.close.emit();
   }
 

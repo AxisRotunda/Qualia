@@ -48,6 +48,10 @@ export class EngineStateService {
   readonly weather = signal<WeatherType>('clear');
   readonly atmosphere = signal('clear');
   
+  // Buoyancy State
+  readonly waterLevel = signal<number | null>(null); // Null = Disabled
+  readonly waveTimeScale = signal(1.0);
+
   // Interaction Modes
   readonly transformMode = signal<'translate' | 'rotate' | 'scale'>('translate');
   readonly mode = signal<'edit' | 'explore' | 'walk'>('edit');

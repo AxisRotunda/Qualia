@@ -24,7 +24,7 @@ import { MenuManagerService } from '../../services/ui/menu-manager.service';
       </button>
 
       <!-- Branding -->
-      <div class="flex items-center gap-2 mr-6 cursor-pointer group" (click)="engine.mainMenuVisible.set(true)">
+      <div class="flex items-center gap-2 mr-6 cursor-pointer group" (click)="engine.setMainMenuVisible(true)">
          <div class="w-5 h-5 bg-cyan-950/30 border border-cyan-500/30 rounded-sm flex items-center justify-center group-hover:border-cyan-400 transition-colors shadow-sm">
             <span class="material-symbols-outlined text-cyan-500 text-[14px] drop-shadow-[0_0_3px_rgba(6,182,212,0.5)]">deployed_code_history</span>
          </div>

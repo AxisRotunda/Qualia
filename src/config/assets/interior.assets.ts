@@ -5,7 +5,10 @@ export const INTERIOR_ASSETS: Record<string, AssetDef> = {
     'gen-wall-seg-4m': complex(ctx => ctx.interior.generateWallSegment(4, 5, 0.4), ['mat-wall-cream', 'mat-wood-polish', 'mat-wall-cream']),
     'gen-sofa-01': complex(ctx => ctx.interior.generateSofa(), ['mat-fabric-gray', 'mat-wood-polish']),
     'gen-chandelier-01': complex(ctx => ctx.interior.generateChandelier(), ['mat-gold', 'mat-glass']),
-    'gen-staircase-4m': complex(ctx => ctx.interior.generateStaircase(4, 5, 8, 16), ['mat-marble', 'mat-wall-cream']),
+    
+    // Adjusted steps from 16 to 28 to achieve ~0.18m riser height (5m / 28 steps)
+    'gen-staircase-4m': complex(ctx => ctx.interior.generateStaircase(4, 5, 8, 28), ['mat-marble', 'mat-wall-cream']),
+    
     'gen-railing-4m': complex(ctx => ctx.interior.generateRailing(4), ['mat-wood-polish', 'mat-gold']),
     'gen-ceiling-panel': simple(ctx => ctx.interior.generateCeilingPanel(4), 'mat-wall-cream'),
     'gen-column-ornate': simple(ctx => ctx.interior.generateOrnateColumn(5), 'mat-marble'),

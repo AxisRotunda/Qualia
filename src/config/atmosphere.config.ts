@@ -76,10 +76,10 @@ export const ATMOSPHERE_PRESETS: Record<string, () => AtmosphereDefinition> = {
     }),
     'city': () => ({
         id: 'city',
-        // Urban Smog (Sodium vapor tint)
-        fog: new THREE.Fog(0x9ca3af, 60, 450),
-        background: new THREE.Color(0x9ca3af),
-        hemiColor: 0xd1d5db,
+        // Darker Smog (Slate/Blue Grey)
+        fog: new THREE.Fog(0x64748b, 60, 450),
+        background: new THREE.Color(0x64748b),
+        hemiColor: 0x94a3b8,
         hemiInt: 0.5,
         sunShadows: true
     }),

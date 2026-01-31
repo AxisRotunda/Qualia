@@ -25,7 +25,7 @@ src/
 │   ├── logic/                      # [Logic] Pure math/transform utilities
 │   ├── runtime/                    # [Core] Game Loop & System Scheduler
 │   ├── systems/                    # [ECS] Per-frame Logic Systems
-│   ├── utils/                      # [Utils] Shared helpers (Worker, Math)
+│   ├── utils/                      # [Utils] Shared helpers (Worker)
 │   └── workers/                    # [Core] Inline Worker Scripts
 │       ├── terrain/                # [Worker] Procedural Terrain Logic
 │       ├── textures/               # [Worker] Procedural Texture Logic (**NEW**)
@@ -41,6 +41,11 @@ src/
 │   ├── logic/                      # [Logic] Mass Calc
 │   └── ...
 ├── services/                       # [Glue] Angular Services (Facades & Factories)
+│   ├── generators/                 # [Logic] Procedural Generation
+│   │   ├── architecture/           # [Gen] Building & Road logic
+│   │   │   ├── architecture.utils.ts # [Util] Shared UV & Geometry helpers
+│   │   │   └── ...
+│   │   └── ...
 │   ├── engine.service.ts           # [Facade] Main API Entry point
 │   └── ...
 └── ...                             # [Root] Configs

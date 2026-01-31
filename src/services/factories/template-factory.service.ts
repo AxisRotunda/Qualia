@@ -6,7 +6,6 @@ import { EntityStoreService } from '../../engine/ecs/entity-store.service';
 import { PhysicsFactoryService } from './physics-factory.service';
 import { PhysicsService } from '../physics.service';
 import { AssetService } from '../asset.service';
-import { ShapesFactory } from '../../physics/shapes.factory';
 import { EntityTemplate } from '../../data/entity-templates';
 import { Entity } from '../../engine/core';
 
@@ -23,7 +22,6 @@ export class TemplateFactoryService {
   private physicsFactory = inject(PhysicsFactoryService);
   private physics = inject(PhysicsService);
   private assetService = inject(AssetService);
-  private shapesFactory = inject(ShapesFactory);
 
   spawn(
       entityMgr: EntityStoreService, 
@@ -70,7 +68,7 @@ export class TemplateFactoryService {
 
     // 6. Apply Locks
     if (template.lockRotation) {
-        this.shapesFactory.setLockRotation(bodyDef.handle, true);
+        this.physics.shapes.setLockRotation(bodyDef.handle, true);
     }
 
     // 7. Assemble ECS Entity
@@ -108,7 +106,7 @@ export class TemplateFactoryService {
         const rb = entityMgr.world.rigidBodies.get(entity);
         if (t && def && rb) {
             t.scale = { x: options.scale, y: options.scale, z: options.scale };
-            this.shapesFactory.updateBodyScale(rb.handle, def, t.scale);
+            this.physics.shapes.updateBodyScale(rb.handle, def, t.scale);
         }
     }
 

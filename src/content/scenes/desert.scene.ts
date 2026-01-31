@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 
@@ -8,6 +7,12 @@ export const DESERT_SCENE: ScenePreset = {
   description: 'Sweltering sand dunes surrounding a hidden spring.', 
   theme: 'city', 
   previewColor: 'from-orange-400 to-amber-200',
+  
+  preloadAssets: [
+      'hero-palm',
+      'rock-sandstone'
+  ],
+
   load: async (ctx, engine) => {
       ctx.atmosphere('desert')
          .weather('clear')
@@ -17,6 +22,7 @@ export const DESERT_SCENE: ScenePreset = {
              ambientIntensity: 0.4, 
              dirColor: '#fff7e6' 
          })
+         .water(-2.5, 0.5) // Lower water level, slower waves
          .gravity(-9.81)
          .cameraPreset('side');
 
@@ -96,12 +102,10 @@ export const DESERT_SCENE: ScenePreset = {
   
   onUpdate: (dt, totalTime, engine) => {
       const timeSec = totalTime / 1000;
-      const dtSec = dt / 1000;
       const matService = engine.materialService;
       const waterMat = matService.getMaterial('mat-water') as THREE.MeshPhysicalMaterial;
       if (waterMat && waterMat.userData && waterMat.userData['time']) {
           waterMat.userData['time'].value = timeSec * 0.5;
       }
-      engine.sys.buoyancy.update(-2.5, timeSec, dtSec);
   }
 };

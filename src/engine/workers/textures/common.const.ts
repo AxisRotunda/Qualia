@@ -1,5 +1,17 @@
 
 export const TEXTURE_COMMON = `
+    // --- High-Performance Integer Hash (Squirrel3/Murmur Variant) ---
+    function hash(n) {
+        let i = Math.floor(n);
+        i = Math.imul(i, 0xB5297A4D);
+        i ^= i >>> 8;
+        i = Math.imul(i, 0x68E31DA4);
+        i ^= i << 8;
+        i = Math.imul(i, 0x1B56C4E9);
+        i ^= i >>> 8;
+        return (i >>> 0) / 4294967296.0;
+    }
+
     // Helper: Generate Normal Map from Height Data (Sobel Filter)
     function generateNormalMap(inputData, size, strength) {
         const output = new Uint8ClampedArray(inputData.length);

@@ -5,7 +5,7 @@ import { TextureGeneratorService } from '../engine/graphics/texture-generator.se
 export type TextureGenFn = (gen: TextureGeneratorService) => THREE.Texture;
 
 export const TEXTURE_DEFINITIONS: Record<string, TextureGenFn> = {
-    'tex-concrete': (gen) => gen.nature.createConcreteBase(1), // Updated legacy ref
+    'tex-concrete': (gen) => gen.nature.createConcreteBase(1), 
     
     // Hard Realism: Realistic procedural concrete
     'tex-concrete-base': (gen) => gen.nature.createConcreteBase(1),
@@ -36,7 +36,7 @@ export const TEXTURE_DEFINITIONS: Record<string, TextureGenFn> = {
     'tex-hex-floor': (gen) => gen.createGridTexture('#18181b', '#0ea5e9', 8, 1),
     'tex-vent': (gen) => gen.tech.createIndustrialVent(1),
     
-    // NEW: Scratched Metal PBR
+    // Scratched Metal PBR
     'tex-metal-scratched': (gen) => gen.tech.createScratchedMetal(1),
     'tex-metal-normal': (gen) => gen.tech.createScratchedMetalNormal(1),
 
@@ -48,4 +48,8 @@ export const TEXTURE_DEFINITIONS: Record<string, TextureGenFn> = {
     'tex-screen-map': (gen) => gen.createTechScreenMap(),
     'tex-server-rack': (gen) => gen.createServerRackTexture(),
     'tex-linoleum': (gen) => gen.createNoiseTexture('#334155', 10, 2),
+    
+    // City
+    'tex-city-window': (gen) => gen.createCityWindowTexture(8), 
+    'tex-city-window-normal': (gen) => gen.createCityWindowNormal(8),
 };

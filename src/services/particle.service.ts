@@ -98,23 +98,20 @@ export class ParticleService {
       this.scene.add(this.system);
   }
   
-  update(dtMs: number) {
+  update(dtMs: number, camPos: THREE.Vector3) {
     if (!this.system || !this.scene) return;
     
     const dt = dtMs / 1000;
     const positions = this.system.geometry.attributes['position'].array as Float32Array;
     const velocities = this.system.geometry.attributes['velocity'].array as Float32Array;
     
-    const camera = this.scene.children.find(c => c instanceof THREE.Camera);
-    const camPos = camera ? camera.position : new THREE.Vector3(0,0,0);
-
     for (let i = 0; i < positions.length; i += 3) {
       // Base velocity + Wind
       let vx = velocities[i] + this.wind.x;
       let vy = velocities[i+1] + this.wind.y;
       let vz = velocities[i+2] + this.wind.z;
       
-      // Turbulence
+      // Turbulence (Simplified for perf)
       if (this.turbulence > 0) {
           vx += (Math.random() - 0.5) * this.turbulence;
           vz += (Math.random() - 0.5) * this.turbulence;

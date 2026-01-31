@@ -8,18 +8,22 @@ export type CellType = 'void' | 'highway' | 'road' | 'intersection' | 'building'
   providedIn: 'root'
 })
 export class CityGridService {
-  private cells = new Map<string, CellType>();
+  // Optimization: Use packed integers (number) instead of strings to avoid GC churn
+  private cells = new Map<number, CellType>();
   private readonly UNIT = CITY_CONFIG.GRID_UNIT;
 
   reset() {
     this.cells.clear();
   }
 
-  // Convert World Coordinate to Grid Key "x:z"
-  getKey(x: number, z: number): string {
+  // Pack 2x 16-bit signed integers into one 32-bit integer
+  private getKey(x: number, z: number): number {
     const gx = Math.round(x / this.UNIT);
     const gz = Math.round(z / this.UNIT);
-    return `${gx}:${gz}`;
+    // JS Bitwise ops work on 32-bit signed ints
+    // (gx & 0xFFFF) keeps lower 16 bits
+    // ((gz & 0xFFFF) << 16) moves gz to upper 16 bits
+    return (gx & 0xFFFF) | ((gz & 0xFFFF) << 16);
   }
 
   // Snap World Coordinate to nearest Grid Node

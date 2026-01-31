@@ -68,18 +68,29 @@ export class EnvironmentManagerService {
     this.dirLight.position.copy(this.sunPosition);
     this.dirLight.castShadow = true;
     
+    // Shadow Optimization for City Scale
+    // Coverage: +/- 180m (360m total width) to cover typical city block range
+    const d = 180; 
+    
     this.dirLight.shadow.mapSize.width = 2048;
     this.dirLight.shadow.mapSize.height = 2048;
     this.dirLight.shadow.camera.near = 0.5;
-    this.dirLight.shadow.camera.far = 300;
-    const d = 100;
+    this.dirLight.shadow.camera.far = 500; // Increased far plane for low sun angles
+    
     this.dirLight.shadow.camera.left = -d;
     this.dirLight.shadow.camera.right = d;
     this.dirLight.shadow.camera.top = d;
     this.dirLight.shadow.camera.bottom = -d;
-    this.dirLight.shadow.bias = -0.00002; 
-    this.dirLight.shadow.normalBias = 0.02; 
-    this.dirLight.shadow.radius = 1.5;
+    
+    // Bias Tuning for "Hard Realism"
+    // -0.00005 reduces acne on flat surfaces
+    this.dirLight.shadow.bias = -0.00005; 
+    
+    // Normal Bias shifts shadow lookup along surface normal
+    // 0.05 helps with self-shadowing on steep geometry (buildings)
+    this.dirLight.shadow.normalBias = 0.05; 
+    
+    this.dirLight.shadow.radius = 2.0; // Softness
     
     this.scene.add(this.dirLight);
   }

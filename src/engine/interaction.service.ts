@@ -5,6 +5,7 @@ import { EntityStoreService } from './ecs/entity-store.service';
 import { PointerListenerService, PointerEventData } from './input/pointer-listener.service';
 import { RaycasterService, SurfaceHit } from './interaction/raycaster.service';
 import { EngineStateService } from './engine-state.service';
+import { Entity } from './core';
 
 export { SurfaceHit };
 
@@ -41,10 +42,14 @@ export class InteractionService {
       return this.raycaster.raycastSurface(clientX, clientY);
   }
 
+  selectEntity(entity: Entity | null) {
+      this.entityStore.selectedEntity.set(entity);
+  }
+
   selectEntityAt(clientX: number, clientY: number) {
       if (this.state.isPlacementActive()) return;
       const entity = this.raycaster.raycastFromScreen(clientX, clientY);
-      this.entityStore.selectedEntity.set(entity);
+      this.selectEntity(entity);
   }
   
   // Public API for Overlays (e.g. Mobile Touch Layer) to trigger menus
@@ -53,7 +58,7 @@ export class InteractionService {
       const entity = this.raycaster.raycastFromScreen(clientX, clientY);
       if (entity !== null) {
           this.contextMenuRequest.set({ x: clientX, y: clientY, entity });
-          this.entityStore.selectedEntity.set(entity);
+          this.selectEntity(entity);
       }
   }
   
@@ -83,7 +88,7 @@ export class InteractionService {
       
       if (entity !== null) {
           this.contextMenuRequest.set({ x: e.x, y: e.y, entity });
-          this.entityStore.selectedEntity.set(entity);
+          this.selectEntity(entity);
       } else {
           this.contextMenuRequest.set(null);
       }

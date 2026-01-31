@@ -48,12 +48,18 @@ export class MaterialService {
             mat = new THREE.MeshStandardMaterial(def.props);
         }
         
+        if (def.userData) {
+            Object.assign(mat.userData, def.userData);
+        }
+
         if (def.mapId) mat.userData['mapId'] = def.mapId;
         if (def.normalMapId) mat.userData['normalMapId'] = def.normalMapId;
         if (def.displacementMapId) mat.userData['displacementMapId'] = def.displacementMapId;
         
         // Default target is map/emissiveMap
-        mat.userData['textureTarget'] = 'diffuse'; // 'diffuse' or 'emissive'
+        if (!mat.userData['textureTarget']) {
+            mat.userData['textureTarget'] = 'diffuse'; // 'diffuse' or 'emissive'
+        }
 
         // Cache displacement scale
         if (def.props && def.props.displacementScale !== undefined) {
@@ -93,9 +99,17 @@ export class MaterialService {
           const tex = this.getTexture(mapId); 
           if (tex) {
               if (target === 'emissive') {
-                 mat.emissiveMap = enabled ? tex : null;
-                 mat.map = enabled ? tex : null; // Often useful to map base as well
-                 mat.emissiveIntensity = enabled ? 2.0 : 0.0;
+                 if (enabled) {
+                     mat.emissiveMap = tex;
+                     mat.map = tex; 
+                     mat.emissive.setHex(0xffffff); // Enable tint so texture shows
+                     mat.emissiveIntensity = 2.0;
+                 } else {
+                     mat.emissiveMap = null;
+                     mat.map = null;
+                     mat.emissive.setHex(0x000000); // Disable tint to prevent whiteout
+                     mat.emissiveIntensity = 0.0;
+                 }
               } else {
                  mat.map = enabled ? tex : null;
               }

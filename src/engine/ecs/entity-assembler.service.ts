@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { EntityStoreService } from './entity-store.service';
 import { PhysicsService, PhysicsBodyDef } from '../../services/physics.service';
 import { VisualsFactoryService } from '../graphics/visuals-factory.service';
-import { InstancedMeshService } from '../graphics/instanced-mesh.service';
 import { EntityLibraryService } from '../../services/entity-library.service';
 import { EntityLifecycleService } from './entity-lifecycle.service';
 import { Entity } from '../core';
@@ -16,11 +15,8 @@ export class EntityAssemblerService {
   private store = inject(EntityStoreService);
   private physics = inject(PhysicsService);
   private visualsFactory = inject(VisualsFactoryService);
-  private instancedService = inject(InstancedMeshService);
   private entityLib = inject(EntityLibraryService);
   private lifecycle = inject(EntityLifecycleService);
-
-  // SceneGraphService dependency removed - delegated to VisualsFactory
 
   /**
    * Core Assembler: Wires up Physics, Visuals, and ECS Data for a new entity.
@@ -107,16 +103,9 @@ export class EntityAssemblerService {
     if (meshRef) {
         const mesh = meshRef.mesh;
         const tplId = this.store.world.templateIds.get(e);
-        if (tplId) {
-             this.instancedService.unregister(tplId, e);
-        } else {
-             // Only remove from graph if it's a standalone mesh (VisualsFactory added it)
-             // InstancedMeshService manages the graph for instanced objects
-             // We access the scene graph via the mesh parent or let VisualsFactory handle disposal
-             if (mesh.parent) mesh.parent.remove(mesh);
-        }
         
-        this.visualsFactory.disposeMesh(mesh);
+        // Delegate all visual cleanup (graph removal, instancing, disposal) to factory
+        this.visualsFactory.deleteVisuals(e, mesh, tplId);
     }
     
     // Notify Systems

@@ -141,15 +141,10 @@ export class CharacterControllerService {
         : 0;
 
     // 7. Sync Camera
-    // Note: physics.world.getBodyPose allocates a new object return (p, q). 
-    // Optimization: In a future pass, we could use a zero-alloc getter if exposed by wrapper.
-    const pose = this.physics.world.getBodyPose(this.character.bodyHandle);
-    if (pose) {
-        this._vecCam.set(
-            pose.p.x, 
-            pose.p.y + this.EYE_HEIGHT - (this.HEIGHT/2) + bobOffset, 
-            pose.p.z
-        );
+    // Optimized: Reuse _vecCam scratch vector to read position directly from physics wrapper
+    if (this.physics.world.copyBodyPosition(this.character.bodyHandle, this._vecCam)) {
+        // Apply offsets directly to the vector
+        this._vecCam.y += this.EYE_HEIGHT - (this.HEIGHT/2) + bobOffset;
         camera.position.copy(this._vecCam);
         
         this._euler.set(this.pitch, this.yaw, 0, 'YXZ');

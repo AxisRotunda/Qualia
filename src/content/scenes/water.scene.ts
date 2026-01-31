@@ -16,6 +16,7 @@ export const WATER_SCENE: ScenePreset = {
             ambientIntensity: 0.4,
             dirColor: '#ffffff'
          })
+         .water(-0.5, 1.0) // Enable buoyancy
          .time(16.5)
          .gravity(-9.81);
       
@@ -70,15 +71,13 @@ export const WATER_SCENE: ScenePreset = {
   
   onUpdate: (dt, totalTime, engine) => {
       const timeSec = totalTime / 1000;
-      const dtSec = dt / 1000;
       const matService = engine.materialService;
       if (matService) {
           const waterMat = matService.getMaterial('mat-water') as THREE.MeshPhysicalMaterial;
           if (waterMat.userData && waterMat.userData['time']) {
+              // Shader time sync (buoyancy system now handles physics sync automatically)
               waterMat.userData['time'].value = timeSec;
           }
       }
-      // Apply buoyancy via exposed system access on engine (EngineService is still Facade for subsystems)
-      engine.sys.buoyancy.update(0.0, timeSec, dtSec); 
   }
 };

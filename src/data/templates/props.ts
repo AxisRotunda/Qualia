@@ -69,7 +69,7 @@ export const PROP_TEMPLATES: EntityTemplate[] = [
 
     { id: 'prop-pillar', label: 'Pillar', category: 'prop', icon: 'view_column',
       geometry: 'cylinder', size: new THREE.Vector3(1, 8, 1), materialId: 'mat-concrete',
-      mass: 0, physicsMaterial: 'concrete', friction: 0.8, restitution: 0.1, tags: ['prop', 'static'] },
+      mass: 0, physicsMaterial: 'concrete', friction: 0.8, restitution: 0.1, tags: ['prop', 'static', 'instanced'] },
       
     { id: 'prop-glass-block', label: 'Glass Cube', category: 'prop', icon: 'check_box_outline_blank',
       geometry: 'box', size: new THREE.Vector3(2, 2, 2), materialId: 'mat-glass',

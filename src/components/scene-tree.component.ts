@@ -42,7 +42,7 @@ import { UiPanelComponent } from './ui-panel.component';
           <div [style.transform]="'translateY(' + scrollOffset() + 'px)'" class="relative z-10 flex flex-col gap-[1px]">
             @for (entity of visibleEntities(); track entity) {
               <div 
-                class="flex items-center gap-2 px-2 h-[28px] text-[11px] cursor-pointer select-none transition-all group relative border-l-[3px]"
+                class="flex items-center gap-2 px-2 h-[32px] text-[11px] cursor-pointer select-none transition-all group relative border-l-[3px]"
                 [class.bg-gradient-to-r]="engine.selectedEntity() === entity"
                 [class.from-cyan-900_40]="engine.selectedEntity() === entity"
                 [class.to-transparent]="engine.selectedEntity() === entity"
@@ -64,7 +64,7 @@ import { UiPanelComponent } from './ui-panel.component';
                     <div class="absolute left-[-3px] top-0 bottom-0 w-[3px] bg-cyan-400 shadow-[0_0_8px_cyan]"></div>
                 }
 
-                <span class="material-symbols-outlined text-[14px] opacity-70 group-hover:opacity-100 transition-opacity">
+                <span class="material-symbols-outlined text-[16px] opacity-70 group-hover:opacity-100 transition-opacity">
                     {{ getIcon(entity) }}
                 </span>
                 <span class="font-mono truncate flex-1 tracking-tight">{{ engine.getEntityName(entity) }}</span>
@@ -92,7 +92,7 @@ export class SceneTreeComponent {
   engine = inject(EngineService);
   layout = inject(LayoutService);
 
-  private readonly ROW_HEIGHT = 29; 
+  private readonly ROW_HEIGHT = 33; // 32px height + 1px gap
   private scrollTop = signal(0);
   searchQuery = signal('');
   
@@ -126,7 +126,7 @@ export class SceneTreeComponent {
   }
 
   select(e: Entity) {
-    this.engine.selectedEntity.set(e);
+    this.engine.interaction.selectEntity(e);
   }
 
   onContextMenu(e: MouseEvent, entity: Entity) {
@@ -165,14 +165,6 @@ export class SceneTreeComponent {
       
       const nextEntity = list[nextIndex];
       this.select(nextEntity);
-      
-      // Auto-scroll logic could be added here by querying the DOM element or estimating scroll top
-      // Simple approximation:
-      const rowTop = nextIndex * this.ROW_HEIGHT;
-      const rowBottom = rowTop + this.ROW_HEIGHT;
-      const currentScroll = this.scrollTop();
-      // Need reference to container height, assuming ~ calc(100vh - 160px) ~ 600px for now or injecting ElementRef
-      // For simplicity in this iteration, we update selection logic only.
   }
 
   getIcon(e: Entity): string {

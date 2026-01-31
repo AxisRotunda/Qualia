@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 
@@ -8,6 +7,12 @@ export const ICE_SCENE: ScenePreset = {
   description: 'Procedural snow terrain populated with crystalline ice formations.', 
   theme: 'ice', 
   previewColor: 'from-cyan-800 to-blue-950',
+  
+  preloadAssets: [
+      'ice-spire-lg',
+      'ice-01',
+      // Note: 'ice-terrain-lg' is not preloaded as this scene uses async terrain generation
+  ],
   
   load: async (ctx, engine) => {
       // 1. Environment Setup

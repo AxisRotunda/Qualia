@@ -113,7 +113,26 @@ export class VisualsFactoryService {
     return mesh;
   }
 
-  disposeMesh(mesh: THREE.Mesh | THREE.Object3D) {
+  deleteVisuals(entity: Entity, mesh: THREE.Object3D, templateId?: string) {
+      // 1. Handle Instanced Unregistration
+      if (templateId) {
+          // If we have a template ID, it MIGHT be instanced. 
+          // The InstancedMeshService gracefully ignores if the entity/template combo isn't registered.
+          this.instancedService.unregister(templateId, entity);
+      }
+
+      // 2. Remove from Scene Graph (Standard Meshes)
+      // Instanced proxies are not in the scene graph usually, but if they are attached for debug, this cleans them.
+      // Standard meshes are definitely in the graph.
+      if (mesh.parent) {
+          mesh.parent.remove(mesh);
+      }
+
+      // 3. Dispose Resources
+      this.disposeMesh(mesh);
+  }
+
+  private disposeMesh(mesh: THREE.Mesh | THREE.Object3D) {
       // Geometry is managed by registries.
       // We only dispose bespoke materials if necessary, but standard materials are shared.
       if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshStandardMaterial && !mesh.material.userData['mapId']) {

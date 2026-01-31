@@ -134,6 +134,25 @@ export class PhysicsWorldService {
     };
   }
 
+  // Optimized: Zero-alloc copy to target object
+  copyBodyPosition(handle: number, outPos: { x: number, y: number, z: number }): boolean {
+    if (!this.world) return false;
+    const body = this.world.getRigidBody(handle);
+    if (!body) return false;
+    const t = body.translation();
+    outPos.x = t.x; outPos.y = t.y; outPos.z = t.z;
+    return true;
+  }
+
+  copyBodyLinVel(handle: number, outVel: { x: number, y: number, z: number }): boolean {
+    if (!this.world) return false;
+    const body = this.world.getRigidBody(handle);
+    if (!body) return false;
+    const v = body.linvel();
+    outVel.x = v.x; outVel.y = v.y; outVel.z = v.z;
+    return true;
+  }
+
   updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
     if (!this.world) return;
     const body = this.world.getRigidBody(handle);

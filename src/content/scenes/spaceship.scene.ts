@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 
@@ -8,6 +7,13 @@ export const SPACESHIP_SCENE: ScenePreset = {
   description: 'A massive exploration ship orbiting a red giant star.', 
   theme: 'space', 
   previewColor: 'from-orange-700 to-amber-900',
+  
+  preloadAssets: [
+      'gen-scifi-hub',
+      'gen-scifi-corridor',
+      'prop-sensor-unit'
+  ],
+
   load: (ctx, engine) => {
       ctx.atmosphere('space')
          .weather('clear')

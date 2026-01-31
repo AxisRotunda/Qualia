@@ -17,6 +17,8 @@ import { EntityOpsService } from '../engine/features/entity-ops.service';
 import { SimulationService } from '../engine/features/simulation.service';
 import { ViewportService } from '../engine/features/viewport.service';
 import { TerrainManagerService } from '../engine/features/terrain-manager.service';
+import { TransformLogicService } from '../engine/logic/transform-logic.service';
+import { SpawnerService } from '../engine/features/spawner.service';
 
 @Injectable({
   providedIn: 'root'
@@ -39,6 +41,8 @@ export class EngineService {
   public readonly input = inject(InputManagerService);
   public readonly interaction = inject(InteractionService);
   public readonly terrain = inject(TerrainManagerService);
+  public readonly transform = inject(TransformLogicService);
+  public readonly spawner = inject(SpawnerService);
   
   // --- Subsystem Accessors (Legacy/Compat) ---
   get physicsService() { return this.sys.physics; }
@@ -50,7 +54,6 @@ export class EngineService {
   get entityFactory() { return this.sys.entityFactory; }
   get materialService() { return this.sys.materials; }
   get particleService() { return this.sys.particles; }
-  get buoyancySystem() { return this.sys.buoyancy; }
 
   // --- State Shortcuts (Read-Only) ---
   get mode() { return this.state.mode; }
@@ -95,5 +98,9 @@ export class EngineService {
           lookAt: new THREE.Vector3(config.lookAt.x, config.lookAt.y, config.lookAt.z),
           duration: config.duration
       });
+  }
+
+  setMainMenuVisible(visible: boolean) {
+      this.state.mainMenuVisible.set(visible);
   }
 }

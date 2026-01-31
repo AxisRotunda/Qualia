@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 
@@ -8,6 +7,13 @@ export const FOREST_SCENE: ScenePreset = {
   description: 'Dense woods with fallen logs, organic terrain, and dynamic lighting.', 
   theme: 'forest', 
   previewColor: 'from-emerald-700 to-green-900',
+  
+  preloadAssets: [
+      'tree-01',
+      'rock-01',
+      'log-01'
+  ],
+
   load: (ctx, engine) => {
       ctx.atmosphere('forest')
          .weather('clear')

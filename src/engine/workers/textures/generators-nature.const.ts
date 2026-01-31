@@ -94,5 +94,42 @@ export const TEXTURE_GEN_NATURE = `
             }
             return;
         }
+
+        if (type === 'ice') {
+            ctx.fillStyle = '#a5bfd1';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Subsurface scatter simulation (soft gradient blobs)
+            ctx.globalAlpha = 0.2;
+            for(let i=0; i<8; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const r = 50 + Math.random() * 100;
+                const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+                grd.addColorStop(0, 'rgba(255,255,255,0.4)');
+                grd.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // Scratches
+            ctx.strokeStyle = '#ffffff';
+            ctx.globalAlpha = 0.3;
+            const lines = 40;
+            for(let i=0; i<lines; i++) {
+                ctx.lineWidth = Math.random() * 2;
+                ctx.beginPath();
+                const x1 = Math.random() * size;
+                const y1 = Math.random() * size;
+                const x2 = x1 + (Math.random()-0.5) * 100;
+                const y2 = y1 + (Math.random()-0.5) * 100;
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+            return;
+        }
     }
 `;

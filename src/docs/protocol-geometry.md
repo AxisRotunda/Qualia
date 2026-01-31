@@ -2,14 +2,17 @@
 # [PROTOCOL] Geometry Refinement
 > **Trigger**: `RUN_GEO`
 > **Target**: `src/engine/graphics/primitive-registry.service.ts`, `src/services/generators/`
-> **Version**: 1.0 (Genesis)
+> **Version**: 1.1 (Fluent Update)
 
 ## 1. Analysis Routine
 1.  **Vertex Count Check**: Scan generators for `segments` parameters. If `segments > 32` for non-hero assets, flag for reduction.
 2.  **Topology Check**: Identify meshes using `toNonIndexed()` unnecessarily. Indexed geometry is preferred for memory unless flat shading is required.
+    *   **Exception**: Merging different primitives (e.g., Box and Extrude) often requires `toNonIndexed()` on all parts to match attributes.
 3.  **LOD Opportunity**: Identify assets used in large quantities (Trees, Rocks). Ensure they support a `complexity` or `lod` parameter.
 
 ## 2. Refinement Strategies
+*   **Fluent Builder**: Use `Geo.box(w,h,d)` from `architecture.utils.ts` instead of raw `new THREE.BoxGeometry()`. 
+    *   **Why**: Enforces cleaner chaining (`.mapBox().translate()`) and reduces visual noise.
 *   **LOD Caching**: In `PrimitiveRegistry`, cache geometry keys with LOD suffix (e.g., `sphere_r1_lod2`).
 *   **Merge Policy**: Use `BufferGeometryUtils.mergeGeometries` for static clusters.
 *   **Instance Policy**: If an object appears > 10 times, it MUST use `InstancedMesh`.
@@ -17,6 +20,7 @@
 ## 3. Self-Learning Heuristics (Dynamic)
 *   *Current Heuristic*: For cylinders used as pipes/logs, 8 segments is sufficient for LOD1.
 *   *Current Heuristic*: Use `Dodecahedron` over `Sphere` for low-poly organic shapes (Rocks/Leaves).
+*   *Current Heuristic*: When merging `BoxGeometry` with `ExtrudeGeometry`, implicitly convert the Box to non-indexed to avoid stride mismatches.
 
 ## 4. Meta-Update (Self-Optimization)
 **INSTRUCTION**: After optimizing geometry, perform the **Mutation Check**:

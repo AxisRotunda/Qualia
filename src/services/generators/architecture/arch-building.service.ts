@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { Geo } from './architecture.utils';
 
 interface GeometryGroups {
     frame: THREE.BufferGeometry[];
@@ -19,260 +20,217 @@ export interface BuildingOptions {
 export class ArchBuildingService {
 
   generateBuilding(w: number, totalH: number, d: number, tiers: number, options: BuildingOptions = {}): THREE.BufferGeometry | null {
-      const groups: GeometryGroups = {
-          frame: [],
-          window: [],
-          detail: []
-      };
+      const groups: GeometryGroups = { frame: [], window: [], detail: [] };
       
       let currentY = 0;
       let currentW = w;
       let currentD = d;
       
-      // Architectural proportions
-      const groundHeight = options.highwayAccess ? 12.0 : 5.0; // Higher lobby for highway buildings to reach deck
+      const groundHeight = options.highwayAccess ? 12.0 : 5.0; 
       const bodyHeight = Math.max(totalH - groundHeight, 5);
       const tierHeight = bodyHeight / tiers;
 
-      // 1. Ground Floor (Lobby)
-      this.generateLobby(currentW, groundHeight, currentD, groups, options.highwayAccess);
+      // 0. Foundation
+      const h = 2.0;
+      groups.frame.push(
+          Geo.box(currentW, h, currentD)
+             .mapBox(currentW, h, currentD)
+             .translate(0, -h/2, 0)
+             .get()
+      );
+
+      // 1. Ground Floor
+      this.generateLobby(currentW, groundHeight, currentD, groups, tiers, options.highwayAccess);
       currentY += groundHeight;
 
-      // 2. Body Tiers with Exoskeleton
+      // 2. Tiers
       for(let t = 0; t < tiers; t++) {
           this.generateTier(currentW, tierHeight, currentD, currentY, groups);
-          
           currentY += tierHeight;
           
-          // Taper for next tier
           if (t < tiers - 1) {
               this.generateCornice(currentW, currentD, currentY, groups);
-              // Precision Taper: Reduce by fixed margin rather than percentage to keep grid alignment
-              // If W > 10, reduce by 2m on each side (4m total)
               const taper = (currentW > 10) ? 0.85 : 0.9;
               currentW *= taper;
               currentD *= taper;
           }
       }
 
-      // 3. Mechanical Penthouse / Roof
+      // 3. Roof
       this.generateRoof(currentW, currentD, currentY, groups);
 
-      // 4. Merge & Group
-      const mergedFrame = groups.frame.length ? BufferUtils.mergeGeometries(groups.frame) : null;
-      const mergedWindow = groups.window.length ? BufferUtils.mergeGeometries(groups.window) : null;
-      const mergedDetail = groups.detail.length ? BufferUtils.mergeGeometries(groups.detail) : null;
-
-      const finalParts: THREE.BufferGeometry[] = [];
+      // 4. Merge
+      const merge = (geos: THREE.BufferGeometry[]) => geos.length ? BufferUtils.mergeGeometries(geos) : new THREE.BoxGeometry(0,0,0);
       
-      // Group 0: Frame (Concrete/Metal)
-      if (mergedFrame) finalParts.push(mergedFrame);
-      else finalParts.push(new THREE.BoxGeometry(0,0,0)); 
+      const finalParts = [
+          merge(groups.frame),  // 0: Concrete
+          merge(groups.window), // 1: Glass
+          merge(groups.detail)  // 2: Metal
+      ];
 
-      // Group 1: Window (Glass)
-      if (mergedWindow) finalParts.push(mergedWindow);
-      else finalParts.push(new THREE.BoxGeometry(0,0,0));
-
-      // Group 2: Detail (Metal/Dark)
-      if (mergedDetail) finalParts.push(mergedDetail);
-      else finalParts.push(new THREE.BoxGeometry(0,0,0));
-
-      if (finalParts.length > 0) {
-          // 0 -> mat-concrete, 1 -> mat-window, 2 -> mat-dark-metal
+      if (finalParts.some(g => g.getAttribute('position').count > 0)) {
           const final = BufferUtils.mergeGeometries(finalParts, true); 
-          
-          // Align bottom to y=0 (Physics Box usually centered at y=H/2)
-          // Adjust translation based on total height generated
           final.translate(0, -totalH / 2, 0);
           return final;
       }
-      
       return null;
   }
 
-  private generateLobby(w: number, h: number, d: number, groups: GeometryGroups, isHighway = false) {
+  private generateLobby(w: number, h: number, d: number, groups: GeometryGroups, totalTiers: number, isHighway = false) {
       const colSize = 1.2;
       const glassInset = 0.5;
+      const isTall = totalTiers >= 4;
+      const colBottomScale = isTall ? 1.5 : 1.0; 
 
-      // Heavy Structural Columns
+      // Columns
       const corners = [
-          [w/2 - colSize/2, d/2 - colSize/2],
-          [-w/2 + colSize/2, d/2 - colSize/2],
-          [w/2 - colSize/2, -d/2 + colSize/2],
-          [-w/2 + colSize/2, -d/2 + colSize/2]
+          [w/2 - colSize/2, d/2 - colSize/2], [-w/2 + colSize/2, d/2 - colSize/2],
+          [w/2 - colSize/2, -d/2 + colSize/2], [-w/2 + colSize/2, -d/2 + colSize/2]
       ];
 
       corners.forEach(([x, z]) => {
-          const col = new THREE.BoxGeometry(colSize, h, colSize);
-          this.scaleUVs(col, colSize, h, colSize);
-          col.translate(x, h/2, z);
-          groups.frame.push(col);
+          if (isTall) {
+              const topR = (colSize / Math.sqrt(2));
+              const botR = (colSize * colBottomScale) / Math.sqrt(2);
+              groups.frame.push(
+                  Geo.cylinder(topR, botR, h, 4).rotateY(Math.PI/4).translate(x, h/2, z).get()
+              );
+          } else {
+              groups.frame.push(
+                  Geo.box(colSize, h, colSize).mapBox(colSize, h, colSize).translate(x, h/2, z).get()
+              );
+          }
       });
 
-      // Recessed Glass Core
+      // Glass Core
       const gW = w - (glassInset * 2);
       const gD = d - (glassInset * 2);
-      const glass = new THREE.BoxGeometry(gW, h, gD);
-      this.scaleUVs(glass, gW, h, gD, 0.2); 
-      glass.translate(0, h/2, 0);
-      groups.window.push(glass);
+      groups.window.push(
+          Geo.box(gW, h, gD).mapBox(gW, h, gD, 0.2).translate(0, h/2, 0).get()
+      );
 
-      // Entrance Canopy (Front)
-      const canD = 2.5;
-      const canW = w * 0.5;
-      const canopy = new THREE.BoxGeometry(canW, 0.4, canD);
-      canopy.translate(0, 4.0, d/2 + canD/2 - 0.2); // Standard height entrance
-      groups.detail.push(canopy);
+      // Entrance
+      if (!isHighway) {
+          const doorW = 4.0;
+          const doorH = 3.5;
+          const frameThick = 0.4;
+          
+          groups.detail.push(
+              Geo.box(doorW + frameThick*2, 0.4, 0.6).translate(0, doorH + 0.2, d/2 + 0.1).get(),
+              Geo.box(frameThick, doorH, 0.6).translate(-doorW/2 - frameThick/2, doorH/2, d/2 + 0.1).get(),
+              Geo.box(frameThick, doorH, 0.6).translate(doorW/2 + frameThick/2, doorH/2, d/2 + 0.1).get()
+          );
+          
+          groups.window.push(
+              Geo.box(doorW, doorH, 0.5).translate(0, doorH/2, d/2 - glassInset + 0.2).get()
+          );
+          
+          groups.frame.push(
+              Geo.box(doorW + 2.0, 0.2, 2.5).translate(0, doorH + 0.6, d/2 + 2.5/2 - 0.2).get()
+          );
+      }
 
-      // Highway Connector (Back)
+      // Highway Connector
       if (isHighway) {
-          // Ramp / Bridge extending from back at height 12 (approx top of lobby)
-          const bridgeL = 6.0; // Reach out to highway
-          const bridgeW = w * 0.6;
-          const bridgeGeo = new THREE.BoxGeometry(bridgeW, 0.8, bridgeL);
-          // Position at top of lobby, extending backward (-Z)
-          bridgeGeo.translate(0, h - 0.4, -d/2 - bridgeL/2 + 0.5);
-          groups.frame.push(bridgeGeo);
-
-          // Support Struts for Bridge
-          const strutGeo = new THREE.BoxGeometry(0.8, 2.0, 1.5);
-          const s1 = strutGeo.clone(); s1.translate(-bridgeW/2 + 0.4, h - 1.4, -d/2);
-          const s2 = strutGeo.clone(); s2.translate(bridgeW/2 - 0.4, h - 1.4, -d/2);
-          groups.detail.push(s1, s2);
+          const bL = 6.0; const bW = w * 0.6;
+          groups.frame.push(
+              Geo.box(bW, 0.8, bL).translate(0, h - 0.4, -d/2 - bL/2 + 0.5).get()
+          );
+          
+          const strut = Geo.box(0.8, 2.0, 1.5);
+          groups.detail.push(
+              strut.clone().translate(-bW/2 + 0.4, h - 1.4, -d/2).get(),
+              strut.clone().translate(bW/2 - 0.4, h - 1.4, -d/2).get()
+          );
       }
   }
 
   private generateTier(w: number, h: number, d: number, y: number, groups: GeometryGroups) {
-      const floorH = 3.5;
-      const floors = Math.floor(h / floorH);
-      
-      // Central Glass Core
-      const core = new THREE.BoxGeometry(w - 0.2, h, d - 0.2);
-      this.scaleUVs(core, w, h, d, 0.5);
-      core.translate(0, y + h/2, 0);
-      groups.window.push(core);
+      // Core
+      groups.window.push(
+          Geo.box(w - 0.2, h, d - 0.2).mapBox(w, h, d, 0.5).translate(0, y + h/2, 0).get()
+      );
 
-      // Exoskeleton / Structural Grid
-      // Vertical Ribs
+      // Ribs
       const ribCountX = Math.max(2, Math.floor(w / 4));
       const ribCountZ = Math.max(2, Math.floor(d / 4));
       const ribThick = 0.3;
-      const ribDepth = 0.4; // Protrusion
+      const ribDepth = 0.4;
 
-      // Function to add ribs along a face
       const addRibs = (axis: 'x'|'z', size: number, depthSize: number) => {
           const count = axis === 'x' ? ribCountX : ribCountZ;
           const step = size / count;
           
+          // Template rib to clone
+          const tThick = axis === 'x' ? ribThick : ribDepth;
+          const tDepth = axis === 'x' ? ribDepth : ribThick;
+          const ribTemplate = Geo.box(tThick, h, tDepth);
+
           for(let i=0; i<=count; i++) {
               const pos = -size/2 + (i * step);
               
-              // Front/Back or Left/Right
-              const r1 = new THREE.BoxGeometry(axis === 'x' ? ribThick : ribDepth, h, axis === 'x' ? ribDepth : ribThick);
-              if (axis === 'x') r1.translate(pos, y + h/2, depthSize/2); // Front
-              else r1.translate(depthSize/2, y + h/2, pos); // Right
-              groups.frame.push(r1);
-
-              const r2 = r1.clone();
-              if (axis === 'x') r2.translate(0, 0, -depthSize); // Back
-              else r2.translate(-depthSize, 0, 0); // Left
-              groups.frame.push(r2);
+              const zOffset = depthSize/2;
+              if (axis === 'x') {
+                  groups.frame.push(ribTemplate.clone().translate(pos, y + h/2, zOffset).get()); // Front
+                  groups.frame.push(ribTemplate.clone().translate(pos, y + h/2, -zOffset).get()); // Back
+              } else {
+                  groups.frame.push(ribTemplate.clone().translate(zOffset, y + h/2, pos).get()); // Right
+                  groups.frame.push(ribTemplate.clone().translate(-zOffset, y + h/2, pos).get()); // Left
+              }
           }
       };
 
       addRibs('x', w, d);
       addRibs('z', d, w);
 
-      // Horizontal Spandrels (Floor Slabs)
+      // Floors
+      const floorH = 3.5;
+      const floors = Math.floor(h / floorH);
+      const slabTemplate = Geo.box(w + 0.1, 0.4, d + 0.1).mapBox(w, 0.4, d);
+      
       for(let i = 0; i <= floors; i++) {
           const fy = y + (i * floorH);
           if (fy > y + h) break;
-          
-          const slab = new THREE.BoxGeometry(w + 0.1, 0.4, d + 0.1); // Slightly wider than core
-          this.scaleUVs(slab, w, 0.4, d);
-          slab.translate(0, fy, 0);
-          groups.detail.push(slab);
+          groups.detail.push(slabTemplate.clone().translate(0, fy, 0).get());
       }
   }
 
   private generateCornice(w: number, d: number, y: number, groups: GeometryGroups) {
-      const h = 0.6;
-      const corn = new THREE.BoxGeometry(w + 0.2, h, d + 0.2);
-      this.scaleUVs(corn, w, h, d);
-      corn.translate(0, y - h/2, 0); 
-      groups.frame.push(corn);
+      groups.frame.push(
+          Geo.box(w + 0.2, 0.6, d + 0.2).mapBox(w, 0.6, d).translate(0, y - 0.3, 0).get()
+      );
   }
 
   private generateRoof(w: number, d: number, y: number, groups: GeometryGroups) {
-      // Mechanical Penthouse (Recessed block)
-      const pH = 3.0;
-      const pW = w * 0.6;
-      const pD = d * 0.6;
-      
-      const mech = new THREE.BoxGeometry(pW, pH, pD);
-      this.scaleUVs(mech, pW, pH, pD);
-      mech.translate(0, y + pH/2, 0);
-      groups.detail.push(mech); // Use dark metal detail material
+      // Penthouse
+      const pH = 3.0; const pW = w * 0.6; const pD = d * 0.6;
+      groups.detail.push(
+          Geo.box(pW, pH, pD).mapBox(pW, pH, pD).translate(0, y + pH/2, 0).get()
+      );
 
-      // Parapet Wall
-      const wallH = 1.2;
-      const wallThick = 0.3;
-      
-      const wallN = new THREE.BoxGeometry(w, wallH, wallThick);
-      wallN.translate(0, y + wallH/2, -d/2 + wallThick/2);
-      
-      const wallS = new THREE.BoxGeometry(w, wallH, wallThick);
-      wallS.translate(0, y + wallH/2, d/2 - wallThick/2);
-      
-      const wallE = new THREE.BoxGeometry(wallThick, wallH, d - wallThick*2);
-      wallE.translate(w/2 - wallThick/2, y + wallH/2, 0);
-      
-      const wallW = new THREE.BoxGeometry(wallThick, wallH, d - wallThick*2);
-      wallW.translate(-w/2 + wallThick/2, y + wallH/2, 0);
+      // Parapet
+      const h = 1.2; const th = 0.3;
+      groups.frame.push(
+          Geo.box(w, h, th).translate(0, y + h/2, -d/2 + th/2).get(),
+          Geo.box(w, h, th).translate(0, y + h/2, d/2 - th/2).get(),
+          Geo.box(th, h, d - th*2).translate(w/2 - th/2, y + h/2, 0).get(),
+          Geo.box(th, h, d - th*2).translate(-w/2 + th/2, y + h/2, 0).get()
+      );
 
-      groups.frame.push(wallN, wallS, wallE, wallW);
-
-      // HVAC Units
+      // HVAC
       const boxCount = 2 + Math.floor(Math.random() * 2);
       for(let i=0; i<boxCount; i++) {
           const size = 1.0 + Math.random();
-          const box = new THREE.BoxGeometry(size, size*0.8, size);
-          
           const bx = (Math.random()-0.5) * (w - 2);
           const bz = (Math.random()-0.5) * (d - 2);
-          
-          box.translate(bx, y + size*0.4, bz);
-          groups.detail.push(box);
+          groups.detail.push(
+              Geo.box(size, size*0.8, size).translate(bx, y + size*0.4, bz).get()
+          );
       }
       
-      // Antenna Array
-      const antH = 6.0;
-      const ant = new THREE.CylinderGeometry(0.1, 0.2, antH);
-      ant.translate(0, y + pH + antH/2, 0);
-      groups.detail.push(ant);
-  }
-
-  private scaleUVs(geo: THREE.BoxGeometry, w: number, h: number, d: number, factor = 0.5) {
-      const uvs = geo.getAttribute('uv');
-      if (!uvs) return;
-
-      const scaleFace = (faceIdx: number, uScale: number, vScale: number) => {
-          const offset = faceIdx * 4;
-          for (let i = 0; i < 4; i++) {
-              const idx = offset + i;
-              const u = uvs.getX(idx);
-              const v = uvs.getY(idx);
-              uvs.setXY(idx, u * uScale * factor, v * vScale * factor);
-          }
-      };
-
-      scaleFace(0, d, h); // Right
-      scaleFace(1, d, h); // Left
-      scaleFace(2, w, d); // Top
-      scaleFace(3, w, d); // Bottom
-      scaleFace(4, w, h); // Front
-      scaleFace(5, w, h); // Back
-      
-      uvs.needsUpdate = true;
+      // Antenna
+      groups.detail.push(
+          Geo.cylinder(0.1, 0.2, 6.0).translate(0, y + pH + 3.0, 0).get()
+      );
   }
 }
