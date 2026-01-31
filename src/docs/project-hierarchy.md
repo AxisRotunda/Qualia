@@ -18,16 +18,7 @@ src/
 │   ├── controllers/                # [Logic] Input Strategies (Cam, Char, Fly)
 │   ├── ecs/                        # [Core] ECS Implementation
 │   ├── features/                   # [Logic] High-level gameplay features
-│   │   ├── entity-ops.service.ts   # [Feature] CRUD operations
-│   │   ├── environment-control.service.ts
-│   │   ├── level-manager.service.ts
-│   │   ├── object-manipulation.service.ts
-│   │   ├── simulation.service.ts   # [Feature] Time/Debug/Pause
-│   │   ├── spawner.service.ts      # [Feature] Placement logic
-│   │   └── terrain-manager.service.ts # [Feature] **NEW** Chunk Logic
 │   ├── level/                      # [Core] Scene Management
-│   │   ├── scene-context.ts        # [Core] Scene API for scripts
-│   │   └── scene-loader.service.ts # [Core] **NEW** Async Loading Pipeline
 │   ├── graphics/                   # [Render] Three.js abstractions
 │   ├── interaction/                # [Interaction] Raycasting & Spatial Queries
 │   ├── input/                      # [Input] Raw pointer event handling
@@ -36,16 +27,19 @@ src/
 │   ├── systems/                    # [ECS] Per-frame Logic Systems
 │   ├── utils/                      # [Utils] Shared helpers (Worker, Math)
 │   └── workers/                    # [Core] Inline Worker Scripts
+│       ├── terrain/                # [Worker] Procedural Terrain Logic
+│       ├── textures/               # [Worker] Procedural Texture Logic (**NEW**)
+│       │   ├── common.const.ts     # [Worker] Math & Util Helpers
+│       │   ├── generators-arch.ts  # [Worker] Concrete/Brick
+│       │   ├── generators-nature.ts# [Worker] Organic/Noise
+│       │   ├── generators-tech.ts  # [Worker] Metal/Screens
+│       │   └── worker-main.ts      # [Worker] Entry Point
+│       ├── terrain-worker.const.ts # [Assembler] Terrain Worker
+│       └── texture-worker.const.ts # [Assembler] Texture Worker
 ├── physics/                        # [Core] Rapier3D integration
-│   ├── logic/                      # [Physics] Sub-logic (Mass, Scaling)
-│   ├── physics-registry.service.ts # [Physics] Handle <-> Entity Map
-│   ├── physics-step.service.ts     # [Physics] **NEW** Accumulator & Loop
-│   ├── world.service.ts            # [Physics] RAPIER.World wrapper
 │   └── ...
 ├── services/                       # [Glue] Angular Services (Facades & Factories)
-│   ├── factories/                  # [Logic] Physics body creation logic
-│   ├── generators/                 # [ProcGen] Geometry generation algorithms
-│   ├── ui/                         # [Logic] Layout state management
 │   ├── engine.service.ts           # [Facade] Main API Entry point
 │   └── ...
 └── ...                             # [Root] Configs
+```

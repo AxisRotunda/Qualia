@@ -3,7 +3,6 @@ import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { EntityStoreService } from './entity-store.service';
 import { PhysicsService, PhysicsBodyDef } from '../../services/physics.service';
-import { SceneGraphService } from '../graphics/scene-graph.service';
 import { VisualsFactoryService } from '../graphics/visuals-factory.service';
 import { InstancedMeshService } from '../graphics/instanced-mesh.service';
 import { EntityLibraryService } from '../../services/entity-library.service';
@@ -16,11 +15,12 @@ import { Entity } from '../core';
 export class EntityAssemblerService {
   private store = inject(EntityStoreService);
   private physics = inject(PhysicsService);
-  private sceneGraph = inject(SceneGraphService);
   private visualsFactory = inject(VisualsFactoryService);
   private instancedService = inject(InstancedMeshService);
   private entityLib = inject(EntityLibraryService);
   private lifecycle = inject(EntityLifecycleService);
+
+  // SceneGraphService dependency removed - delegated to VisualsFactory
 
   /**
    * Core Assembler: Wires up Physics, Visuals, and ECS Data for a new entity.
@@ -53,20 +53,20 @@ export class EntityAssemblerService {
       if (bodyDef.mass && bodyDef.mass > 0) isStatic = false;
 
       // Create Visual Representation (Mesh or Proxy)
+      // VisualsFactory handles SceneGraph insertion internally now
       const mesh = this.visualsFactory.createMesh(
           bodyDef, 
           visualOpts, 
           templateId ? { entity, templateId, category, tags } : undefined
       );
       
-      // Add to optimized entity group if it's a real mesh (Proxies are handled by InstancedMeshService)
-      if (mesh instanceof THREE.Mesh) {
-          this.sceneGraph.addEntity(mesh);
-      }
-
       // Populate ECS Components
       world.rigidBodies.add(entity, { handle: bodyDef.handle });
+      
+      // We perform a safe cast here as Proxies are Object3D but compatible with our MeshRef usage 
+      // (mostly for position/rotation updates)
       world.meshes.add(entity, { mesh: mesh as THREE.Mesh });
+      
       world.transforms.add(entity, {
         position: { ...bodyDef.position },
         rotation: { ...bodyDef.rotation },
@@ -83,7 +83,6 @@ export class EntityAssemblerService {
       }
 
       // Register with Physics Registry (Handle -> Entity)
-      // Kept here as it's tightly coupled with the Handle creation which just happened
       this.physics.registry.register(bodyDef.handle, entity);
       
       // Notify Systems via Event Bus
@@ -110,9 +109,13 @@ export class EntityAssemblerService {
         const tplId = this.store.world.templateIds.get(e);
         if (tplId) {
              this.instancedService.unregister(tplId, e);
+        } else {
+             // Only remove from graph if it's a standalone mesh (VisualsFactory added it)
+             // InstancedMeshService manages the graph for instanced objects
+             // We access the scene graph via the mesh parent or let VisualsFactory handle disposal
+             if (mesh.parent) mesh.parent.remove(mesh);
         }
         
-        this.sceneGraph.removeEntity(mesh);
         this.visualsFactory.disposeMesh(mesh);
     }
     

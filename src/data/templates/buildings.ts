@@ -18,6 +18,11 @@ export const BUILDING_TEMPLATES: EntityTemplate[] = [
       physicsShape: 'box', size: new THREE.Vector3(6, 25, 6),
       mass: SKYSCRAPER_MASS, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete'] },
       
+    { id: 'building-highway', label: 'Transit Tower', category: 'building', icon: 'tram',
+      geometry: 'mesh', meshId: 'gen-building-highway',
+      physicsShape: 'box', size: new THREE.Vector3(8, 30, 8), // Taller with connection
+      mass: SKYSCRAPER_MASS * 1.5, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete', 'infrastructure'] },
+
     { id: 'building-wide', label: 'Warehouse', category: 'building', icon: 'store',
       geometry: 'mesh', meshId: 'gen-building-wide',
       physicsShape: 'box', size: new THREE.Vector3(15, 6, 12),

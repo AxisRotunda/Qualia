@@ -5,6 +5,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export type CameraViewPreset = 'top' | 'front' | 'side';
 
+export interface CameraTweenConfig {
+    targetPos: THREE.Vector3;
+    lookAt: THREE.Vector3;
+    duration: number; // seconds
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -12,6 +18,15 @@ export class CameraControlService {
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   
+  // Transition State
+  private isTransitioning = false;
+  private transitionStart = 0;
+  private transitionDuration = 0;
+  private startPos = new THREE.Vector3();
+  private startTarget = new THREE.Vector3();
+  private endPos = new THREE.Vector3();
+  private endTarget = new THREE.Vector3();
+
   init(camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement) {
     this.camera = camera;
     
@@ -34,14 +49,28 @@ export class CameraControlService {
   }
   
   update() {
-    if (this.controls) {
+    if (this.isTransitioning && this.camera && this.controls) {
+        const now = performance.now();
+        const alpha = Math.min(1, (now - this.transitionStart) / (this.transitionDuration * 1000));
+        
+        // Quadratic Ease In/Out
+        const t = alpha < 0.5 ? 2 * alpha * alpha : -1 + (4 - 2 * alpha) * alpha;
+
+        this.camera.position.lerpVectors(this.startPos, this.endPos, t);
+        this.controls.target.lerpVectors(this.startTarget, this.endTarget, t);
+        
+        if (alpha >= 1) {
+            this.isTransitioning = false;
+            this.controls.enabled = true;
+        }
+    } else if (this.controls) {
         this.controls.update();
     }
   }
 
   // Called by InputManager to pipe virtual inputs
   updateInput(moveDelta: {x: number, y: number}, lookDelta: {x: number, y: number}) {
-     if (!this.controls || !this.camera || !this.controls.enabled) return;
+     if (!this.controls || !this.camera || !this.controls.enabled || this.isTransitioning) return;
 
      // If no input, just return (Damping continues in update)
      if (moveDelta.x === 0 && moveDelta.y === 0 && lookDelta.x === 0 && lookDelta.y === 0) return;
@@ -92,8 +121,24 @@ export class CameraControlService {
 
   setEnabled(enabled: boolean) {
       if (this.controls) {
-          this.controls.enabled = enabled;
+          this.controls.enabled = enabled && !this.isTransitioning;
       }
+  }
+
+  transitionTo(config: CameraTweenConfig) {
+      if (!this.camera || !this.controls) return;
+      
+      this.isTransitioning = true;
+      this.controls.enabled = false; // Disable input during tween
+      
+      this.startPos.copy(this.camera.position);
+      this.startTarget.copy(this.controls.target);
+      
+      this.endPos.copy(config.targetPos);
+      this.endTarget.copy(config.lookAt);
+      
+      this.transitionDuration = config.duration;
+      this.transitionStart = performance.now();
   }
 
   focusOn(target: THREE.Vector3, distance: number = 10) {
@@ -134,5 +179,6 @@ export class CameraControlService {
     this.controls.target.set(0, 5, 0);
     this.camera.position.set(15, 15, 15);
     this.camera.lookAt(0, 5, 0);
+    this.isTransitioning = false;
   }
 }

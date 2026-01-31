@@ -1,6 +1,6 @@
 
 # Qualia 3D System Manifest
-> **VERSION**: 1.0.0 (Math/Algo Update)
+> **VERSION**: 1.1.0 (Module Decomposition)
 > **TYPE**: Master Index / Meta-Architecture
 > **TARGET**: AI Agent Context Window
 > **META_RULE**: Root Node. Recursive dependency resolution start point.
@@ -48,6 +48,8 @@
 
 ## 3. Cross-System Invariants
 *   **Physics <-> ECS**: Synced via `EntityTransformSystem` in `EngineRuntimeService`.
+*   **Visuals <-> Graph**: `VisualsFactoryService` now handles SceneGraph insertion autonomously.
+*   **Environment**: `EnvironmentControlService` (Logic) -> `EnvironmentManagerService` (Renderer).
 *   **Registry**: `PhysicsRegistryService` maps Rapier Handles to ECS Entity IDs.
 *   **Input <-> ECS**: Mediated via `InputManager` -> `Controller` -> `Physics/Transform`.
 *   **UI <-> State**: Mediated via `EngineService` facade (delegating to Feature Services).

@@ -28,7 +28,13 @@
 `SceneRegistry` -> `ScenePreset` -> `EntityLibrary` -> `AssetService` -> `Generators`.
 
 ### 3.3 Visual Cluster
-`SceneService` -> `EnvironmentManager` + `VisualsFactory` + `GizmoManager`.
+*   `SceneService` -> `EnvironmentManager` (Renderer).
+*   `VisualsFactory` -> `SceneGraph`.
+*   `EntityAssembler` -> `VisualsFactory`.
+
+### 3.4 Environment Cluster
+*   `EnvironmentControlService` (Logic) -> `EnvironmentManagerService` (Render).
+*   `EnvironmentControlService` -> `ParticleService` (Weather).
 
 ## 4. Ripple Effects
 *   **Modifying `PhysicsBodyDef`**:

@@ -5,6 +5,7 @@ import { AssetService } from '../../services/asset.service';
 import { MaterialService } from '../../services/material.service';
 import { InstancedMeshService } from './instanced-mesh.service';
 import { PrimitiveRegistryService } from './primitive-registry.service';
+import { SceneGraphService } from './scene-graph.service';
 import { PhysicsBodyDef } from '../../engine/schema';
 import { Entity } from '../core';
 
@@ -23,6 +24,7 @@ export class VisualsFactoryService {
   private assetService = inject(AssetService);
   private instancedService = inject(InstancedMeshService);
   private primitiveRegistry = inject(PrimitiveRegistryService);
+  private sceneGraph = inject(SceneGraphService);
 
   createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }, context?: VisualContext): THREE.Object3D {
     
@@ -59,7 +61,7 @@ export class VisualsFactoryService {
            isDynamic
        );
 
-       return proxy; // Return proxy
+       return proxy; // Return proxy (not added to scene graph)
     }
 
     // --- Standard Path ---
@@ -105,6 +107,9 @@ export class VisualsFactoryService {
         mesh.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
     }
     
+    // Automatically add to Scene Graph
+    this.sceneGraph.addEntity(mesh);
+    
     return mesh;
   }
 
@@ -113,6 +118,7 @@ export class VisualsFactoryService {
       // We only dispose bespoke materials if necessary, but standard materials are shared.
       if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshStandardMaterial && !mesh.material.userData['mapId']) {
           // It might be a custom color material created in createMesh
+          mesh.material.dispose();
       }
   }
 }

@@ -1,7 +1,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
-import { ArchBuildingService } from './architecture/arch-building.service';
+import { ArchBuildingService, BuildingOptions } from './architecture/arch-building.service';
 import { ArchRoadService } from './architecture/arch-road.service';
 
 @Injectable({
@@ -15,8 +15,8 @@ export class ArchitectureGeneratorService {
     return this.roads.generateRoad(w, length);
   }
 
-  generateBuilding(w: number, totalH: number, d: number, tiers: number): THREE.BufferGeometry | null {
-    return this.buildings.generateBuilding(w, totalH, d, tiers);
+  generateBuilding(w: number, totalH: number, d: number, tiers: number, options?: BuildingOptions): THREE.BufferGeometry | null {
+    return this.buildings.generateBuilding(w, totalH, d, tiers, options);
   }
 
   generateHighway(width: number, length: number): THREE.BufferGeometry | null {

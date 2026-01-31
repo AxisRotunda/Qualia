@@ -6,6 +6,8 @@ import { InputManagerService } from '../engine/input-manager.service';
 import { SubsystemsService } from '../engine/subsystems.service';
 import { EntityLibraryService } from './entity-library.service';
 import { BootstrapService } from '../engine/bootstrap.service';
+import { CameraControlService } from '../engine/controllers/camera-control.service';
+import * as THREE from 'three';
 
 // Feature Modules
 import { LevelManagerService } from '../engine/features/level-manager.service';
@@ -26,6 +28,7 @@ export class EngineService {
   public readonly sys = inject(SubsystemsService); 
   public readonly library = inject(EntityLibraryService); 
   private readonly bootstrap = inject(BootstrapService);
+  private readonly cameraControl = inject(CameraControlService);
 
   // --- Feature Modules (Public API) ---
   public readonly ops = inject(EntityOpsService);
@@ -85,4 +88,12 @@ export class EngineService {
   
   getEntityName(e: number) { return this.ops.getEntityName(e); }
   resize(w: number, h: number) { this.sys.scene.resize(w, h); }
+
+  tweenCamera(config: { pos: {x:number,y:number,z:number}, lookAt: {x:number,y:number,z:number}, duration: number }) {
+      this.cameraControl.transitionTo({
+          targetPos: new THREE.Vector3(config.pos.x, config.pos.y, config.pos.z),
+          lookAt: new THREE.Vector3(config.lookAt.x, config.lookAt.y, config.lookAt.z),
+          duration: config.duration
+      });
+  }
 }

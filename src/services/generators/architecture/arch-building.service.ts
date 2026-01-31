@@ -9,12 +9,16 @@ interface GeometryGroups {
     detail: THREE.BufferGeometry[];
 }
 
+export interface BuildingOptions {
+    highwayAccess?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ArchBuildingService {
 
-  generateBuilding(w: number, totalH: number, d: number, tiers: number): THREE.BufferGeometry | null {
+  generateBuilding(w: number, totalH: number, d: number, tiers: number, options: BuildingOptions = {}): THREE.BufferGeometry | null {
       const groups: GeometryGroups = {
           frame: [],
           window: [],
@@ -26,12 +30,12 @@ export class ArchBuildingService {
       let currentD = d;
       
       // Architectural proportions
-      const groundHeight = 5.0; 
+      const groundHeight = options.highwayAccess ? 12.0 : 5.0; // Higher lobby for highway buildings to reach deck
       const bodyHeight = Math.max(totalH - groundHeight, 5);
       const tierHeight = bodyHeight / tiers;
 
-      // 1. Ground Floor (Lobby) - Reinforced Concrete Base
-      this.generateLobby(currentW, groundHeight, currentD, groups);
+      // 1. Ground Floor (Lobby)
+      this.generateLobby(currentW, groundHeight, currentD, groups, options.highwayAccess);
       currentY += groundHeight;
 
       // 2. Body Tiers with Exoskeleton
@@ -43,9 +47,11 @@ export class ArchBuildingService {
           // Taper for next tier
           if (t < tiers - 1) {
               this.generateCornice(currentW, currentD, currentY, groups);
-              // Taper Factor
-              currentW *= 0.85;
-              currentD *= 0.85;
+              // Precision Taper: Reduce by fixed margin rather than percentage to keep grid alignment
+              // If W > 10, reduce by 2m on each side (4m total)
+              const taper = (currentW > 10) ? 0.85 : 0.9;
+              currentW *= taper;
+              currentD *= taper;
           }
       }
 
@@ -76,8 +82,7 @@ export class ArchBuildingService {
           const final = BufferUtils.mergeGeometries(finalParts, true); 
           
           // Align bottom to y=0 (Physics Box usually centered at y=H/2)
-          // The caller expects center at origin? No, AssetService usually returns centered geo.
-          // We'll center Y around origin to match standard BodyDef behavior.
+          // Adjust translation based on total height generated
           final.translate(0, -totalH / 2, 0);
           return final;
       }
@@ -85,8 +90,8 @@ export class ArchBuildingService {
       return null;
   }
 
-  private generateLobby(w: number, h: number, d: number, groups: GeometryGroups) {
-      const colSize = 1.0;
+  private generateLobby(w: number, h: number, d: number, groups: GeometryGroups, isHighway = false) {
+      const colSize = 1.2;
       const glassInset = 0.5;
 
       // Heavy Structural Columns
@@ -112,12 +117,29 @@ export class ArchBuildingService {
       glass.translate(0, h/2, 0);
       groups.window.push(glass);
 
-      // Entrance Canopy
+      // Entrance Canopy (Front)
       const canD = 2.5;
       const canW = w * 0.5;
-      const canopy = new THREE.BoxGeometry(canW, 0.3, canD);
-      canopy.translate(0, h * 0.6, d/2 + canD/2 - 0.2);
+      const canopy = new THREE.BoxGeometry(canW, 0.4, canD);
+      canopy.translate(0, 4.0, d/2 + canD/2 - 0.2); // Standard height entrance
       groups.detail.push(canopy);
+
+      // Highway Connector (Back)
+      if (isHighway) {
+          // Ramp / Bridge extending from back at height 12 (approx top of lobby)
+          const bridgeL = 6.0; // Reach out to highway
+          const bridgeW = w * 0.6;
+          const bridgeGeo = new THREE.BoxGeometry(bridgeW, 0.8, bridgeL);
+          // Position at top of lobby, extending backward (-Z)
+          bridgeGeo.translate(0, h - 0.4, -d/2 - bridgeL/2 + 0.5);
+          groups.frame.push(bridgeGeo);
+
+          // Support Struts for Bridge
+          const strutGeo = new THREE.BoxGeometry(0.8, 2.0, 1.5);
+          const s1 = strutGeo.clone(); s1.translate(-bridgeW/2 + 0.4, h - 1.4, -d/2);
+          const s2 = strutGeo.clone(); s2.translate(bridgeW/2 - 0.4, h - 1.4, -d/2);
+          groups.detail.push(s1, s2);
+      }
   }
 
   private generateTier(w: number, h: number, d: number, y: number, groups: GeometryGroups) {
