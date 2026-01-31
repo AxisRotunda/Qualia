@@ -96,11 +96,12 @@ export const DESERT_SCENE: ScenePreset = {
   
   onUpdate: (dt, totalTime, engine) => {
       const timeSec = totalTime / 1000;
+      const dtSec = dt / 1000;
       const matService = engine.materialService;
       const waterMat = matService.getMaterial('mat-water') as THREE.MeshPhysicalMaterial;
       if (waterMat && waterMat.userData && waterMat.userData['time']) {
           waterMat.userData['time'].value = timeSec * 0.5;
       }
-      engine.sys.buoyancy.update(-2.5, timeSec);
+      engine.sys.buoyancy.update(-2.5, timeSec, dtSec);
   }
 };

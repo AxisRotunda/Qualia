@@ -70,6 +70,7 @@ export const WATER_SCENE: ScenePreset = {
   
   onUpdate: (dt, totalTime, engine) => {
       const timeSec = totalTime / 1000;
+      const dtSec = dt / 1000;
       const matService = engine.materialService;
       if (matService) {
           const waterMat = matService.getMaterial('mat-water') as THREE.MeshPhysicalMaterial;
@@ -78,6 +79,6 @@ export const WATER_SCENE: ScenePreset = {
           }
       }
       // Apply buoyancy via exposed system access on engine (EngineService is still Facade for subsystems)
-      engine.sys.buoyancy.update(0.0, timeSec); 
+      engine.sys.buoyancy.update(0.0, timeSec, dtSec); 
   }
 };

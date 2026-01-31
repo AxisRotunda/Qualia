@@ -33,7 +33,7 @@ export class BuoyancySystem {
       return y;
   }
 
-  update(baseWaterLevel: number, time: number) {
+  update(baseWaterLevel: number, time: number, dt: number) {
       const world = this.physicsService.rWorld;
       if (!world) return;
       
@@ -70,7 +70,7 @@ export class BuoyancySystem {
               // V_total = mass / objectDensity
               // V_displaced = V_total * submergedRatio
               
-              // Approximate submerged ratio based on depth vs approx height (assumed 1m characteristic length)
+              // Approximate submerged ratio based on depth vs approx height (assumed 1.5m characteristic length)
               // Clamped 0..1
               const submergedRatio = Math.min(Math.max(depth / 1.5, 0), 1.0);
               
@@ -78,8 +78,8 @@ export class BuoyancySystem {
               const volumeDisplaced = volumeTotal * submergedRatio;
               
               // Buoyant Force (Upwards)
-              // Impulse = Force * dt (approx 0.016)
-              const buoyantForce = fluidDensity * volumeDisplaced * gravity * 0.016; 
+              // Impulse = Force * dt
+              const buoyantForce = fluidDensity * volumeDisplaced * gravity * dt; 
               
               body.applyImpulse({ x: 0, y: buoyantForce, z: 0 }, true);
 
@@ -93,7 +93,7 @@ export class BuoyancySystem {
                   // Drag depends on cross-sectional area. A approx V^(2/3)
                   const area = Math.pow(volumeTotal, 0.66); 
                   
-                  const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * 0.01; 
+                  const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * dt; 
                   
                   // Drag opposes velocity
                   body.applyImpulse({ 
@@ -106,9 +106,9 @@ export class BuoyancySystem {
               // Angular Drag
               const ang = body.angvel();
               body.applyTorqueImpulse({
-                  x: -ang.x * 0.02 * mass,
-                  y: -ang.y * 0.02 * mass,
-                  z: -ang.z * 0.02 * mass
+                  x: -ang.x * 0.02 * mass * (dt * 60), // Scale approx to frame rate for consistent damping feel
+                  y: -ang.y * 0.02 * mass * (dt * 60),
+                  z: -ang.z * 0.02 * mass * (dt * 60)
               }, true);
           }
       });

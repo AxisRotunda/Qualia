@@ -4,110 +4,106 @@
 > **Source**: `src/engine/workers/terrain/`, `src/physics/logic/`, `src/engine/systems/buoyancy.system.ts`
 > **Audience**: AI Agents (Implementation & Tuning).
 
-## 1. Procedural Generation (Terrain & Noise)
+## 1. Procedural Generation
 
-### 1.1 Integer Hashing (Squirrel3 Variant)
-Used for deterministic pseudo-random number generation in shaders/workers without texture lookups.
-```javascript
-hash(n) =
-  i = floor(n)
-  i *= 0xB5297A4D; i ^= (i >> 8)
-  i *= 0x68E31DA4; i ^= (i << 8)
-  i *= 0x1B56C4E9; i ^= (i >> 8)
-  return (i / 4294967296.0) // Normalized [0, 1]
-```
+### 1.1 Integer Hashing (Squirrel3)
+For $n \in \mathbb{R}$, $i = \lfloor n \rfloor$ (32-bit unsigned):
+$$
+\begin{align*}
+i &\mathrel{*}= 0xB5297A4D;\ i &\mathrel{\wedge}= i \gg 8 \\
+i &\mathrel{*}= 0x68E31DA4;\ i &\mathrel{\wedge}= i \ll 8 \\
+i &\mathrel{*}= 0x1B56C4E9;\ i &\mathrel{\wedge}= i \gg 8
+\end{align*}
+$$
+$$
+h(n) = \frac{i}{2^{32}}
+$$
 
-### 1.2 2D Noise Interpolation (Quintic)
-Smoothstep variant for reducing grid artifacts in value noise.
-$$ u(t) = t^3 (t (t \cdot 6 - 15) + 10) $$
-Where $t$ is the fractional component of the coordinate.
+### 1.2 Quintic Interpolation
+$$
+u(t) = 6t^5 - 15t^4 + 10t^3,\ t \in [0,1]
+$$
 
 ### 1.3 Fractal Brownian Motion (FBM)
-Summation of noise octaves to create detail.
-$$ FBM(p) = \sum_{i=0}^{octaves} A \cdot noise(f \cdot p) $$
-*   **Persistence ($A_{decay}$)**: 0.5 (Amplitude halves each step)
-*   **Lacunarity ($f_{gain}$)**: 2.0 (Frequency doubles each step)
+$$
+FBM(p) = \sum_{i=0}^{N-1} 0.5^i \cdot noise(2^i p)
+$$
 
-### 1.4 Domain Warping (Glacial Terrain)
-Feeding noise output into noise input to simulate fluid flow/distortion.
-$$ q = FBM(p + vec2(0.0, 0.0)) $$
-$$ r = FBM(p + 4.0 \cdot q + vec2(1.7, 9.2)) $$
-$$ height(p) = FBM(p + 4.0 \cdot r) $$
+### 1.4 Domain Warping
+$$
+\begin{align*}
+q &= FBM(p) \\
+r &= FBM(p + 4q + \langle 1.7,9.2 \rangle) \\
+h(p) &= FBM(p + 4r)
+\end{align*}
+$$
 
-### 1.5 Hydraulic Erosion (Iterative Particle Drop)
-Simulates water carrying sediment downhill.
-**Algorithm**:
-1.  Spawn droplet at random $(x, y)$.
-2.  Calculate Gradient $\nabla h$ at position.
-3.  Update Velocity: $v_{new} = v_{old} \cdot inertia - \nabla h \cdot (1 - inertia)$.
-4.  Update Position: $p_{new} = p_{old} + v_{new}$.
-5.  Check Height Diff: $\Delta h = h_{old} - h_{new}$.
-6.  **Capacity**: $C = \max(-\Delta h, minSlope) \cdot v \cdot water \cdot capacityFactor$.
-7.  **Deposition**: If sediment > $C$, deposit $(sediment - C) \cdot depositionRate$.
-8.  **Erosion**: If sediment < $C$, erode $\min((C - sediment) \cdot erosionRate, -\Delta h)$.
-9.  Evaporate: $water *= (1 - evaporationRate)$.
+### 1.5 Hydraulic Erosion (Droplet)
+1. $\nabla h = \nabla h(p)$
+2. $v \leftarrow v \cdot I - \nabla h \cdot (1-I)$
+3. $p \leftarrow p + v$
+4. $\Delta h = h(p_{old}) - h(p)$
+5. $C = \max(-\Delta h, s_{min}) |v| w c_f$
+6. $sed \leftarrow sed + (\max(C-sed,0) e_r + \min(sed-C,0) d_r)$
+7. $w \leftarrow w(1-e_w)$
 
-## 2. Physics & Simulation
+## 2. Physics
 
-### 2.1 Mass Calculation
-Derived from material density and bounding geometry volume.
-$$ M = V \cdot \rho $$
-*   **Box**: $V = w \cdot h \cdot d$
-*   **Sphere**: $V = \frac{4}{3} \pi r^3$
-*   **Cylinder**: $V = \pi r^2 h$
-*   **Cone**: $V = \frac{1}{3} \pi r^2 h$
+### 2.1 Mass
+$$
+M = \rho V
+$$
+$V$: box $whd$, sphere $\frac{4}{3}\pi r^3$, cyl $\pi r^2 h$, cone $\frac{1}{3}\pi r^2 h$.
 
-### 2.2 Buoyancy (Archimedes' Principle)
-Approximated on CPU for rigid bodies.
-$$ F_{buoyancy} = \rho_{fluid} \cdot V_{displaced} \cdot g \cdot dt $$
-*   **Submerged Ratio ($S$)**: Approximated linearly based on object center depth vs characteristic height. $S = clamp(\frac{depth}{height}, 0, 1)$.
-*   **Displaced Volume**: $V_{disp} = (M / \rho_{object}) \cdot S$.
+### 2.2 Buoyancy
+$$
+F_b = \rho_f g dt \cdot \left(\frac{M}{\rho_o}\right) S,\quad S = \mathrm{clamp}\left(\frac{d}{h},0,1\right)
+$$
+**Drag**:
+$$
+F_d = -\hat{v} (C_L |v| + C_Q |v|^2) A \rho_f,\quad A = V^{2/3}
+$$
 
-**Hydrodynamic Drag**:
-$$ F_{drag} = -\hat{v} \cdot (C_L \cdot |v| + C_Q \cdot |v|^2) \cdot A \cdot \rho_{fluid} $$
-Where $A$ (Cross Section) is approx $V_{total}^{2/3}$.
+### 2.3 Spring Joint
+$$
+k = \mathrm{clamp}(k_b M_t,10,20000),\quad c = 1.6 \sqrt{k M}
+$$
 
-### 2.3 Spring Joint (Interaction Hand)
-Rapier Impulse Joint Config.
-*   **Stiffness ($k$)**: $BaseStiffness \cdot Mass_{target}$. (Clamped [10, 20000]).
-*   **Damping ($c$)**: Critical damping approximation. $c = 2 \sqrt{Mass \cdot Stiffness} \cdot 0.8$ (Under-damped for feel).
+### 2.4 Accumulator
+$$
+a \leftarrow a + \Delta t_r;\quad\mathrm{while}(a \ge \Delta t_p)\{\mathrm{step}();\ a \leftarrow a - \Delta t_p\};\quad\alpha = a / \Delta t_p
+$$
 
-### 2.4 Timestep Accumulator
-Decouples Physics Hz from Render Hz.
-```javascript
-accumulator += dt_render
-while (accumulator >= dt_physics) {
-    world.step()
-    accumulator -= dt_physics
-}
-alpha = accumulator / dt_physics // Interpolation factor
-```
+## 3. Rendering
 
-## 3. Rendering Mathematics
+### 3.1 Water Waves
+$$
+y(p,t) = \sum_{i=1}^3 A_i \sin\big((p\cdot D_i)f_i + t s_i\big)
+$$
+Wave 2 chop: $\sin^3(\cdot)$.
 
-### 3.1 Water Wave Function (Vertex Shader)
-Sum of 3 sine waves with varying direction and frequency.
-$$ y(p, t) = \sum_{i=1}^{3} A_i \cdot \sin((p \cdot D_i) \cdot f_i + t \cdot s_i) $$
-*   **Choppiness**: For Wave 2, applied as $(sin(...))^3$ to sharpen peaks.
-*   **Normal Recalculation**: Finite Difference Method using $\epsilon = 0.1$.
-    $$ \vec{n} = normalize((\vec{p}_x - \vec{p}) \times (\vec{p}_z - \vec{p})) $$
+**Normal**: $\epsilon=0.1$,
+$$
+n = \frac{(p_x - p) \times (p_z - p)}{||(p_x - p) \times (p_z - p)||}
+$$
 
-### 3.2 Triplanar Mapping
-Texture projection independent of UVs, blending 3 planar projections based on normal.
-$$ w = |n| / (|n_x| + |n_y| + |n_z|) $$ (Normalized weights)
-$$ C_{final} = C_{yz}(p_{yz}) \cdot w_x + C_{xz}(p_{xz}) \cdot w_y + C_{xy}(p_{xy}) \cdot w_z $$
+### 3.2 Triplanar
+$$
+w_{xyz} = \frac{|n_{xyz}|}{\sum |n_i|},\quad C = \sum w_i C_i(p_i)
+$$
 
-## 4. Input Signal Processing
+## 4. Input/Camera
 
-### 4.1 Virtual Joystick Normalization
-Mapping circular touch area to cartesian vector.
-$$ v = \frac{p_{current} - p_{base}}{R_{max}} $$
-*   **Clamping**: $|v| \le 1.0$.
-*   **Coord System**: Screen Y is Down, Game Y (Forward) is Up. Input Y is inverted: $v_y = -v_{screenY}$.
+### 4.1 Joystick
+$$
+v = \frac{p_c - p_b}{R},\quad |v| \ge 1 \implies v \leftarrow v/|v|;\quad v_y \leftarrow -v_{sy}
+$$
 
-### 4.2 Camera Orbit (Spherical)
-$$ x = r \sin(\phi) \cos(\theta) $$
-$$ y = r \cos(\phi) $$
-$$ z = r \sin(\phi) \sin(\theta) $$
-*   **$\theta$ (Theta)**: Horizontal Azimuth.
-*   **$\phi$ (Phi)**: Vertical Polar Angle. Clamped $[0, \pi]$ to prevent flipping.
+### 4.2 Orbit
+$$
+\begin{align*}
+x &= r\sin\phi\cos\theta \\
+y &= r\cos\phi \\
+z &= r\sin\phi\sin\theta
+\end{align*},\quad\phi\in[0,\pi]
+$$
