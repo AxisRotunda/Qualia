@@ -8,6 +8,8 @@ import { MaterialService } from '../../services/material.service';
 import { PhysicsService } from '../../services/physics.service';
 import { EntityStoreService } from '../ecs/entity-store.service';
 import { EngineStateService } from '../engine-state.service';
+import { CameraManagerService } from '../graphics/camera-manager.service';
+import { EntityLifecycleService } from '../ecs/entity-lifecycle.service';
 import { yieldToMain } from '../utils/thread.utils';
 
 export interface TerrainLayerConfig {
@@ -33,6 +35,56 @@ export class TerrainManagerService {
   private physics = inject(PhysicsService);
   private entityStore = inject(EntityStoreService);
   private state = inject(EngineStateService);
+  private cameraManager = inject(CameraManagerService);
+  private lifecycle = inject(EntityLifecycleService);
+
+  // Culling State
+  private readonly chunks: THREE.Mesh[] = [];
+  private readonly frustum = new THREE.Frustum();
+  private readonly projScreenMatrix = new THREE.Matrix4();
+  private cullingActive = false;
+
+  constructor() {
+      // Clear chunks on world reset to prevent memory leaks
+      this.lifecycle.onWorldReset.subscribe(() => {
+          this.chunks.length = 0;
+      });
+      
+      // Start the specialized culling loop
+      this.startCullingLoop();
+  }
+
+  private startCullingLoop() {
+      if (this.cullingActive) return;
+      this.cullingActive = true;
+
+      const tick = () => {
+          this.updateCulling();
+          requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+  }
+
+  private updateCulling() {
+      if (this.chunks.length === 0) return;
+
+      const camera = this.cameraManager.getCamera();
+      if (!camera) return;
+
+      // Update Frustum from Camera
+      this.projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
+
+      // Perform AABB Culling
+      for (const mesh of this.chunks) {
+          const worldBox = mesh.userData['worldBox'] as THREE.Box3;
+          if (worldBox) {
+              // Set visibility directly. 
+              // Note: mesh.frustumCulled is set to false in creation to avoid double-checking.
+              mesh.visible = this.frustum.intersectsBox(worldBox);
+          }
+      }
+  }
 
   async generateSurroundingGrid(config: TerrainLayerConfig) {
       // 3x3 Grid
@@ -91,16 +143,33 @@ export class TerrainManagerService {
           normals
       );
 
+      // Calculate World Bounding Box for Culling before creating Mesh
+      // Geo is rotated -90 X inside createTerrainGeometry, so Y is Up.
+      geo.computeBoundingBox();
+
       const mat = this.materials.getMaterial(config.materialId);
       const mesh = new THREE.Mesh(geo, mat);
       
       mesh.position.set(offsetX, 0, offsetZ);
+      mesh.updateMatrixWorld(true); // Force matrix update to calc world AABB
+      
+      // Cache World AABB for fast culling
+      if (geo.boundingBox) {
+          const worldBox = geo.boundingBox.clone().applyMatrix4(mesh.matrixWorld);
+          // Expand slightly to avoid flickering at edges
+          worldBox.expandByScalar(0.5);
+          mesh.userData['worldBox'] = worldBox;
+      }
+      
+      // Disable Three.js internal sphere culling in favor of our AABB culling
+      mesh.frustumCulled = false;
       
       // Optimization: Shadows only on center chunk
       mesh.castShadow = isCenter;
       mesh.receiveShadow = true;
 
       this.sceneGraph.addEntity(mesh);
+      this.chunks.push(mesh);
 
       // ECS & Physics (Center Only)
       if (isCenter) {
