@@ -18,4 +18,20 @@ export class ArchitectureGeneratorService {
   generateBuilding(w: number, totalH: number, d: number, tiers: number): THREE.BufferGeometry | null {
     return this.buildings.generateBuilding(w, totalH, d, tiers);
   }
+
+  generateHighway(width: number, length: number): THREE.BufferGeometry | null {
+      return this.roads.generateHighway(width, length);
+  }
+
+  generateIntersection(width: number): THREE.BufferGeometry | null {
+      return this.roads.generateIntersection(width);
+  }
+
+  generateRamp(width: number, length: number, height: number): THREE.BufferGeometry | null {
+      return this.roads.generateRamp(width, length, height);
+  }
+
+  generateRoundabout(radius: number, width: number): THREE.BufferGeometry | null {
+      return this.roads.generateRoundabout(radius, width);
+  }
 }

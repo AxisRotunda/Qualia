@@ -1,7 +1,8 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Subject } from 'rxjs';
+import { PhysicsRegistryService } from './physics-registry.service';
 
 export interface CollisionEvent {
   entityA: number;
@@ -11,19 +12,19 @@ export interface CollisionEvent {
 
 @Injectable({ providedIn: 'root' })
 export class PhysicsWorldService {
+  private registry = inject(PhysicsRegistryService);
+
   world: RAPIER.World | null = null;
   eventQueue: RAPIER.EventQueue | null = null;
   private initialized = false;
 
-  // Collision System
-  private handleToEntity = new Map<number, number>();
   public collision$ = new Subject<CollisionEvent>();
 
   // Fixed Timestep Logic (60Hz)
   private accumulator = 0;
   private readonly stepSize = 1 / 60; 
-  private readonly maxFrameTime = 0.1; // Cap to prevent spiral of death
-
+  private readonly maxFrameTime = 0.1; 
+  
   get rWorld(): RAPIER.World | null {
     return this.world;
   }
@@ -32,14 +33,14 @@ export class PhysicsWorldService {
     if (this.initialized) return;
     await RAPIER.init();
     
-    // Earth gravity default
     this.world = new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 });
     this.eventQueue = new RAPIER.EventQueue(true);
 
-    // Ground
-    const groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
+    // Ground (Physics Plane)
+    const groundBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0.0, -0.1, 0.0);
     const groundBody = this.world.createRigidBody(groundBodyDesc);
-    const groundColliderDesc = RAPIER.ColliderDesc.cuboid(100, 0.1, 100)
+    
+    const groundColliderDesc = RAPIER.ColliderDesc.cuboid(250, 0.1, 250)
         .setFriction(1.0)
         .setRestitution(0.1);
     this.world.createCollider(groundColliderDesc, groundBody);
@@ -47,52 +48,83 @@ export class PhysicsWorldService {
     this.initialized = true;
   }
 
-  registerEntity(handle: number, entityId: number) {
-      this.handleToEntity.set(handle, entityId);
-  }
-
-  unregisterEntity(handle: number) {
-      this.handleToEntity.delete(handle);
-  }
-
-  getEntityId(handle: number): number | undefined {
-      return this.handleToEntity.get(handle);
+  getAlpha(): number {
+      return this.accumulator / this.stepSize;
   }
 
   step(dtMs: number): void {
     if (!this.world || !this.eventQueue) return;
     
-    // Convert ms to seconds
-    const dtSec = dtMs / 1000;
-    
-    this.accumulator += dtSec;
-    
-    // Safety cap to prevent spiral of death on lag spikes
-    if (this.accumulator > this.maxFrameTime) {
-        this.accumulator = this.maxFrameTime;
+    let dtSec = dtMs / 1000;
+    if (dtSec > this.maxFrameTime) {
+        dtSec = this.maxFrameTime;
     }
 
-    // Drain accumulator with fixed steps
+    this.accumulator += dtSec;
+    
+    let steps = 0;
+    const MAX_STEPS = 5;
+
     while (this.accumulator >= this.stepSize) {
       this.world.step(this.eventQueue);
+      this.drainEvents();
       
-      // Critical: Wrap callback in try-catch. If an error occurs in a subscriber,
-      // it must be caught here to allow Rapier to release its internal locks/borrows.
-      this.eventQueue.drainCollisionEvents((h1, h2, started) => {
-          try {
-            const e1 = this.handleToEntity.get(h1);
-            const e2 = this.handleToEntity.get(h2);
-            
-            if (e1 !== undefined && e2 !== undefined) {
-                this.collision$.next({ entityA: e1, entityB: e2, started });
-            }
-          } catch (err) {
-            console.warn('Physics collision error:', err);
+      this.accumulator -= this.stepSize;
+      steps++;
+      
+      if (steps >= MAX_STEPS) {
+          this.accumulator = 0;
+          break;
+      }
+    }
+  }
+
+  syncActiveBodies(callback: (entityId: number, pos: RAPIER.Vector, rot: RAPIER.Rotation) => void) {
+      if (!this.world) return;
+      
+      // Buffer updates to avoid "recursive use of an object" error in WASM.
+      // Iterating active bodies locks the body list; calling external logic inside 
+      // the loop might trigger other Rapier calls (even indirectly), causing a crash.
+      const updates: { id: number, p: RAPIER.Vector, q: RAPIER.Rotation }[] = [];
+
+      this.world.forEachActiveRigidBody((body) => {
+          const entityId = this.registry.getEntityId(body.handle);
+          if (entityId !== undefined) {
+              updates.push({ 
+                  id: entityId, 
+                  p: body.translation(), 
+                  q: body.rotation() 
+              });
           }
       });
 
-      this.accumulator -= this.stepSize;
-    }
+      // Apply updates after lock is released
+      for (const u of updates) {
+          callback(u.id, u.p, u.q);
+      }
+  }
+
+  private drainEvents() {
+      if (!this.eventQueue || !this.world) return;
+      
+      const bufferedEvents: CollisionEvent[] = [];
+      
+      try {
+          this.eventQueue.drainCollisionEvents((h1, h2, started) => {
+              const e1 = this.registry.getEntityId(h1);
+              const e2 = this.registry.getEntityId(h2);
+              
+              if (e1 !== undefined && e2 !== undefined) {
+                  bufferedEvents.push({ entityA: e1, entityB: e2, started });
+              }
+          });
+      } catch (e) {
+          console.warn('Failed to drain collision events', e);
+      }
+
+      for (const event of bufferedEvents) {
+          this.collision$.next(event);
+      }
   }
 
   setGravity(y: number) {
@@ -106,21 +138,24 @@ export class PhysicsWorldService {
     
     const bodies: RAPIER.RigidBody[] = [];
     this.world.forEachRigidBody(body => {
-      // Don't remove the original Ground
       if (!body.isFixed()) {
         bodies.push(body);
       }
     });
     
-    bodies.forEach(b => this.world!.removeRigidBody(b));
-    this.handleToEntity.clear();
+    bodies.forEach(b => {
+        if(this.world && this.world.bodies.contains(b.handle)) {
+            this.world.removeRigidBody(b);
+        }
+    });
+    
+    this.registry.clear();
     this.accumulator = 0;
   }
 
   getBodyPose(handle: number): { p: RAPIER.Vector, q: RAPIER.Rotation } | null {
     if (!this.world) return null;
-    // Check if body exists to prevent panic
-    if (!this.world.getRigidBody(handle)) return null;
+    if (!this.world.bodies.contains(handle)) return null;
     
     const body = this.world.getRigidBody(handle);
     if (!body) return null;
@@ -132,6 +167,8 @@ export class PhysicsWorldService {
 
   updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
     if (!this.world) return;
+    if (!this.world.bodies.contains(handle)) return;
+
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
@@ -147,11 +184,12 @@ export class PhysicsWorldService {
 
   removeBody(handle: number) {
     if (!this.world) return;
-    
+    if (!this.world.bodies.contains(handle)) return;
+
     const body = this.world.getRigidBody(handle);
     if (body) {
       this.world.removeRigidBody(body);
-      this.unregisterEntity(handle);
+      this.registry.unregister(handle);
     }
   }
 
@@ -160,7 +198,6 @@ export class PhysicsWorldService {
       try {
         return this.world.debugRender();
       } catch (e) {
-        console.warn('Debug render failed', e);
         return null;
       }
   }

@@ -18,17 +18,20 @@ export interface LightSettings {
         
         <!-- Environment Presets -->
         <div class="space-y-2">
-           <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Atmosphere</div>
+           <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+             <span class="material-symbols-outlined text-[12px]">public</span> Atmosphere
+           </div>
            <div class="grid grid-cols-2 gap-1.5">
              @for (opt of atmosphereOptions; track opt.id) {
                <button (click)="emitAtmosphere(opt.id)" 
-                       [class.bg-cyan-900_40]="currentAtmosphere() === opt.id"
+                       [class.bg-cyan-950_50]="currentAtmosphere() === opt.id"
                        [class.border-cyan-500_50]="currentAtmosphere() === opt.id"
                        [class.text-cyan-300]="currentAtmosphere() === opt.id"
-                       [class.bg-slate-950]="currentAtmosphere() !== opt.id"
+                       [class.shadow-glow]="currentAtmosphere() === opt.id"
+                       [class.bg-slate-900]="currentAtmosphere() !== opt.id"
                        [class.text-slate-400]="currentAtmosphere() !== opt.id"
-                       class="text-[10px] font-medium py-1.5 px-2 rounded border border-slate-800 hover:bg-slate-800 transition-colors text-left flex items-center gap-2">
-                  <span class="material-symbols-outlined text-[14px] opacity-70">{{ opt.icon }}</span>
+                       class="text-[10px] font-medium py-1.5 px-2 rounded border border-slate-800 hover:bg-slate-800 transition-all text-left flex items-center gap-2 group">
+                  <span class="material-symbols-outlined text-[14px] opacity-70 group-hover:text-white transition-colors">{{ opt.icon }}</span>
                   {{ opt.label }}
                </button>
              }
@@ -37,8 +40,10 @@ export interface LightSettings {
 
         <!-- Weather Control -->
         <div class="space-y-2">
-           <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Weather</div>
-           <div class="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+           <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+             <span class="material-symbols-outlined text-[12px]">cloud</span> Weather
+           </div>
+           <div class="flex gap-1 bg-slate-950 p-1 rounded border border-slate-800">
               @for (w of weatherOptions; track w.id) {
                  <button (click)="emitWeather(w.id)"
                          [class.bg-cyan-600]="currentWeather() === w.id"
@@ -54,26 +59,26 @@ export interface LightSettings {
         </div>
 
         <!-- Time & Light -->
-        <div class="space-y-2">
+        <div class="space-y-3">
            <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-             <span>Time of Day</span>
-             <span class="font-mono text-cyan-400">{{ formatTime(currentTime()) }}</span>
+             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">schedule</span> Time Cycle</span>
+             <span class="font-mono text-cyan-400 bg-cyan-950/30 px-1.5 rounded border border-cyan-900/50">{{ formatTime(currentTime()) }}</span>
            </div>
            
            <input type="range" min="0" max="24" step="0.1" 
                   [value]="currentTime()" (input)="emitTime($event)"
-                  class="w-full h-1.5 bg-gradient-to-r from-indigo-900 via-sky-400 to-indigo-900 rounded-lg appearance-none cursor-pointer">
+                  class="custom-range w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer border border-slate-700">
            
            <div class="grid grid-cols-2 gap-3 pt-2">
               <div class="space-y-1">
-                 <label class="text-[9px] text-slate-500">Sun Intensity</label>
+                 <label class="text-[9px] text-slate-500 font-mono">SUN INTENSITY</label>
                  <input type="range" min="0" max="3" step="0.1" [value]="lights().directional" (input)="emitLight('dir', $event)"
-                        class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 block">
+                        class="custom-range-mini w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
               </div>
               <div class="space-y-1">
-                 <label class="text-[9px] text-slate-500">Ambient</label>
+                 <label class="text-[9px] text-slate-500 font-mono">AMBIENT LUX</label>
                  <input type="range" min="0" max="1" step="0.1" [value]="lights().ambient" (input)="emitLight('ambient', $event)"
-                        class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 block">
+                        class="custom-range-mini w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer">
               </div>
            </div>
         </div>
@@ -81,19 +86,45 @@ export interface LightSettings {
         <!-- Physics -->
         <div class="space-y-2 border-t border-slate-800 pt-4">
            <div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-             <span>Physics Gravity</span>
-             <span class="font-mono text-cyan-400">{{ gravity() | number:'1.1-1' }}</span>
+             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">public_off</span> Gravity (G)</span>
+             <span class="font-mono text-cyan-400 bg-cyan-950/30 px-1.5 rounded border border-cyan-900/50">{{ gravity() | number:'1.1-1' }}</span>
            </div>
            <input type="range" min="-20" max="0" step="0.5" 
                   [value]="gravity()" (input)="emitGravity($event)"
-                  class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                  class="custom-range w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer border border-slate-700">
         </div>
 
      </div>
   `,
   styles: [`
-    .bg-cyan-900_40 { background-color: rgb(22 78 99 / 0.4); }
-    .border-cyan-500_50 { border-color: rgb(6 182 212 / 0.5); }
+    .bg-cyan-950_50 { background-color: rgba(8, 51, 68, 0.5); }
+    .border-cyan-500_50 { border-color: rgba(6, 182, 212, 0.5); }
+    .shadow-glow { box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.1); }
+    
+    /* Custom Range Slider Styling */
+    .custom-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        background: #06b6d4;
+        border: 2px solid #083344;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+    .custom-range::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    
+    .custom-range-mini::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 8px;
+        height: 8px;
+        background: #64748b;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+    .custom-range-mini::-webkit-slider-thumb:hover { background: #94a3b8; }
   `]
 })
 export class WorldSettingsPanelComponent {

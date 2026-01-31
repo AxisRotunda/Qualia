@@ -3,64 +3,39 @@ import { Injectable, inject } from '@angular/core';
 import { GameSystem } from '../system';
 import { SceneService } from '../../services/scene.service';
 import { EngineStateService } from '../engine-state.service';
-import { EntityManager } from '../entity-manager.service';
-import * as THREE from 'three';
+import { EntityStoreService } from '../ecs/entity-store.service';
+import { InstancedMeshService } from '../graphics/instanced-mesh.service';
+import { VisibilityManagerService } from '../graphics/visibility-manager.service';
+import { SelectionManagerService } from '../graphics/selection-manager.service';
 
 @Injectable({ providedIn: 'root' })
 export class RenderSystem implements GameSystem {
   readonly priority = 900;
   private scene = inject(SceneService);
   private state = inject(EngineStateService);
-  private entityMgr = inject(EntityManager);
-
-  // Culling State
-  private readonly CULL_DIST_SQ = 150 * 150; // 150m draw distance for small objects
-  private readonly LARGE_OBJECT_THRESHOLD = 5.0; // Objects larger than 5m are always drawn (structures)
+  private entityStore = inject(EntityStoreService);
+  private instancedService = inject(InstancedMeshService);
+  private visibilityManager = inject(VisibilityManagerService);
+  private selectionManager = inject(SelectionManagerService);
 
   update(): void {
-    const cam = this.scene.getCamera();
-    const camPos = cam.position;
+    // 0. Update Instanced Meshes
+    this.instancedService.update();
 
     // 1. View Culling Pass (LOD)
-    // We iterate meshes to toggle visibility based on distance.
-    // This reduces draw calls for distant small props (debris, rocks).
-    this.entityMgr.world.meshes.forEach((ref, entity) => {
-        const mesh = ref.mesh;
-        
-        // Skip if this is the selected entity (always visible)
-        if (this.entityMgr.selectedEntity() === entity) {
-            mesh.visible = true;
-            return;
-        }
+    const visibleCount = this.visibilityManager.updateVisibility();
 
-        // Compute approx size (bounding sphere radius) if not cached
-        if (!mesh.userData['radius']) {
-            if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
-            mesh.userData['radius'] = mesh.geometry.boundingSphere?.radius || 1.0;
-        }
-        
-        const radius = mesh.userData['radius'] * Math.max(mesh.scale.x, Math.max(mesh.scale.y, mesh.scale.z));
-
-        // Always draw large structures
-        if (radius > this.LARGE_OBJECT_THRESHOLD) {
-            mesh.visible = true;
-            return;
-        }
-
-        // Distance check
-        const distSq = camPos.distanceToSquared(mesh.position);
-        
-        // Simple Logic: Hide if > 150m away AND small
-        if (distSq > this.CULL_DIST_SQ) {
-            mesh.visible = false;
-        } else {
-            mesh.visible = true;
-        }
-    });
+    // Update View Stats only (lightweight)
+    if (this.state.showDebugOverlay()) {
+        this.state.debugInfo.update(info => ({
+            ...info,
+            visibleMeshCount: visibleCount
+        }));
+    }
 
     // 2. Selection Helper Update
-    if (this.entityMgr.selectedEntity() !== null) {
-      this.scene.updateSelectionHelper();
+    if (this.entityStore.selectedEntity() !== null) {
+      this.selectionManager.updateHelper();
     }
 
     // 3. Render

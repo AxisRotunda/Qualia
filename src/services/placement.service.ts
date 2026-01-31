@@ -2,20 +2,25 @@
 import { Injectable, inject, signal } from '@angular/core';
 import * as THREE from 'three';
 import { SceneService } from './scene.service';
-import { VisualsFactoryService } from '../engine/graphics/visuals-factory.service';
+import { GhostVisualsService } from '../engine/graphics/ghost-visuals.service';
 import { EntityLibraryService } from './entity-library.service';
-import { EntityManager } from '../engine/entity-manager.service';
+import { TemplateFactoryService } from './factories/template-factory.service';
+import { EntityStoreService } from '../engine/ecs/entity-store.service';
 import { EntityTemplate } from '../data/entity-types';
-import { SurfaceHit } from '../engine/interaction.service';
+import { RaycasterService, SurfaceHit } from '../engine/interaction/raycaster.service';
+import { EngineStateService } from '../engine/engine-state.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PlacementService {
   private sceneService = inject(SceneService);
-  private visualsFactory = inject(VisualsFactoryService);
+  private ghostService = inject(GhostVisualsService);
   private entityLib = inject(EntityLibraryService);
-  private entityMgr = inject(EntityManager);
+  private factory = inject(TemplateFactoryService);
+  private entityStore = inject(EntityStoreService);
+  private raycaster = inject(RaycasterService);
+  private state = inject(EngineStateService);
 
   active = signal(false);
   valid = signal(true);
@@ -23,29 +28,34 @@ export class PlacementService {
   
   private ghost: THREE.Object3D | null = null;
   private currentRotation = 0;
-  
-  // Reuse Box3 for checking
   private ghostBox = new THREE.Box3();
   private otherBox = new THREE.Box3();
 
   startPlacement(templateId: string) {
     this.stopPlacement();
 
-    const tpl = this.entityLib.templates.find(t => t.id === templateId);
+    const tpl = this.entityLib.getTemplate(templateId);
     if (!tpl) return;
 
     this.currentTemplate.set(tpl);
     this.active.set(true);
     this.valid.set(true);
+    this.state.isPlacementActive.set(true);
 
-    this.ghost = this.visualsFactory.createGhostFromTemplate(tpl);
+    this.ghost = this.ghostService.createGhostFromTemplate(tpl);
     this.sceneService.getScene().add(this.ghost);
     this.currentRotation = 0;
+
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('keydown', this.onKeyDown);
   }
 
   stopPlacement() {
     this.active.set(false);
+    this.state.isPlacementActive.set(false);
     this.currentTemplate.set(null);
+    
     if (this.ghost) {
       this.sceneService.getScene().remove(this.ghost);
       this.ghost.traverse((c) => {
@@ -55,102 +65,104 @@ export class PlacementService {
       });
       this.ghost = null;
     }
+    window.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('keydown', this.onKeyDown);
   }
 
-  // Called by InteractionService on move
+  private onPointerMove = (e: PointerEvent) => {
+      if (!this.active()) return;
+      const hit = this.raycaster.raycastSurface(e.clientX, e.clientY);
+      if (hit) this.updatePlacement(hit);
+  };
+
+  private onPointerUp = (e: PointerEvent) => {
+      if (!this.active()) return;
+      // Only confirm on Left Click
+      if (e.button === 0) this.confirmPlacement();
+      // Cancel on Right Click
+      if (e.button === 2) this.stopPlacement();
+  };
+
+  private onKeyDown = (e: KeyboardEvent) => {
+      if (!this.active()) return;
+      if (e.key === 'Escape') {
+          this.stopPlacement();
+          return;
+      }
+      
+      const step = 45;
+      if (e.key === '[' || e.key === 'q') {
+          this.rotate(step);
+      } else if (e.key === ']' || e.key === 'e') {
+          this.rotate(-step);
+      }
+  };
+
   updatePlacement(hit: SurfaceHit) {
     if (!this.ghost || !this.active()) return;
     
     const tpl = this.currentTemplate();
     if (!tpl) return;
 
-    // 1. Position Snapping
     this.ghost.position.copy(hit.point);
-    
-    // 2. Alignment Logic
-    // Reset to identity first
     this.ghost.quaternion.identity();
 
     const isProp = tpl.category === 'prop' || tpl.category === 'shape';
     
     if (isProp) {
-        // Align Up vector to Surface Normal
         const up = new THREE.Vector3(0, 1, 0);
-        // Avoid degenerate case where normal is close to up (standard)
         if (hit.normal.distanceToSquared(up) > 0.001) {
              const alignQuat = new THREE.Quaternion().setFromUnitVectors(up, hit.normal);
              this.ghost.quaternion.copy(alignQuat);
         }
     }
 
-    // 3. User Rotation (Y-Axis relative to current orientation)
     this.ghost.rotateY(this.currentRotation);
 
-    // 4. Height Offset (Pivot adjustment)
-    // Most primitives are centered. We need to push them "Up" (Locally) by half height
-    // so they sit ON the surface, not IN it.
     if (tpl.geometry !== 'mesh' && tpl.geometry !== 'sphere') {
          this.ghost.translateY(tpl.size.y / 2);
-    } else if (tpl.geometry === 'mesh') {
-         // Meshes might have pivot at bottom or center. 
-         // Assuming bottom pivot for complex assets (trees), center for others?
-         // For now, assume center logic for consistent "Hard Realism" physics bounds
-         // unless specific tag. 
-         // Actually, VisualsFactory centers meshes often.
     }
 
-    // 5. Validation (Overlap Check)
     this.validatePlacement();
   }
 
   rotate(deltaDeg: number) {
       this.currentRotation += deltaDeg * (Math.PI / 180);
-      // We don't update visual here, it updates on next pointer move or we could force a re-eval
-      // Ideally we should cache the last hit and re-apply, but for now simple input usually implies mouse movement.
+      if (this.ghost) {
+          this.ghost.rotateY(deltaDeg * (Math.PI / 180));
+      }
   }
 
   confirmPlacement() {
     if (!this.active() || !this.currentTemplate() || !this.ghost) return;
     
-    // Validate again
     this.validatePlacement();
-    if (!this.valid()) return; // Block placement if invalid
+    if (!this.valid()) return;
 
     const pos = this.ghost.position.clone();
     const rot = this.ghost.quaternion.clone();
     
-    this.entityLib.spawnFromTemplate(this.entityMgr, this.currentTemplate()!.id, pos, rot);
+    this.factory.spawn(this.entityStore, this.currentTemplate()!, pos, rot);
     
     this.stopPlacement();
   }
 
   private validatePlacement() {
       if (!this.ghost) return;
-
-      // Update Matrix
       this.ghost.updateMatrixWorld(true);
-      
-      // Compute AABB
       this.ghostBox.setFromObject(this.ghost);
-      // Shrink slightly to allow touching
       this.ghostBox.expandByScalar(-0.05);
 
       let isOverlapping = false;
-
-      // Check against World Entities
-      // Optimization: In a real ECS, use a spatial index. Here we iterate.
-      // We iterate Meshes because they represent the visual volume.
-      for (const ref of this.entityMgr.world.meshes.data.values()) {
+      this.entityStore.world.meshes.forEach((ref) => {
+          if (isOverlapping) return;
           const mesh = ref.mesh;
+          if (!mesh.geometry) return;
           if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-          
           this.otherBox.copy(mesh.geometry.boundingBox!).applyMatrix4(mesh.matrixWorld);
-          
-          if (this.ghostBox.intersectsBox(this.otherBox)) {
-              isOverlapping = true;
-              break;
-          }
-      }
+          if (this.ghostBox.intersectsBox(this.otherBox)) isOverlapping = true;
+      });
 
       this.setGhostValid(!isOverlapping);
   }
@@ -158,11 +170,8 @@ export class PlacementService {
   private setGhostValid(isValid: boolean) {
       if (this.valid() === isValid) return;
       this.valid.set(isValid);
-      
       if (!this.ghost) return;
-
-      const color = isValid ? 0x22d3ee : 0xf43f5e; // Cyan vs Rose
-      
+      const color = isValid ? 0x22d3ee : 0xf43f5e;
       this.ghost.traverse((c) => {
           if (c instanceof THREE.Mesh) {
               (c.material as THREE.MeshBasicMaterial).color.setHex(color);

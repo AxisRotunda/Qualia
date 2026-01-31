@@ -15,6 +15,7 @@ export interface EntityTemplate {
   materialId?: string;
   color?: number;
   mass: number;
+  physicsMaterial?: string; // New field for hard realism density lookup
   lockRotation?: boolean;
   friction: number;
   restitution: number;

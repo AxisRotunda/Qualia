@@ -1,7 +1,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import { EngineStateService } from '../engine-state.service';
-import { EntityManager } from '../entity-manager.service';
+import { EntityStoreService } from '../ecs/entity-store.service';
 import { SceneService } from '../../services/scene.service';
 import { TransformLogicService } from '../logic/transform-logic.service';
 import { PhysicsService } from '../../services/physics.service';
@@ -12,7 +12,7 @@ import * as THREE from 'three';
 })
 export class ObjectManipulationService {
   private state = inject(EngineStateService);
-  private entityMgr = inject(EntityManager);
+  private entityStore = inject(EntityStoreService);
   private scene = inject(SceneService);
   private transformLogic = inject(TransformLogicService);
   private physics = inject(PhysicsService);
@@ -37,7 +37,7 @@ export class ObjectManipulationService {
   }
 
   update(dt: number) {
-      const e = this.entityMgr.selectedEntity();
+      const e = this.entityStore.selectedEntity();
       
       // Check if selection changed or lost
       if (e === null || e !== this.grabbedEntity) {
@@ -77,7 +77,7 @@ export class ObjectManipulationService {
           dPos.y += this.rotLift.y * this.MOVE_SPEED * dt;
 
           this.grabTargetPos.add(dPos);
-          this.physics.moveGrabbed(this.grabTargetPos);
+          this.physics.interaction.moveHand(this.grabTargetPos);
 
       } else if (mode === 'rotate') {
           // Direct manipulation for rotation
@@ -91,20 +91,20 @@ export class ObjectManipulationService {
   }
 
   private startGrab(entity: number) {
-      const t = this.entityMgr.world.transforms.get(entity);
-      const rb = this.entityMgr.world.rigidBodies.get(entity);
+      const t = this.entityStore.world.transforms.get(entity);
+      const rb = this.entityStore.world.rigidBodies.get(entity);
       if (!t || !rb) return;
 
       this.isGrabbing = true;
       this.grabbedEntity = entity;
       this.grabTargetPos.set(t.position.x, t.position.y, t.position.z);
       
-      this.physics.grabBody(rb.handle, t.position);
+      this.physics.interaction.startGrab(rb.handle, t.position);
   }
 
   private endGrab() {
       if (this.isGrabbing) {
-          this.physics.releaseGrab();
+          this.physics.interaction.endGrab();
           this.isGrabbing = false;
       }
   }

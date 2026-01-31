@@ -32,13 +32,16 @@ export class ParticleService {
 
       if (type === 'clear') return;
 
+      const isMobile = window.innerWidth < 800;
+      
       let count = 0;
       let color = 0xffffff;
       let size = 0.1;
       let opacity = 0.8;
 
       if (type === 'snow') {
-          count = 15000;
+          // Reduced snow count for mobile to prevent overdraw
+          count = isMobile ? 3000 : 15000;
           color = 0xffffff;
           size = 0.15;
           opacity = 0.8;
@@ -47,7 +50,7 @@ export class ParticleService {
           this.turbulence = 0.1;
           this.range = 100;
       } else if (type === 'rain') {
-          count = 10000;
+          count = isMobile ? 4000 : 10000;
           color = 0xaaccff;
           size = 0.1;
           opacity = 0.6;

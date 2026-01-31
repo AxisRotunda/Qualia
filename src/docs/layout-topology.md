@@ -10,11 +10,10 @@ The application uses a strict layer system to manage pointer events and visibili
 |-------|---------|------------|-------------|
 | **Root** | `0` | `Canvas` (Three.js) | Raycasting (World) |
 | **HUD Base** | `10` | `SceneTree`, `Inspector` (Desktop Sidebar) | Click/Scroll |
-| **HUD Chrome** | `20` | `StatusBar`, `Toolbar` | Click |
-| **Overlay Low** | `30` | `VirtualJoystick`, `TouchControls` | Multi-touch |
-| **Overlay Mid** | `40` | `MobileDrawers`, `ContextActions` | Modal-ish |
-| **Overlay High** | `50` | `MenuBar`, `ContextMenu`, `SpawnMenu`, `Debug` | Blocking |
-| **System** | `100` | `MainMenu` | Full Capture |
+| **Touch Layer** | `20` | `VirtualJoystick`, `TouchControls` | Multi-touch (Capture Background) |
+| **HUD Chrome** | `40` | `StatusBar`, `Toolbar`, `MenuBar` | Click (Priority over Touch) |
+| **Context** | `50` | `ContextMenu`, `SpawnMenu`, `Debug` | Blocking |
+| **System** | `100` | `MainMenu`, `LoadingScreen` | Full Capture |
 
 ## 2. Desktop Layout (> 1024px)
 **Grid Definition**: Flex Column (Header) -> Flex Row (Body) -> Flex Column (Footer).
@@ -38,11 +37,12 @@ The application uses a strict layer system to manage pointer events and visibili
 
 ```text
 [Viewport (Absolute Full)]
-   + [Touch Layer (Z=30)]
-   + [Context Actions (Z=40)]
-   + [Toolbar (Floating Pill)]
+   + [Touch Layer (Z=20)] -> Joysticks
+   + [HUD Layer (Z=40)]
+       + [Context Actions]
+       + [Toolbar (Floating Pill)]
 ---------------------------
-[Drawers (Overlay Z=40)]
+[Drawers (Overlay Z=40+)]
    + [Left Drawer (Slide In)]
    + [Right Drawer (Slide Up)]
 ```
@@ -55,9 +55,10 @@ The application uses a strict layer system to manage pointer events and visibili
 *   **Pointer Events**:
     *   **Desktop**: `Canvas` has `pointer-events: auto`.
     *   **Mobile**: 
-        *   `TouchControls` layer (Z=30) covers canvas. 
+        *   `TouchControls` layer (Z=20) covers canvas. 
         *   Joysticks capture pointer.
         *   Taps pass through to `InteractionService`.
+        *   `HUD` layer (Z=40) is `pointer-events: none` container, but children are `auto`.
 
 ## 5. Overlay behaviors
 *   **Spawn Menu**: Bottom-sheet on Mobile, Centered Modal on Desktop.

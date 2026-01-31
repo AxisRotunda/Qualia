@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { TextureGeneratorService } from '../engine/graphics/texture-generator.service';
 import { MATERIAL_DEFINITIONS } from '../config/material.config';
 import { TEXTURE_DEFINITIONS } from '../config/texture.config';
-import { createWaterMaterial } from '../engine/graphics/materials/water-material.factory';
+import { registerCustomMaterials } from '../engine/graphics/materials/custom-material.registry';
 
 @Injectable({
   providedIn: 'root'
@@ -20,15 +20,14 @@ export class MaterialService {
     this.initMaterials();
   }
 
-  // Lazy Texture Loader
   private getTexture(id: string): THREE.Texture | null {
     if (this.textures.has(id)) {
         return this.textures.get(id)!;
     }
 
     let tex: THREE.Texture | null = null;
-    
     const generatorFn = TEXTURE_DEFINITIONS[id];
+    
     if (generatorFn) {
         tex = generatorFn(this.texGen);
     }
@@ -40,70 +39,36 @@ export class MaterialService {
   }
 
   private initMaterials() {
-    // 1. Load Data-Driven Materials
     MATERIAL_DEFINITIONS.forEach(def => {
-        let mat: THREE.Material;
+        let mat: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
+        
         if (def.type === 'physical') {
             mat = new THREE.MeshPhysicalMaterial(def.props);
         } else {
             mat = new THREE.MeshStandardMaterial(def.props);
         }
         
-        if (def.mapId) {
-            mat.userData['mapId'] = def.mapId;
+        if (def.mapId) mat.userData['mapId'] = def.mapId;
+        if (def.normalMapId) mat.userData['normalMapId'] = def.normalMapId;
+        if (def.displacementMapId) mat.userData['displacementMapId'] = def.displacementMapId;
+        
+        // Default target is map/emissiveMap
+        mat.userData['textureTarget'] = 'diffuse'; // 'diffuse' or 'emissive'
+
+        // Cache displacement scale
+        if (def.props && def.props.displacementScale !== undefined) {
+            mat.userData['displacementScale'] = def.props.displacementScale;
         }
+        
+        // Explicitly set special case for ground if config missing (backward compat)
+        if (def.id === 'mat-ground' && !def.normalMapId) {
+            mat.userData['normalMapId'] = 'tex-concrete-normal';
+        }
+
         this.materialRegistry.set(def.id, mat);
     });
 
-    // 2. Load Complex/Custom Materials
-    this.initCustomMaterials();
-  }
-
-  private initCustomMaterials() {
-    // Ice & Snow - Physical
-    this.materialRegistry.set('mat-ice', new THREE.MeshPhysicalMaterial({
-        color: 0xa5bfd1,
-        roughness: 0.15,
-        metalness: 0.1,
-        transmission: 0.4,
-        thickness: 2.0,
-        ior: 1.31,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1
-    }));
-
-    // Water (Using Factory)
-    // We lazily get the texture here
-    const normalMap = this.getTexture('tex-water-normal');
-    if (normalMap) {
-        const waterMat = createWaterMaterial(normalMap);
-        this.materialRegistry.set('mat-water', waterMat);
-    }
-
-    // Glass Alias
-    const glass = this.materialRegistry.get('mat-glass') as THREE.MeshPhysicalMaterial;
-    if (glass) this.materialRegistry.set('mat-window', glass.clone());
-
-    // Interior Special
-    const marble = this.materialRegistry.get('mat-marble');
-    if (marble) (marble as any).userData['mapId'] = 'tex-marble';
-
-    const woodPolish = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.3, metalness: 0.1 });
-    woodPolish.userData['mapId'] = 'tex-wood-dark';
-    this.materialRegistry.set('mat-wood-polish', woodPolish);
-
-    // Screens
-    const mScreen = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x22c55e, emissiveIntensity: 2.0, roughness: 0.2 });
-    mScreen.userData['mapId'] = 'tex-screen-matrix';
-    this.materialRegistry.set('mat-screen-matrix', mScreen);
-
-    const mapScreen = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x38bdf8, emissiveIntensity: 2.0, roughness: 0.2 });
-    mapScreen.userData['mapId'] = 'tex-screen-map';
-    this.materialRegistry.set('mat-screen-map', mapScreen);
-
-    const srvFace = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8, emissive: 0xffffff, emissiveIntensity: 1.0 });
-    srvFace.userData['mapId'] = 'tex-server-rack';
-    this.materialRegistry.set('mat-server-face', srvFace);
+    registerCustomMaterials(this.materialRegistry, (id) => this.getTexture(id));
   }
 
   setTexturesEnabled(enabled: boolean) {
@@ -112,7 +77,7 @@ export class MaterialService {
           if (Array.isArray(mat)) {
               mat.forEach(m => this.applyTexture(m as THREE.MeshStandardMaterial, enabled));
           } else {
-              if (key === 'mat-water') return;
+              if (key === 'mat-water') return; // Handled by scene loop
               this.applyTexture(mat as THREE.MeshStandardMaterial, enabled);
           }
       });
@@ -120,19 +85,40 @@ export class MaterialService {
 
   private applyTexture(mat: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial, enabled: boolean) {
       const mapId = mat.userData['mapId'];
-      if (mapId) {
-          const tex = this.getTexture(mapId); // Lazy load if enabled
-          if (!tex) return;
+      const normalMapId = mat.userData['normalMapId'];
+      const dispMapId = mat.userData['displacementMapId'];
+      const target = mat.userData['textureTarget'] || 'diffuse';
 
-          if (mapId.includes('screen') || mapId.includes('server')) {
-             mat.emissiveMap = enabled ? tex : null;
-             mat.map = enabled ? tex : null;
-             mat.emissiveIntensity = enabled ? 2.0 : 0.0;
-          } else {
-             mat.map = enabled ? tex : null;
+      if (mapId) {
+          const tex = this.getTexture(mapId); 
+          if (tex) {
+              if (target === 'emissive') {
+                 mat.emissiveMap = enabled ? tex : null;
+                 mat.map = enabled ? tex : null; // Often useful to map base as well
+                 mat.emissiveIntensity = enabled ? 2.0 : 0.0;
+              } else {
+                 mat.map = enabled ? tex : null;
+              }
           }
-          mat.needsUpdate = true;
       }
+      
+      if (normalMapId) {
+          const normTex = this.getTexture(normalMapId);
+          if (normTex) {
+              mat.normalMap = enabled ? normTex : null;
+              mat.normalScale.set(1, 1);
+          }
+      }
+
+      if (dispMapId) {
+          const dispTex = this.getTexture(dispMapId);
+          if (dispTex) {
+              mat.displacementMap = enabled ? dispTex : null;
+              mat.displacementScale = enabled ? (mat.userData['displacementScale'] ?? 0.1) : 0;
+          }
+      }
+
+      mat.needsUpdate = true;
   }
 
   getMaterial(id: string): THREE.Material | THREE.Material[] {

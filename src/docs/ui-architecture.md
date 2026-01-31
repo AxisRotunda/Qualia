@@ -6,9 +6,10 @@
 
 ## 1. Design Philosophy: "Scientific Dashboard"
 The UI is designed to feel like a high-precision instrument ("Hard Realism").
-*   **Visual Language**: Glassmorphism (`backdrop-blur`), Thin Borders (`1px`), High Contrast.
+*   **Visual Language**: Glassmorphism (`backdrop-blur-xl`), Thin Borders (`1px`), High Contrast.
 *   **Typography**: Monospace numbers (`font-mono`), Uppercase Headers (`tracking-widest`).
 *   **Palette**: Slate-950 (Base), Cyan-500 (Accent/Active), Rose-500 (Destructive/Error), Emerald-500 (Success/Safe).
+*   **Decor**: Minimalist tech accents (corner markers, scanlines, gradient borders).
 
 ## 2. Data Flow Protocol
 **Strict Unidirectional Flow**:
@@ -22,7 +23,7 @@ The UI is designed to feel like a high-precision instrument ("Hard Realism").
 ### 3.1 Layout Containers
 *   **Role**: Structuring screen space, handling slots.
 *   **Examples**: `MainLayoutComponent`, `UiPanelComponent`.
-*   **Meta**: Use `ng-content` projection. No game logic.
+*   **Meta**: Use `ng-content` projection. `UiPanelComponent` handles common "Tech" styling.
 
 ### 3.2 Smart Widgets
 *   **Role**: Binding specific game state to DOM.
@@ -43,6 +44,7 @@ The UI is designed to feel like a high-precision instrument ("Hard Realism").
 *   **Glass Panels**: `bg-slate-950/90 backdrop-blur-md border border-slate-800`.
 *   **Active States**: `text-cyan-400 bg-cyan-950/30 border-cyan-500/50`.
 *   **Interactive**: `hover:bg-slate-800 active:scale-95 transition-all`.
+*   **Touch Targets**: Minimum `44px` or `w-10 h-10` on interactive elements for mobile.
 *   **Scrollbars**: Custom webkit styling required for `::-webkit-scrollbar` (width 4px, slate-700 thumb).
 
 ## 5. Change Detection Strategy

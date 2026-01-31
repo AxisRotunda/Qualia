@@ -100,6 +100,9 @@ export class SciFiStructureService {
       const frameParts: THREE.BufferGeometry[] = [];
       const floorParts: THREE.BufferGeometry[] = [];
       const lightParts: THREE.BufferGeometry[] = [];
+      const pipeParts: THREE.BufferGeometry[] = [];
+      const ventParts: THREE.BufferGeometry[] = [];
+      
       const wallThick = 0.5;
 
       // 1. Floor
@@ -128,6 +131,7 @@ export class SciFiStructureService {
       for(let i=0; i<=ribCount; i++) {
           const z = -depth/2 + (i * (depth/ribCount));
           
+          // Ribs
           const rL = new THREE.BoxGeometry(0.4, ribH, 0.6);
           rL.translate(-width/2, height/2, z);
           frameParts.push(rL);
@@ -140,21 +144,57 @@ export class SciFiStructureService {
           rT.translate(0, height, z);
           frameParts.push(rT);
 
+          // Light Strip on ribs
           const lStrip = new THREE.BoxGeometry(width - 1, 0.05, 0.2);
           lStrip.translate(0, 0.51, z);
           lightParts.push(lStrip);
+          
+          // Vents (Inset in walls between ribs)
+          if (i < ribCount) {
+              const ventZ = z + (depth/ribCount) * 0.5;
+              const ventL = new THREE.BoxGeometry(0.1, 1.5, 1.5);
+              ventL.translate(-width/2 + wallThick + 0.05, height/2, ventZ);
+              ventParts.push(ventL);
+              
+              const ventR = new THREE.BoxGeometry(0.1, 1.5, 1.5);
+              ventR.translate(width/2 - wallThick - 0.05, height/2, ventZ);
+              ventParts.push(ventR);
+          }
       }
 
+      // 5. Pipes (Running along top corners)
+      const pipeGeo = new THREE.CylinderGeometry(0.2, 0.2, depth);
+      pipeGeo.rotateX(Math.PI / 2); // Align Z
+      
+      const pL = pipeGeo.clone();
+      pL.translate(-width/2 + 1.0, height - 1.0, 0);
+      pipeParts.push(pL);
+      
+      const pR = pipeGeo.clone();
+      pR.translate(width/2 - 1.0, height - 1.0, 0);
+      pipeParts.push(pR);
+
+      // Central Light Bar
       const lightBar = new THREE.BoxGeometry(0.4, 0.1, depth * 0.8);
       lightBar.translate(0, height - 0.55, 0);
       lightParts.push(lightBar);
 
+      // Merge Groups
       const gFrame = BufferUtils.mergeGeometries(frameParts);
       const gFloor = BufferUtils.mergeGeometries(floorParts);
       const gLight = BufferUtils.mergeGeometries(lightParts);
+      const gPipe = pipeParts.length ? BufferUtils.mergeGeometries(pipeParts) : null;
+      const gVent = ventParts.length ? BufferUtils.mergeGeometries(ventParts) : null;
       
-      if (gFrame && gFloor && gLight) {
-          const final = BufferUtils.mergeGeometries([gFrame, gFloor, gLight], true);
+      const parts = [gFrame, gFloor, gLight];
+      if (gPipe) parts.push(gPipe);
+      if (gVent) parts.push(gVent);
+      
+      // Filter nulls
+      const validParts = parts.filter(p => p !== null) as THREE.BufferGeometry[];
+
+      if (validParts.length >= 3) {
+          const final = BufferUtils.mergeGeometries(validParts, true);
           final.translate(0, -height/2, 0);
           return final;
       }
@@ -165,6 +205,7 @@ export class SciFiStructureService {
       const frameParts: THREE.BufferGeometry[] = [];
       const floorParts: THREE.BufferGeometry[] = [];
       const lightParts: THREE.BufferGeometry[] = [];
+      const ventParts: THREE.BufferGeometry[] = [];
       
       const radius = width / 2;
       const segmentAngle = (Math.PI * 2) / 6;
@@ -198,6 +239,19 @@ export class SciFiStructureService {
           lightParts.push(band.toNonIndexed());
       }
       
+      // Large Vents on Walls (simulated)
+      for(let i=0; i<3; i++) { // Every other segment
+          const angle = (i * 2 * segmentAngle) + segmentAngle/2;
+          const dist = radius * 0.8;
+          const x = Math.cos(angle) * dist;
+          const z = Math.sin(angle) * dist;
+          
+          const vent = new THREE.BoxGeometry(2, 2, 0.5);
+          vent.rotateY(-angle + Math.PI/2);
+          vent.translate(x, height/2, z);
+          ventParts.push(vent);
+      }
+      
       const tableBase = new THREE.CylinderGeometry(1.5, 1.0, 1.0, 8);
       tableBase.translate(0, 0.5, 0);
       frameParts.push(tableBase.toNonIndexed());
@@ -209,9 +263,10 @@ export class SciFiStructureService {
       const gFrame = BufferUtils.mergeGeometries(frameParts);
       const gFloor = BufferUtils.mergeGeometries(floorParts);
       const gLight = BufferUtils.mergeGeometries(lightParts);
+      const gVent = BufferUtils.mergeGeometries(ventParts);
       
-      if (gFrame && gFloor && gLight) {
-          const final = BufferUtils.mergeGeometries([gFrame, gFloor, gLight], true);
+      if (gFrame && gFloor && gLight && gVent) {
+          const final = BufferUtils.mergeGeometries([gFrame, gFloor, gLight, gVent], true);
           final.translate(0, -height/2, 0);
           return final;
       }

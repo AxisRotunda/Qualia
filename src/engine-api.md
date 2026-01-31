@@ -3,10 +3,23 @@
 
 > **Scope**: Public Facade methods of `EngineService`.
 > **Audience**: UI Component Developers / AI Agents generating UI code.
-> **Version**: 0.5.0
+> **Version**: 0.6.0 (Modular Refactor)
 
-## 1. State Accessors (Read-Only Signals)
-Access via `engine.[signalName]()`.
+## 1. Feature Modules (Service Access)
+The `EngineService` exposes specific feature services as public properties.
+
+| Property | Service | Responsibility |
+|----------|---------|----------------|
+| `engine.sim` | `SimulationService` | Time scale, Pausing, Gravity. |
+| `engine.viewport` | `ViewportService` | Wireframe, Textures, HUD visibility, Debug overlays. |
+| `engine.env` | `EnvironmentControlService` | Time of day, Atmosphere, Weather, Lighting. |
+| `engine.level` | `LevelManagerService` | Scene loading, Reset, Save/Load. |
+| `engine.input` | `InputManagerService` | Control modes, Camera presets, Focus. |
+| `engine.ops` | `EntityOpsService` | Delete, Duplicate, Rename, Physics Props. |
+| `engine.interaction` | `InteractionService` | Raycasting events (advanced usage only). |
+
+## 2. State Accessors (Read-Only Signals)
+Shortcuts on `engine` for common reactive state.
 
 | Signal | Type | Description |
 |--------|------|-------------|
@@ -23,43 +36,37 @@ Access via `engine.[signalName]()`.
 | `showDebugOverlay` | `boolean` | Runtime invariant monitor visibility. |
 | `debugInfo` | `DebugState` | Low-level physics loop stats. |
 | `currentSceneId` | `string \| null` | ID of currently loaded scene preset. |
-| `canUndo` / `canRedo` | `boolean` | History stack availability (Stubbed). |
+| `canUndo` / `canRedo` | `boolean` | History stack availability. |
 
-## 2. Actions
+## 3. Common Actions Cheatsheet
 
-### 2.1 Entity Management
-- `spawnFromTemplate(id: string)`: Raycasts to ground/scene and spawns entity from `EntityLibrary`.
-- `startPlacement(id: string)`: Enters visual placement mode (ghosting).
-- `spawnBox() / spawnSphere()`: Shortcuts for basic props.
-- `duplicateEntity(e: Entity)`: Clones physics body, mesh, and transforms.
-- `deleteEntity(e: Entity)`: Destroys ECS entity, cleans up Physics/Three.js resources.
-- `getEntityName(e: Entity): string`: Retreives UI label.
-- `setEntityName(e: Entity, name: string)`: Updates UI label.
-- `focusSelectedEntity()`: Moves camera to target entity position.
-- `transformSelectedEntity(dPos, dRot, dScale)`: Manual transform application (for Joysticks).
+### Simulation
+*   `engine.sim.togglePause()`
+*   `engine.sim.setGravity(-9.81)`
+*   `engine.sim.setTimeScale(0.5)`
 
-### 2.2 Simulation Control
-- `init(canvas)`: Bootstraps engine.
-- `reset()`: Destroys all entities, resets physics world and camera.
-- `togglePause()` / `setPaused(v: boolean)`: Controls physics stepping.
-- `setGravity(y: number)`: Updates world gravity.
-- `setMode(mode)`: Switches Input Controller.
-- `applyBuoyancy(level, time)`: Runs buoyancy system update.
+### Viewport & Visuals
+*   `engine.viewport.toggleWireframe()`
+*   `engine.viewport.toggleTextures()`
+*   `engine.viewport.toggleHud()`
+*   `engine.viewport.setTransformMode('rotate')`
 
-### 2.3 Visuals & Environment
-- `toggleWireframe()`: Toggles mesh wireframe.
-- `toggleTextures()`: Toggles procedural textures/performance mode.
-- `setPerformanceMode(bool)`: Macro for texture toggling.
-- `setTransformMode(mode)`: Updates Gizmo behavior.
-- `setCameraPreset(preset)`: Moves camera to 'top', 'front', or 'side'.
-- `setLightSettings(settings)`: Updates Ambient/Directional light intensity and color.
-- `setAtmosphere(preset)`: Sets Fog/Skybox/Lighting theme.
-- `setWeather(type)`: Sets Particle System (Snow/Rain).
-- `setTimeOfDay(hour)`: Rotates Sun light.
+### Environment
+*   `engine.env.setTimeOfDay(14)`
+*   `engine.env.setAtmosphere('fog')`
+*   `engine.env.setWeather('rain')`
 
-### 2.4 Persistence
-- `loadScene(id: string)`: Loads a full scene definition from `SceneRegistry`.
-- `quickSave()`: Serializes World state to LocalStorage.
-- `quickLoad()`: Deserializes World state from LocalStorage.
-- `hasSavedState()`: Boolean check for save existence.
-- `getQuickSaveLabel()`: Metadata string for save file.
+### Level / Persistence
+*   `engine.level.loadScene(engine, 'city')`
+*   `engine.level.reset()`
+*   `engine.level.quickSave()`
+
+### Input & Camera
+*   `engine.input.setMode('walk')`
+*   `engine.input.setCameraPreset('top')`
+*   `engine.input.focusSelectedEntity()`
+
+### Entity Management
+*   `engine.ops.deleteEntity(id)`
+*   `engine.ops.duplicateEntity(id)`
+*   `engine.ops.setEntityName(id, 'New Name')`

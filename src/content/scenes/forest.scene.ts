@@ -5,47 +5,81 @@ import { ScenePreset } from '../../data/scene-types';
 export const FOREST_SCENE: ScenePreset = {
   id: 'forest', 
   label: 'Deep Forest', 
-  description: 'Dense woods with fallen logs and organic terrain.', 
+  description: 'Dense woods with fallen logs, organic terrain, and dynamic lighting.', 
   theme: 'forest', 
   previewColor: 'from-emerald-700 to-green-900',
-  load: (engine, lib) => {
-      engine.sceneService.setAtmosphere('forest');
-      engine.particleService.setWeather('clear', engine.sceneService.getScene());
+  load: (ctx, engine) => {
+      ctx.atmosphere('forest')
+         .weather('clear')
+         .light({
+            dirIntensity: 3.5, 
+            ambientIntensity: 0.2,
+            dirColor: '#ffc482' 
+         })
+         .time(17.5)
+         .gravity(-9.81)
+         .cameraPreset('side');
+
+      if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
+
+      // 1. Forest Floor (Physical Ground)
+      ctx.spawn('terrain-soil', 0, 0, 0, { alignToBottom: true });
+
+      // 2. Procedural Vegetation Clustering
+      const area = 180;
+      const treeCount = 80;
       
-      for(let i=0; i<30; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = 10 + Math.random() * 80;
-          const x = Math.cos(angle) * dist;
-          const z = Math.sin(angle) * dist;
-          const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random()*Math.PI, 0));
-          lib.spawnFromTemplate(engine.entityMgr, 'hero-tree', new THREE.Vector3(x, 0, z), rot);
+      // Trees: Use noise to create clearings
+      for(let i=0; i<treeCount; i++) {
+          const x = (Math.random() - 0.5) * area;
+          const z = (Math.random() - 0.5) * area;
+          
+          // Simple noise function for clustering
+          const noise = Math.sin(x * 0.05) + Math.cos(z * 0.05) * Math.sin(x * 0.1);
+          
+          if (noise > -0.2) {
+              const scale = 0.8 + Math.random() * 0.8; // Varied height
+              const rot = new THREE.Euler(
+                  (Math.random()-0.5)*0.1, 
+                  Math.random()*Math.PI*2, 
+                  (Math.random()-0.5)*0.1
+              );
+              
+              ctx.spawn('hero-tree', x, 0.5, z, { alignToBottom: true, scale, rotation: rot });
+          }
       }
 
-      for(let i=0; i<15; i++) {
-          const x = (Math.random() - 0.5) * 80;
-          const z = (Math.random() - 0.5) * 80;
-          const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(
-              Math.PI/2 + (Math.random()-0.5)*0.2, 
-              Math.random()*Math.PI, 
-              (Math.random()-0.5)*0.2
-          ));
-          lib.spawnFromTemplate(engine.entityMgr, 'prop-log', new THREE.Vector3(x, 1, z), rot);
-      }
-
+      // Logs
       for(let i=0; i<20; i++) {
-         const x = (Math.random() - 0.5) * 100;
-         const z = (Math.random() - 0.5) * 100;
-         const scale = 0.8 + Math.random() * 1.5;
-         const id = lib.spawnFromTemplate(engine.entityMgr, 'hero-rock', new THREE.Vector3(x, scale/2, z));
-         
-         const t = engine.world.transforms.get(id);
-         if (t) t.scale = {x: scale, y: scale, z: scale};
-         const body = engine.world.rigidBodies.get(id);
-         const def = engine.world.bodyDefs.get(id);
-         if(body && def) engine.physicsService.updateBodyScale(body.handle, def, t!.scale);
+          const x = (Math.random() - 0.5) * area;
+          const z = (Math.random() - 0.5) * area;
+          
+          const noise = Math.sin(x * 0.05) + Math.cos(z * 0.05);
+          if (noise < 0.5) {
+              const rot = new THREE.Euler(
+                  Math.PI/2 + (Math.random()-0.5)*0.5, 
+                  Math.random()*Math.PI, 
+                  (Math.random()-0.5)*0.5
+              );
+              ctx.spawn('prop-log', x, 3.0 + Math.random()*2, z, { rotation: rot });
+          }
       }
 
-      engine.setCameraPreset('side');
-      engine.setGravity(-9.81);
+      // Rocks
+      for(let i=0; i<40; i++) {
+         const x = (Math.random() - 0.5) * area;
+         const z = (Math.random() - 0.5) * area;
+         
+         const scale = 0.5 + Math.random() * 2.5;
+         // Random rotation approx
+         const rot = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+         
+         ctx.spawn('hero-rock', x, 1.0 + Math.random(), z, { alignToBottom: false, scale, rotation: rot });
+      }
+
+      // Position camera
+      const cam = engine.sceneService.getCamera();
+      cam.position.set(0, 2, 20);
+      cam.lookAt(0, 4, 0);
   }
 };

@@ -1,11 +1,11 @@
 
 import { Component, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-menu-settings-tab',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DecimalPipe],
   template: `
     <div class="max-w-2xl mx-auto animate-in fade-in duration-300">
       <header class="mb-8 border-b border-slate-800 pb-4">
@@ -42,6 +42,22 @@ import { CommonModule } from '@angular/common';
           </div>
         </section>
 
+        <!-- Simulation -->
+        <section>
+          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Simulation</h3>
+          <div class="bg-slate-950/50 rounded-xl border border-slate-800 p-6 space-y-4">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-400">Time Dilation</span>
+              <span class="text-slate-200 font-mono">{{ timeScale() | number:'1.1-1' }}x</span>
+            </div>
+            <input type="range" min="0.1" max="2.0" step="0.1"
+                   [value]="timeScale()" 
+                   (input)="emitTimeScale($event)"
+                   class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer border border-slate-700 accent-cyan-500">
+            <p class="text-[10px] text-slate-500">Controls physics simulation speed. Lower values for slow-motion.</p>
+          </div>
+        </section>
+
         <!-- Audio (Placeholder) -->
         <section>
           <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Audio</h3>
@@ -61,7 +77,14 @@ import { CommonModule } from '@angular/common';
 export class MenuSettingsTabComponent {
   isPerformanceMode = input.required<boolean>();
   isWireframe = input.required<boolean>();
+  timeScale = input.required<number>();
   
   togglePerformance = output<void>();
   toggleWireframe = output<void>();
+  updateTimeScale = output<number>();
+
+  emitTimeScale(e: Event) {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      this.updateTimeScale.emit(val);
+  }
 }

@@ -3,7 +3,7 @@ import { Component, inject, signal, HostListener, ElementRef, OnInit } from '@an
 import { EngineService } from '../../services/engine.service';
 import { KeyboardService, MenuAction } from '../../services/keyboard.service';
 import { MenuDropdownComponent } from './menu-dropdown.component';
-import { createMenuConfig } from '../../config/menu.config';
+import { MenuManagerService } from '../../services/ui/menu-manager.service';
 
 @Component({
   selector: 'app-menu-bar',
@@ -95,12 +95,13 @@ export class MenuBarComponent implements OnInit {
   
   engine = inject(EngineService);
   keyboard = inject(KeyboardService);
+  menuManager = inject(MenuManagerService);
   private el = inject(ElementRef);
 
   menus: MenuAction[] = [];
 
   ngOnInit() {
-      this.menus = createMenuConfig(this.engine);
+      this.menus = this.menuManager.getMenuConfig();
       this.keyboard.register(this.menus);
   }
 

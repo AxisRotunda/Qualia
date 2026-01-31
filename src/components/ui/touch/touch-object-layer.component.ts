@@ -10,30 +10,37 @@ import { VirtualJoystickComponent } from '../virtual-joystick.component';
   standalone: true,
   imports: [CommonModule, VirtualJoystickComponent],
   template: `
-    <div class="fixed inset-0 z-10 select-none touch-none pointer-events-none">
+    <div class="absolute inset-0 z-10 select-none touch-none pointer-events-none">
        <!-- Left: Primary Transform -->
-       <div class="absolute top-1/2 bottom-0 left-0 w-1/2 pointer-events-auto">
+       <div class="absolute top-0 bottom-0 left-0 w-1/2 pointer-events-auto touch-none border-r border-cyan-500/20 bg-cyan-950/5">
           <app-virtual-joystick color="cyan" (move)="onObjectMoveInput($event)" (tap)="onTap($event)" />
           
           @if (showLabels()) {
-            <div class="absolute bottom-24 left-0 w-full text-center text-[9px] text-cyan-500/50 font-mono tracking-widest pointer-events-none font-bold">
+            <div class="absolute bottom-24 left-0 w-full text-center text-[10px] text-cyan-400 font-mono tracking-widest pointer-events-none font-bold">
                 {{ leftLabel() }}
             </div>
           }
        </div>
 
        <!-- Right: Secondary Transform -->
-       <div class="absolute top-1/2 bottom-0 right-0 w-1/2 pointer-events-auto">
+       <div class="absolute top-0 bottom-0 right-0 w-1/2 pointer-events-auto touch-none bg-amber-950/5">
           <app-virtual-joystick color="amber" (move)="onObjectRotLiftInput($event)" (tap)="onTap($event)" />
           
           @if (showLabels()) {
-            <div class="absolute bottom-24 left-0 w-full text-center text-[9px] text-amber-500/50 font-mono tracking-widest pointer-events-none font-bold">
+            <div class="absolute bottom-24 left-0 w-full text-center text-[10px] text-amber-400 font-mono tracking-widest pointer-events-none font-bold">
                 {{ rightLabel() }}
             </div>
           }
        </div>
     </div>
-  `
+  `,
+  styles: [`
+    :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+  `]
 })
 export class TouchObjectLayerComponent implements OnDestroy {
   objectControl = inject(ObjectManipulationService);
@@ -65,17 +72,17 @@ export class TouchObjectLayerComponent implements OnDestroy {
 
   leftLabel() {
       switch(this.transformMode()) {
-          case 'translate': return 'MOVE (XZ)';
+          case 'translate': return 'SLIDE (XZ)';
           case 'rotate': return 'ROTATE (Y)';
-          case 'scale': return 'NO ACTION';
+          case 'scale': return 'SCALE (XZ)';
       }
   }
 
   rightLabel() {
       switch(this.transformMode()) {
           case 'translate': return 'LIFT (Y)';
-          case 'rotate': return 'ROTATE (X/Z)';
-          case 'scale': return 'SCALE (ALL)';
+          case 'rotate': return 'TILT (X/Z)';
+          case 'scale': return 'SCALE (Y)';
       }
   }
 }

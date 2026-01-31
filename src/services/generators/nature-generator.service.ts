@@ -11,14 +11,20 @@ import { NatureTerrainService } from './nature/nature-terrain.service';
 export class NatureGeneratorService {
   private flora = inject(NatureFloraService);
   private geology = inject(NatureGeologyService);
-  private terrain = inject(NatureTerrainService);
+  
+  // Public for access by Scenes
+  public terrain = inject(NatureTerrainService);
 
   generateTree(): THREE.BufferGeometry | null {
     return this.flora.generateTree();
   }
 
-  generateRock(): THREE.BufferGeometry {
-    return this.geology.generateRock();
+  generatePalmTree(): THREE.BufferGeometry | null {
+    return this.flora.generatePalmTree();
+  }
+
+  generateRock(type?: 'granite' | 'sedimentary'): THREE.BufferGeometry {
+    return this.geology.generateRock(type);
   }
 
   generateIceChunk(): THREE.BufferGeometry {
@@ -35,5 +41,9 @@ export class NatureGeneratorService {
 
   generateIceSpire(): THREE.BufferGeometry {
     return this.geology.generateIceSpire();
+  }
+  
+  generateCinderBlock(): THREE.BufferGeometry | null {
+      return this.geology.generateCinderBlock();
   }
 }

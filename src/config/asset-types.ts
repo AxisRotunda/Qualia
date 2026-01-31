@@ -1,12 +1,16 @@
 
 import * as THREE from 'three';
+import { NatureGeneratorService } from '../services/generators/nature-generator.service';
+import { ArchitectureGeneratorService } from '../services/generators/architecture-generator.service';
+import { InteriorGeneratorService } from '../services/generators/interior-generator.service';
+import { SciFiGeneratorService } from '../services/generators/scifi-generator.service';
 
 // Context interface to pass generators to the config functions
 export interface GeneratorContext {
-    nature: any;
-    arch: any;
-    interior: any;
-    scifi: any;
+    nature: NatureGeneratorService;
+    arch: ArchitectureGeneratorService;
+    interior: InteriorGeneratorService;
+    scifi: SciFiGeneratorService;
 }
 
 export interface AssetDef {

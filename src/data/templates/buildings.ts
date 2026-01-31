@@ -2,41 +2,42 @@
 import * as THREE from 'three';
 import { EntityTemplate } from '../entity-types';
 
-// Buildings are now Heavy Dynamic objects with Locked Rotation.
-// This allows them to fall (gravity), slide/push (collisions), but not tip over.
-const BUILDING_MASS = 50000; 
+// Hard Realism: Massive structures need immense mass to feel "heavy" in simulation,
+// even if they are technically dynamic (allowing them to collapse/slide if acted upon by god-mode forces).
+const SKYSCRAPER_MASS = 150000; 
+const BLOCK_MASS = 50000;
 
 export const BUILDING_TEMPLATES: EntityTemplate[] = [
     { id: 'building-small', label: 'Commercial Block', category: 'building', icon: 'location_city',
       geometry: 'mesh', meshId: 'gen-building-small', 
       physicsShape: 'box', size: new THREE.Vector3(5, 8, 5), 
-      mass: BUILDING_MASS, lockRotation: true, friction: 0.8, restitution: 0.0, tags: ['building'] },
+      mass: BLOCK_MASS, lockRotation: true, friction: 0.9, restitution: 0.05, tags: ['building', 'concrete'] },
     
     { id: 'building-tall', label: 'Office Tower', category: 'building', icon: 'business',
       geometry: 'mesh', meshId: 'gen-building-tall',
       physicsShape: 'box', size: new THREE.Vector3(6, 25, 6),
-      mass: BUILDING_MASS * 2, lockRotation: true, friction: 0.8, restitution: 0.0, tags: ['building'] },
+      mass: SKYSCRAPER_MASS, lockRotation: true, friction: 0.9, restitution: 0.02, tags: ['building', 'concrete'] },
       
     { id: 'building-wide', label: 'Warehouse', category: 'building', icon: 'store',
       geometry: 'mesh', meshId: 'gen-building-wide',
       physicsShape: 'box', size: new THREE.Vector3(15, 6, 12),
-      mass: BUILDING_MASS, lockRotation: true, friction: 0.8, restitution: 0.0, tags: ['building'] },
+      mass: BLOCK_MASS * 1.5, lockRotation: true, friction: 0.9, restitution: 0.05, tags: ['building', 'industrial'] },
 
-    { id: 'building-skyscraper', label: 'Skyscraper', category: 'building', icon: 'domain',
+    { id: 'building-skyscraper', label: 'Megastructure', category: 'building', icon: 'domain',
       geometry: 'mesh', meshId: 'gen-building-skyscraper',
       physicsShape: 'box', size: new THREE.Vector3(8, 45, 8),
-      mass: BUILDING_MASS * 3, lockRotation: true, friction: 0.8, restitution: 0.0, tags: ['building'] },
+      mass: SKYSCRAPER_MASS * 3, lockRotation: true, friction: 0.9, restitution: 0.01, tags: ['building', 'hero'] },
 
     { id: 'structure-ramp', label: 'Ramp', category: 'building', icon: 'signal_cellular_0_bar',
       geometry: 'box', size: new THREE.Vector3(10, 0.5, 20), materialId: 'mat-metal',
-      mass: 2000, lockRotation: true, friction: 0.5, restitution: 0, tags: ['structure'] },
+      mass: 2000, lockRotation: true, friction: 0.6, restitution: 0, tags: ['structure'] },
 
     { id: 'structure-research-station', label: 'Outpost Alpha', category: 'building', icon: 'science',
       geometry: 'mesh', meshId: 'research-station-01',
       physicsShape: 'trimesh', size: new THREE.Vector3(6, 5, 4), 
-      mass: 0, friction: 0.5, restitution: 0.1, tags: ['building'] }, // Trimesh must be static
+      mass: 0, friction: 0.8, restitution: 0.1, tags: ['building', 'static'] },
       
-    // Interior Structures (Walls etc generally remain static or use trimesh)
+    // Interior Structures
     { id: 'structure-wall-interior', label: 'Grand Wall (4m)', category: 'building', icon: 'wall',
       geometry: 'mesh', meshId: 'gen-wall-seg-4m',
       physicsShape: 'box', size: new THREE.Vector3(4, 5, 0.4),
@@ -49,7 +50,7 @@ export const BUILDING_TEMPLATES: EntityTemplate[] = [
 
     { id: 'structure-floor-marble', label: 'Marble Slab', category: 'building', icon: 'grid_view',
       geometry: 'box', size: new THREE.Vector3(4, 0.2, 4), materialId: 'mat-marble',
-      mass: 0, friction: 0.4, restitution: 0.0, tags: ['structure', 'interior'] }, // Floor usually static
+      mass: 0, friction: 0.4, restitution: 0.0, tags: ['structure', 'interior'] },
       
     { id: 'structure-staircase', label: 'Marble Stairs', category: 'building', icon: 'stairs',
       geometry: 'mesh', meshId: 'gen-staircase-4m',

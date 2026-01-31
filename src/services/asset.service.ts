@@ -13,13 +13,11 @@ import { GeneratorContext } from '../config/asset-types';
   providedIn: 'root'
 })
 export class AssetService {
-  private materialService = inject(MaterialService);
-  
-  // Generators
-  private natureGen = inject(NatureGeneratorService);
-  private archGen = inject(ArchitectureGeneratorService);
-  private interiorGen = inject(InteriorGeneratorService);
-  private scifiGen = inject(SciFiGeneratorService);
+  // Generators - Made public to allow scene scripts to access procedural logic directly
+  public readonly natureGen = inject(NatureGeneratorService);
+  public readonly archGen = inject(ArchitectureGeneratorService);
+  public readonly interiorGen = inject(InteriorGeneratorService);
+  public readonly scifiGen = inject(SciFiGeneratorService);
   
   private geometries = new Map<string, THREE.BufferGeometry>();
 
@@ -43,9 +41,6 @@ export class AssetService {
     
     if (config) {
         geo = config.generator(this.generatorContext);
-    } else {
-        // Fallback for primitive or unknown assets needed for basic shapes
-        geo = new THREE.BoxGeometry(1, 1, 1);
     }
 
     if (geo) {
@@ -53,29 +48,15 @@ export class AssetService {
         return geo;
     }
     
+    // Fallback for unknown assets
     return new THREE.BoxGeometry(1, 1, 1);
   }
 
-  getMesh(assetId: string): THREE.Mesh {
-      const geo = this.getGeometry(assetId);
+  getAssetMaterials(assetId: string): string | string[] {
       const config = ASSET_CONFIG[assetId];
-      
-      let mat: THREE.Material | THREE.Material[];
-
       if (config) {
-          if (Array.isArray(config.materials)) {
-              mat = config.materials.map(mId => this.materialService.getMaterial(mId) as THREE.Material);
-          } else {
-              mat = this.materialService.getMaterial(config.materials) as THREE.Material;
-          }
-      } else {
-          // Fallback material
-          mat = this.materialService.getMaterial('mat-default') as THREE.Material;
+          return config.materials;
       }
-
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      return mesh;
+      return 'mat-default';
   }
 }

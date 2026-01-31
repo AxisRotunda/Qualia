@@ -1,8 +1,9 @@
 
 import { Injectable, inject } from '@angular/core';
-import { EntityManager } from './entity-manager.service';
+import { EntityStoreService } from './ecs/entity-store.service';
 import { SceneRegistryService } from '../services/scene-registry.service';
 import { EntityLibraryService } from '../services/entity-library.service';
+import { TemplateFactoryService } from '../services/factories/template-factory.service';
 import * as THREE from 'three';
 
 export interface SavedScene {
@@ -28,16 +29,17 @@ export interface SavedScene {
   providedIn: 'root'
 })
 export class PersistenceService {
-  private entityMgr = inject(EntityManager);
+  private entityStore = inject(EntityStoreService);
   private sceneRegistry = inject(SceneRegistryService);
   private entityLib = inject(EntityLibraryService);
+  private factory = inject(TemplateFactoryService);
 
   exportScene(currentSceneId: string | null, gravity: number, textures: boolean): SavedScene {
     const entities: SavedScene['entities'] = [];
     
-    this.entityMgr.world.entities.forEach(e => {
-        const tplId = this.entityMgr.world.templateIds.get(e);
-        const t = this.entityMgr.world.transforms.get(e);
+    this.entityStore.world.entities.forEach(e => {
+        const tplId = this.entityStore.world.templateIds.get(e);
+        const t = this.entityStore.world.transforms.get(e);
         if (tplId && t) {
             entities.push({
                 tplId,
@@ -64,9 +66,7 @@ export class PersistenceService {
   }
 
   loadSceneData(data: SavedScene, engine: any) {
-      // engine passed as 'any' to avoid circular dep
-      
-      this.entityMgr.reset();
+      this.entityStore.reset();
       engine.setGravity(data.engine.gravityY);
       if (engine.texturesEnabled() !== data.engine.texturesEnabled) {
           engine.toggleTextures();
@@ -77,10 +77,10 @@ export class PersistenceService {
           engine.currentSceneId.set(data.meta.sceneId);
           const preset = this.sceneRegistry.getPreset(data.meta.sceneId);
           const atm = preset?.theme === 'forest' ? 'forest' : preset?.theme === 'ice' ? 'ice' : 'clear';
-          engine.sceneService.setAtmosphere(atm);
+          engine.setAtmosphere(atm);
       } else {
           engine.currentSceneId.set(null);
-          engine.sceneService.setAtmosphere('clear');
+          engine.setAtmosphere('clear');
       }
 
       // Spawn Entities
@@ -89,16 +89,19 @@ export class PersistenceService {
           const rot = new THREE.Quaternion(e.rotation.x, e.rotation.y, e.rotation.z, e.rotation.w);
           
           try {
-              const ent = this.entityLib.spawnFromTemplate(this.entityMgr, e.tplId, pos, rot);
-              
-              if (e.scale.x !== 1 || e.scale.y !== 1 || e.scale.z !== 1) {
-                   const t = this.entityMgr.world.transforms.get(ent);
-                   const def = this.entityMgr.world.bodyDefs.get(ent);
-                   const rb = this.entityMgr.world.rigidBodies.get(ent);
-                   if(t && def && rb) {
-                       t.scale = { ...e.scale };
-                       engine.physicsService.updateBodyScale(rb.handle, def, t.scale);
-                   }
+              const tpl = this.entityLib.getTemplate(e.tplId);
+              if (tpl) {
+                  const ent = this.factory.spawn(this.entityStore, tpl, pos, rot);
+                  
+                  if (e.scale.x !== 1 || e.scale.y !== 1 || e.scale.z !== 1) {
+                       const t = this.entityStore.world.transforms.get(ent);
+                       const def = this.entityStore.world.bodyDefs.get(ent);
+                       const rb = this.entityStore.world.rigidBodies.get(ent);
+                       if(t && def && rb) {
+                           t.scale = { ...e.scale };
+                           engine.physicsService.shapes.updateBodyScale(rb.handle, def, t.scale);
+                       }
+                  }
               }
           } catch(err) {
               console.warn(`Failed to spawn ${e.tplId}`, err);

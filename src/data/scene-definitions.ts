@@ -10,10 +10,12 @@ import { SPACESHIP_SCENE } from '../content/scenes/spaceship.scene';
 import { AGENCY_SCENE } from '../content/scenes/agency.scene';
 import { ELEVATOR_SCENE } from '../content/scenes/elevator.scene';
 import { WATER_SCENE } from '../content/scenes/water.scene';
+import { DESERT_SCENE } from '../content/scenes/desert.scene';
 
 export { ScenePreset };
 
 export const SCENE_DEFINITIONS: ScenePreset[] = [
+    DESERT_SCENE,
     WATER_SCENE,
     ELEVATOR_SCENE,
     AGENCY_SCENE,

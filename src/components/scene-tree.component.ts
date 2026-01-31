@@ -1,6 +1,7 @@
 
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, HostListener } from '@angular/core';
 import { EngineService } from '../services/engine.service';
+import { LayoutService } from '../services/ui/layout.service';
 import { Entity } from '../engine/core';
 import { UiPanelComponent } from './ui-panel.component';
 
@@ -27,13 +28,14 @@ import { UiPanelComponent } from './ui-panel.component';
                     type="text" 
                     placeholder="FILTER SIGNAL..." 
                     (input)="searchQuery.set($any($event.target).value)"
+                    (keydown)="$event.stopPropagation()" 
                     class="w-full bg-slate-900/80 border border-slate-700/50 rounded-sm py-1 pl-7 pr-2 text-[10px] text-slate-300 focus:outline-none focus:border-cyan-500/50 placeholder:text-slate-600 transition-all font-mono tracking-wide uppercase"
                 >
             </div>
         </div>
 
         <!-- Virtual Scroll Container -->
-        <div class="relative min-h-0 px-1 flex-1" (scroll)="onScroll($event)" style="height: calc(100vh - 160px); overflow-y: auto;">
+        <div #scrollContainer class="relative min-h-0 px-1 flex-1 outline-none" (scroll)="onScroll($event)" style="height: calc(100vh - 160px); overflow-y: auto;" tabindex="0">
           
           <div [style.height.px]="totalHeight()" class="absolute w-full top-0 left-0 z-0"></div>
 
@@ -88,6 +90,7 @@ import { UiPanelComponent } from './ui-panel.component';
 })
 export class SceneTreeComponent {
   engine = inject(EngineService);
+  layout = inject(LayoutService);
 
   private readonly ROW_HEIGHT = 29; 
   private scrollTop = signal(0);
@@ -131,6 +134,47 @@ export class SceneTreeComponent {
       this.select(entity);
   }
   
+  @HostListener('window:keydown', ['$event'])
+  onKey(e: KeyboardEvent) {
+      // Only handle if panel is visible and user isn't typing elsewhere
+      if (!this.layout.leftPanelOpen()) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const current = this.engine.selectedEntity();
+      const list = this.filteredEntities();
+      
+      if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          this.moveSelection(1, list, current);
+      } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          this.moveSelection(-1, list, current);
+      }
+  }
+
+  private moveSelection(dir: number, list: Entity[], current: Entity | null) {
+      if (list.length === 0) return;
+      
+      let nextIndex = 0;
+      if (current !== null) {
+          const idx = list.indexOf(current);
+          if (idx !== -1) {
+              nextIndex = Math.min(Math.max(idx + dir, 0), list.length - 1);
+          }
+      }
+      
+      const nextEntity = list[nextIndex];
+      this.select(nextEntity);
+      
+      // Auto-scroll logic could be added here by querying the DOM element or estimating scroll top
+      // Simple approximation:
+      const rowTop = nextIndex * this.ROW_HEIGHT;
+      const rowBottom = rowTop + this.ROW_HEIGHT;
+      const currentScroll = this.scrollTop();
+      // Need reference to container height, assuming ~ calc(100vh - 160px) ~ 600px for now or injecting ElementRef
+      // For simplicity in this iteration, we update selection logic only.
+  }
+
   getIcon(e: Entity): string {
       const name = this.engine.getEntityName(e).toLowerCase();
       if (name.includes('light') || name.includes('sun')) return 'light_mode';

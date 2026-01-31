@@ -29,7 +29,10 @@ export class GameLoopService implements OnDestroy {
       if (!this.isRunning) return;
       this.loopId = requestAnimationFrame(tick);
 
-      const dt = time - this.lastTime;
+      // Prevent negative or zero DT which can cause NaNs in physics integration
+      let dt = time - this.lastTime;
+      if (dt <= 0) dt = 0.001; 
+      
       this.lastTime = time;
 
       this.updateStats(time);

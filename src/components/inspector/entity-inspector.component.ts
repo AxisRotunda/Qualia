@@ -1,6 +1,7 @@
 
 import { Component, inject, signal, effect } from '@angular/core';
 import { EngineService } from '../../services/engine.service';
+import { TransformLogicService } from '../../engine/logic/transform-logic.service';
 import { Transform, PhysicsProps } from '../../engine/core';
 import { TransformPanelComponent } from './transform-panel.component';
 import { PhysicsPanelComponent } from './physics-panel.component';
@@ -30,8 +31,13 @@ import { PhysicsPanelComponent } from './physics-panel.component';
          </button>
       </div>
 
-      <!-- Transform Sub-Component -->
-      <app-transform-panel [data]="transformSnapshot()" />
+      <!-- Transform Sub-Component (Editable) -->
+      <app-transform-panel 
+          [data]="transformSnapshot()" 
+          (updatePos)="onPosUpdate($event)"
+          (updateRot)="onRotUpdate($event)"
+          (updateScale)="onScaleUpdate($event)"
+      />
 
       <hr class="border-slate-800/50">
 
@@ -45,6 +51,7 @@ import { PhysicsPanelComponent } from './physics-panel.component';
 })
 export class EntityInspectorComponent {
   engine = inject(EngineService);
+  transformLogic = inject(TransformLogicService);
   
   transformSnapshot = signal<Transform | null>(null);
   physicsPropsSnapshot = signal<PhysicsProps | null>(null);
@@ -78,14 +85,42 @@ export class EntityInspectorComponent {
        if (p) {
          this.physicsPropsSnapshot.set({ ...p });
        }
-       this.entityName.set(this.engine.getEntityName(id));
+       this.entityName.set(this.engine.ops.getEntityName(id));
   }
+
+  // --- Transform Updates ---
+
+  onPosUpdate(pos: {x:number, y:number, z:number}) {
+      const id = this.engine.selectedEntity();
+      if (id !== null) {
+          this.transformLogic.setEntityTransform(id, pos);
+          this.refreshSnapshot(id); // Re-sync local signal
+      }
+  }
+
+  onRotUpdate(rot: {x:number, y:number, z:number, w:number}) {
+      const id = this.engine.selectedEntity();
+      if (id !== null) {
+          this.transformLogic.setEntityTransform(id, undefined, rot);
+          this.refreshSnapshot(id);
+      }
+  }
+
+  onScaleUpdate(scale: {x:number, y:number, z:number}) {
+      const id = this.engine.selectedEntity();
+      if (id !== null) {
+          this.transformLogic.setEntityTransform(id, undefined, undefined, scale);
+          this.refreshSnapshot(id);
+      }
+  }
+
+  // --- Other Updates ---
 
   updateName(e: Event) {
       const val = (e.target as HTMLInputElement).value;
       const id = this.engine.selectedEntity();
       if (id !== null) {
-          this.engine.setEntityName(id, val);
+          this.engine.ops.setEntityName(id, val);
       }
   }
 
@@ -97,13 +132,13 @@ export class EntityInspectorComponent {
       if(!props) return;
       
       const newProps = { ...props, [event.prop]: event.value };
-      this.engine.updateEntityPhysics(id, newProps);
+      this.engine.ops.updateEntityPhysics(id, newProps);
 
       this.physicsPropsSnapshot.update(curr => curr ? ({ ...curr, [event.prop]: event.value }) : null);
   }
 
   deleteSelected() {
       const e = this.engine.selectedEntity();
-      if (e !== null) this.engine.deleteEntity(e);
+      if (e !== null) this.engine.ops.deleteEntity(e);
   }
 }

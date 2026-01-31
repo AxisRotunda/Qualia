@@ -130,7 +130,8 @@ export class CharacterControllerService {
         : 0;
 
     // 7. Sync Camera
-    const pose = this.physics.getBodyPose(this.character.bodyHandle);
+    // FIXED: Use physics.world.getBodyPose
+    const pose = this.physics.world.getBodyPose(this.character.bodyHandle);
     if (pose) {
         const camPos = new THREE.Vector3(
             pose.p.x, 

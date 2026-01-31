@@ -10,25 +10,46 @@ import { VirtualJoystickComponent } from '../virtual-joystick.component';
   standalone: true,
   imports: [CommonModule, VirtualJoystickComponent],
   template: `
-    <div class="fixed inset-0 z-10 select-none touch-none pointer-events-none">
+    <div class="absolute inset-0 z-10 select-none touch-none pointer-events-none">
         
         <!-- Left Zone (Move) -->
-        <div class="absolute top-0 bottom-0 left-0 w-1/2 pointer-events-auto">
-           <app-virtual-joystick color="cyan" (move)="onSimMove($event)" (tap)="onTap($event)" />
+        <!-- Added touch-none to ensure browser pan/zoom doesn't steal input from this zone -->
+        <div class="absolute top-0 bottom-0 left-0 w-1/2 pointer-events-auto touch-none border-r border-white/5">
+           <!-- Zone Hint -->
+           @if (showLabels()) {
+             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-white/5 pointer-events-none opacity-50 flex items-center justify-center">
+                <span class="material-symbols-outlined text-4xl text-white/10">open_with</span>
+             </div>
+           }
+
+           <app-virtual-joystick color="cyan" 
+                (move)="onSimMove($event)" 
+                (tap)="onTap($event)" 
+                (longPress)="onLongPress($event)" />
            
            @if (showLabels()) {
-             <div class="absolute bottom-6 left-6 text-[10px] text-white/20 font-mono tracking-widest pointer-events-none uppercase">
+             <div class="absolute bottom-20 left-6 text-[10px] text-cyan-500/50 font-mono tracking-widest pointer-events-none uppercase font-bold">
                {{ modeLabelMove() }}
              </div>
            }
         </div>
         
         <!-- Right Zone (Look) -->
-        <div class="absolute top-0 bottom-0 right-0 w-1/2 pointer-events-auto">
-           <app-virtual-joystick color="amber" (move)="onSimLook($event)" (tap)="onTap($event)" />
+        <div class="absolute top-0 bottom-0 right-0 w-1/2 pointer-events-auto touch-none">
+           <!-- Zone Hint -->
+           @if (showLabels()) {
+             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-white/5 pointer-events-none opacity-50 flex items-center justify-center">
+                <span class="material-symbols-outlined text-4xl text-white/10">360</span>
+             </div>
+           }
+
+           <app-virtual-joystick color="amber" 
+                (move)="onSimLook($event)" 
+                (tap)="onTap($event)" 
+                (longPress)="onLongPress($event)" />
            
            @if (showLabels()) {
-             <div class="absolute bottom-6 right-6 text-[10px] text-white/20 font-mono tracking-widest pointer-events-none uppercase">
+             <div class="absolute bottom-20 right-6 text-[10px] text-amber-500/50 font-mono tracking-widest pointer-events-none uppercase font-bold">
                {{ modeLabelLook() }}
              </div>
            }
@@ -59,6 +80,11 @@ import { VirtualJoystickComponent } from '../virtual-joystick.component';
     </div>
   `,
   styles: [`
+    :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
     .action-btn { @apply backdrop-blur-md shadow-lg active:scale-95 transition-transform flex items-center justify-center touch-none select-none; }
     .active-run { @apply bg-amber-900/60 border-amber-500/50 shadow-amber-900/20; }
   `]
@@ -73,11 +99,15 @@ export class TouchCameraLayerComponent {
 
   running = false;
 
-  modeLabelMove() { return this.isEditMode() ? 'Pan' : 'Move'; }
-  modeLabelLook() { return this.isEditMode() ? 'Orbit' : 'Look'; }
+  modeLabelMove() { return this.isEditMode() ? 'Pan (XZ)' : 'Move (WASD)'; }
+  modeLabelLook() { return this.isEditMode() ? 'Orbit (Cam)' : 'Look (Mouse)'; }
 
   onTap(pos: {x: number, y: number}) {
       this.interaction.selectEntityAt(pos.x, pos.y);
+  }
+
+  onLongPress(pos: {x: number, y: number}) {
+      this.interaction.openContextMenu(pos.x, pos.y);
   }
 
   onSimMove(v: {x: number, y: number}) { 

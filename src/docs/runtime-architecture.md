@@ -1,3 +1,4 @@
+
 # Runtime Architecture
 > **Scope**: Game Loop, System Scheduling, Delta Time, Transform Sync.
 > **Source**: `src/engine/runtime/engine-runtime.service.ts`, `src/engine/system.ts`, `src/engine/systems/*.ts`
@@ -26,11 +27,12 @@ The most critical system for data consistency. It manages the bidirectional flow
 
 ### 3.1 Mode: Simulation (`play`)
 *   **Direction**: `Physics -> ECS -> Visuals`.
+*   **Optimization**: Iterates ONLY active (awake) bodies from `PhysicsWorldService`. Sleeping bodies are skipped entirely, reducing complexity from O(N) to O(Active).
 *   **Logic**:
-    1.  Iterate all `RigidBodyRef` components.
-    2.  `physics.getBodyPose(handle)` retrieves `p` (position) and `q` (rotation).
-    3.  Update `ECS.Transform` (position, rotation).
-    4.  Update `ECS.MeshRef` (Three.js Object3D).
+    1.  Call `physics.syncActiveBodies(callback)`.
+    2.  Inside callback, receive entity ID, position, rotation.
+    3.  Update `ECS.Transform`.
+    4.  Update `ECS.MeshRef`.
     
 ### 3.2 Mode: Edit (`edit`)
 *   **General**: Same as Simulation (Physics drives Visuals).

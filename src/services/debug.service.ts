@@ -13,12 +13,12 @@ export class DebugService {
     (window as any).qualiaDebug = {
         spawnAll: () => this.debugSpawnAllTemplates(engine),
         logWorld: () => console.log(engine.world),
-        reset: () => engine.reset()
+        reset: () => engine.level.reset()
     };
   }
 
   debugSpawnAllTemplates(engine: EngineService) {
-    engine.reset();
+    engine.level.reset();
     let x = -15;
     // We need to access templates via the engine facade or inject library directly
     // Using simple iteration here assuming EngineService might expose library or we inject it

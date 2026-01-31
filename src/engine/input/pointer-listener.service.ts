@@ -35,27 +35,39 @@ export class PointerListenerService {
 
   bind(element: HTMLElement) {
     this.element = element;
+    // Only bind the trigger event initially
     this.element.addEventListener('pointerdown', this.onDown);
-    // Bind move/up to window to catch drags that leave the canvas
-    window.addEventListener('pointermove', this.onMove);
-    window.addEventListener('pointerup', this.onUp);
-    window.addEventListener('contextmenu', this.onContextMenu);
+    this.element.addEventListener('contextmenu', this.onContextMenu);
   }
 
   unbind() {
     if (this.element) {
       this.element.removeEventListener('pointerdown', this.onDown);
+      this.element.removeEventListener('contextmenu', this.onContextMenu);
     }
+    // Ensure cleanup of dynamic listeners
+    this.removeWindowListeners();
+    this.element = null;
+  }
+
+  private addWindowListeners() {
+    window.addEventListener('pointermove', this.onMove);
+    window.addEventListener('pointerup', this.onUp);
+    window.addEventListener('pointercancel', this.onUp);
+  }
+
+  private removeWindowListeners() {
     window.removeEventListener('pointermove', this.onMove);
     window.removeEventListener('pointerup', this.onUp);
-    window.removeEventListener('contextmenu', this.onContextMenu);
-    this.element = null;
+    window.removeEventListener('pointercancel', this.onUp);
   }
 
   private onDown = (e: PointerEvent) => {
     if (!this.element) return;
     
-    // Ignore non-primary if needed, but right click is button 2
+    // Attach tracking listeners only when interaction starts
+    this.addWindowListeners();
+
     this.downPos = { x: e.clientX, y: e.clientY };
     this.downTime = performance.now();
     this.isDragging.set(false);
@@ -89,6 +101,9 @@ export class PointerListenerService {
   private onUp = (e: PointerEvent) => {
     clearTimeout(this.longPressTimer);
     
+    // Interaction finished, detach listeners
+    this.removeWindowListeners();
+    
     if (this.isDragging()) {
         this.isDragging.set(false);
         return;
@@ -99,7 +114,7 @@ export class PointerListenerService {
         const duration = performance.now() - this.downTime;
         if (duration < this.CLICK_TIME_THRESHOLD) {
             if (e.button === 2) {
-                // Right click handled by contextmenu event usually, but pointerup captures it too
+                // Right click handled by contextmenu event
             } else {
                 this.onClick.next({ 
                     x: e.clientX, y: e.clientY, 

@@ -9,6 +9,7 @@ import { EnvironmentSystem } from '../systems/environment.system';
 import { SceneLogicSystem } from '../systems/scene-logic.system';
 import { PhysicsSystem } from '../systems/physics.system';
 import { RenderSystem } from '../systems/render.system';
+import { StatisticsSystem } from '../systems/statistics.system';
 
 @Injectable({
   providedIn: 'root'
@@ -22,16 +23,17 @@ export class EngineRuntimeService {
   private systems: GameSystem[] = [];
 
   private totalTime = 0;
+  private readonly MAX_DT = 100; // Cap frame time to 100ms (10fps) to prevent explosion
 
   constructor() {
     // Initialize Systems Order
-    // In a larger app, we might use a multi-provider token, but manual list is explicit and safe.
     this.systems = [
       inject(InputSystem),
       inject(EnvironmentSystem),
       inject(SceneLogicSystem),
       inject(PhysicsSystem),
-      inject(RenderSystem)
+      inject(RenderSystem),
+      inject(StatisticsSystem)
     ].sort((a, b) => a.priority - b.priority);
   }
 
@@ -48,7 +50,10 @@ export class EngineRuntimeService {
     this.loop.start((dt) => this.tick(dt));
   }
 
-  private tick(dt: number) {
+  private tick(rawDt: number) {
+    // Clamp Delta Time for stability
+    const dt = Math.min(rawDt, this.MAX_DT);
+    
     this.totalTime += dt;
 
     // Iterate all systems

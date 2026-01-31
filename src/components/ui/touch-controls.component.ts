@@ -20,8 +20,8 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
   template: `
     <!-- Restore UI Button -->
     @if (!engine.hudVisible()) {
-      <button class="fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-slate-900/50 text-slate-400 border border-white/10 backdrop-blur flex items-center justify-center active:scale-95 transition-all"
-              (click)="engine.toggleHud()"
+      <button class="fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-slate-900/50 text-slate-400 border border-white/10 backdrop-blur flex items-center justify-center active:scale-95 transition-all pointer-events-auto"
+              (click)="engine.viewport.toggleHud()"
               (pointerdown)="$event.stopPropagation()"
               aria-label="Show UI">
           <span class="material-symbols-outlined">visibility</span>
@@ -38,6 +38,8 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
 
     <!-- 
       CONTROLLER LAYERS 
+      Note: These layers have specific zones with pointer-events-auto.
+      The containers themselves are pointer-events-none.
     -->
     @if (isObjectControlActive()) {
         <app-touch-object-layer 
@@ -69,11 +71,19 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
           [canUndo]="engine.canUndo()"
           [hasSelection]="engine.selectedEntity() !== null"
           (setMode)="setTransformMode($event)"
-          (undo)="engine.undo()"
+          (undo)="engine.ops.undo()"
           (toggleInspector)="toggleInspector.emit()"
        />
     }
-  `
+  `,
+  styles: [`
+    :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Critical: Host is transparent to clicks */
+    }
+  `]
 })
 export class TouchControlsComponent {
   engine = inject(EngineService);
@@ -116,7 +126,7 @@ export class TouchControlsComponent {
   }
 
   setTransformMode(mode: 'translate'|'rotate'|'scale') {
-      this.engine.setTransformMode(mode);
+      this.engine.viewport.setTransformMode(mode);
       // Auto-switch to object control mode if we click a tool
       if (this.engine.selectedEntity() !== null) {
           this.controlMode.set('object');
@@ -125,7 +135,7 @@ export class TouchControlsComponent {
 
   deleteSelected() {
       const e = this.engine.selectedEntity();
-      if (e !== null) this.engine.deleteEntity(e);
+      if (e !== null) this.engine.ops.deleteEntity(e);
   }
 
   deselect() {

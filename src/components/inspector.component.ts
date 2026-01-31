@@ -44,11 +44,11 @@ import { WorldSettingsPanelComponent } from './inspector/world-settings-panel.co
               [currentTime]="engine.timeOfDay()"
               [currentWeather]="engine.weather()"
               [currentAtmosphere]="engine.atmosphere()"
-              (gravityChange)="engine.setGravity($event)"
-              (timeChange)="engine.setTimeOfDay($event)"
-              (weatherChange)="engine.setWeather($event)"
-              (atmosphereChange)="engine.setAtmosphere($event)"
-              (lightChange)="engine.setLightSettings($event)"
+              (gravityChange)="engine.sim.setGravity($event)"
+              (timeChange)="engine.env.setTimeOfDay($event)"
+              (weatherChange)="engine.env.setWeather($event)"
+              (atmosphereChange)="engine.env.setAtmosphere($event)"
+              (lightChange)="engine.env.setLightSettings($event)"
            />
         </app-ui-panel>
       </div>

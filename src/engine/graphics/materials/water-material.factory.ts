@@ -1,61 +1,43 @@
 
 import * as THREE from 'three';
+import { 
+    WATER_VERTEX_HEAD, 
+    WATER_VERTEX_MAIN, 
+    WATER_FRAGMENT_HEAD, 
+    WATER_FRAGMENT_COLOR, 
+    WATER_FRAGMENT_ROUGHNESS 
+} from '../shaders/water.shader';
 
 export function createWaterMaterial(normalMap: THREE.Texture): THREE.MeshPhysicalMaterial {
     const water = new THREE.MeshPhysicalMaterial({
-        color: 0x004466, 
-        roughness: 0.15, 
+        color: 0x001e0f, // Deep ocean green/blue
+        roughness: 0.1, 
         metalness: 0.1, 
-        transmission: 0.9, 
-        thickness: 1.5, 
+        transmission: 0.95, 
+        thickness: 2.0, 
         ior: 1.33,
         reflectivity: 1.0, 
         clearcoat: 1.0, 
         clearcoatRoughness: 0.1,
-        attenuationColor: new THREE.Color(0x006688), 
-        attenuationDistance: 5.0, 
+        attenuationColor: new THREE.Color(0x004455), 
+        attenuationDistance: 8.0, 
         side: THREE.DoubleSide
     });
     
     water.normalMap = normalMap;
-    water.normalScale.set(0.2, 0.2); 
+    water.normalScale.set(0.5, 0.5); // Stronger micro-details
     (water as any).userData['mapId'] = 'tex-water-normal';
     water.userData['time'] = { value: 0 };
     
     water.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = water.userData['time'];
-        shader.vertexShader = `
-            uniform float uTime;
-            varying float vWaveHeight;
-            float getWaveHeight(vec3 p) {
-                float time = uTime * 1.0;
-                float y = 0.0;
-                y += sin(p.x * 0.05 + time * 0.5) * sin(p.z * 0.04 + time * 0.6) * 1.0;
-                y += sin(p.x * 0.2 + time * 1.2) * 0.25;
-                y += cos(p.z * 0.15 + time * 1.1) * 0.25;
-                return y;
-            }
-        ` + shader.vertexShader;
         
-        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
-            #include <begin_vertex>
-            float waveY = getWaveHeight(position);
-            transformed.y += waveY;
-            vWaveHeight = waveY;
-            float offset = 0.1;
-            vec3 p1 = position + vec3(offset, 0.0, 0.0); p1.y += getWaveHeight(p1);
-            vec3 p2 = position + vec3(0.0, 0.0, offset); p2.y += getWaveHeight(p2);
-            vec3 vA = normalize(p1 - transformed);
-            vec3 vB = normalize(p2 - transformed);
-            vec3 N = normalize(cross(vB, vA));
-            objectNormal = N;
-        `);
-        shader.fragmentShader = `uniform float uTime;\nvarying float vWaveHeight;\n` + shader.fragmentShader;
-        shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
-            #include <color_fragment>
-            float foam = smoothstep(0.8, 1.3, vWaveHeight);
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95), foam * 0.6);
-        `);
+        shader.vertexShader = WATER_VERTEX_HEAD + shader.vertexShader;
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', WATER_VERTEX_MAIN);
+
+        shader.fragmentShader = WATER_FRAGMENT_HEAD + shader.fragmentShader;
+        shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', WATER_FRAGMENT_COLOR);
+        shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', WATER_FRAGMENT_ROUGHNESS);
     };
 
     return water;

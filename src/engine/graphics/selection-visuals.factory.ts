@@ -10,9 +10,16 @@ export class SelectionVisualsFactory {
   createSelectionVisuals(target: THREE.Mesh): THREE.Group {
     const group = new THREE.Group();
     
-    // Ensure bounding box is computed
-    if (!target.geometry.boundingBox) target.geometry.computeBoundingBox();
-    const box = target.geometry.boundingBox!.clone();
+    let box: THREE.Box3;
+
+    if (target.geometry) {
+        // Normal Mesh
+        if (!target.geometry.boundingBox) target.geometry.computeBoundingBox();
+        box = target.geometry.boundingBox!.clone();
+    } else {
+        // Proxy Mesh (Instanced) - Fallback to generic size
+        box = new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
+    }
     
     // Slight padding
     box.expandByScalar(0.05);

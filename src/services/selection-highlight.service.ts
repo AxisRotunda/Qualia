@@ -1,14 +1,14 @@
 
 import { Injectable, effect, inject } from '@angular/core';
 import { EngineService } from './engine.service';
-import { SceneService } from './scene.service';
+import { SelectionManagerService } from '../engine/graphics/selection-manager.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SelectionHighlightService {
   private engine = inject(EngineService);
-  private scene = inject(SceneService);
+  private selectionManager = inject(SelectionManagerService);
 
   constructor() {
     effect(() => {
@@ -16,9 +16,9 @@ export class SelectionHighlightService {
       if (entity !== null) {
         // Safe check if mesh still exists (might have been deleted)
         const meshRef = this.engine.world.meshes.get(entity);
-        this.scene.setSelection(meshRef ? meshRef.mesh : null);
+        this.selectionManager.setSelection(meshRef ? meshRef.mesh : null);
       } else {
-        this.scene.setSelection(null);
+        this.selectionManager.setSelection(null);
       }
     });
   }

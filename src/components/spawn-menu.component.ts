@@ -3,72 +3,91 @@ import { Component, computed, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EntityLibraryService } from '../services/entity-library.service';
 import { EntityCategory, EntityTemplate } from '../data/entity-types';
-import { EngineService } from '../services/engine.service';
+import { SpawnerService } from '../engine/features/spawner.service';
 
 @Component({
   selector: 'app-spawn-menu',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center pointer-events-none">
+    <div class="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center pointer-events-none isolate">
       
-      <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto transition-opacity" 
+      <!-- Backdrop with Blur -->
+      <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm pointer-events-auto transition-opacity animate-in fade-in duration-200" 
            (click)="close.emit()"></div>
 
-      <!-- Panel -->
-      <div class="relative w-full sm:w-[600px] max-h-[80vh] bg-slate-900 border-t sm:border border-slate-700 shadow-2xl rounded-t-2xl sm:rounded-2xl flex flex-col pointer-events-auto animate-in slide-in-from-bottom duration-300 overflow-hidden">
+      <!-- Panel Container -->
+      <div class="relative w-full h-[60vh] sm:h-auto sm:max-h-[85vh] sm:w-[680px] bg-slate-900 border-t sm:border border-cyan-900/30 shadow-2xl rounded-t-2xl sm:rounded-xl flex flex-col pointer-events-auto animate-in slide-in-from-bottom duration-300 overflow-hidden ring-1 ring-white/5">
         
+        <!-- Technical Decor -->
+        <div class="absolute top-0 right-0 p-2 pointer-events-none opacity-20">
+            <span class="material-symbols-outlined text-4xl text-cyan-500">grid_4x4</span>
+        </div>
+
         <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/50 shrink-0">
-           <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
-             <span class="material-symbols-outlined text-cyan-500">add_circle</span> Spawn Entity
-           </h2>
-           <button (click)="close.emit()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-800 text-slate-400">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/50 shrink-0 relative z-10">
+           <div class="flex items-center gap-3">
+               <div class="w-8 h-8 rounded bg-cyan-950/50 border border-cyan-900 flex items-center justify-center text-cyan-400">
+                   <span class="material-symbols-outlined text-lg">add</span>
+               </div>
+               <div class="flex flex-col">
+                   <h2 class="text-xs font-bold text-slate-100 uppercase tracking-[0.2em]">Fabricator</h2>
+                   <span class="text-[9px] text-slate-500 font-mono">SELECT ENTITY TEMPLATE</span>
+               </div>
+           </div>
+           <button (click)="close.emit()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-800 text-slate-400 active:text-white transition-colors">
              <span class="material-symbols-outlined">close</span>
            </button>
         </div>
 
-        <!-- Category Tabs -->
-        <div class="flex p-2 gap-1 overflow-x-auto no-scrollbar shrink-0 bg-slate-900/50">
+        <!-- Category Tabs (Scrollable) -->
+        <div class="flex px-2 py-2 gap-1 overflow-x-auto no-scrollbar shrink-0 bg-slate-950/30 border-b border-slate-800/50">
            @for (cat of categories; track cat) {
               <button (click)="activeCategory.set(cat)"
-                      [class.bg-cyan-950]="activeCategory() === cat"
+                      [class.bg-cyan-950_80]="activeCategory() === cat"
                       [class.text-cyan-400]="activeCategory() === cat"
-                      [class.border-cyan-800]="activeCategory() === cat"
-                      [class.bg-slate-800]="activeCategory() !== cat"
-                      [class.text-slate-400]="activeCategory() !== cat"
-                      [class.border-slate-700]="activeCategory() !== cat"
-                      class="px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center gap-2 whitespace-nowrap capitalize">
-                 <span class="material-symbols-outlined text-[16px]">{{ getCategoryIcon(cat) }}</span>
-                 {{ cat }}
+                      [class.border-cyan-700]="activeCategory() === cat"
+                      [class.shadow-glow]="activeCategory() === cat"
+                      [class.bg-slate-900]="activeCategory() !== cat"
+                      [class.text-slate-500]="activeCategory() !== cat"
+                      [class.border-transparent]="activeCategory() !== cat"
+                      class="px-3 py-2 rounded border transition-all flex items-center gap-2 whitespace-nowrap group shrink-0">
+                 <span class="material-symbols-outlined text-[18px] opacity-70 group-hover:opacity-100">{{ getCategoryIcon(cat) }}</span>
+                 <span class="text-[10px] font-bold uppercase tracking-wider">{{ cat }}</span>
               </button>
            }
         </div>
 
-        <!-- Grid -->
-        <div class="p-4 overflow-y-auto min-h-[300px]">
-           <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+        <!-- Grid Content -->
+        <div class="flex-1 overflow-y-auto min-h-0 p-4 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-opacity-5">
+           <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 pb-8">
               @for (item of filteredTemplates(); track item.id) {
                  <button (click)="spawn(item)"
-                         class="group relative flex flex-col items-center gap-2 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-900/20 transition-all text-center">
+                         class="group relative flex flex-col aspect-square rounded-lg bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800 hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95 transition-all overflow-hidden">
                     
-                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 group-hover:border-cyan-500/30 group-hover:scale-110 transition-transform">
-                       <span class="material-symbols-outlined text-3xl text-slate-500 group-hover:text-cyan-400 transition-colors">{{ item.icon }}</span>
+                    <!-- Item Preview Icon -->
+                    <div class="flex-1 flex items-center justify-center relative">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent opacity-50"></div>
+                        <span class="material-symbols-outlined text-4xl text-slate-600 group-hover:text-cyan-400 transition-colors drop-shadow-lg scale-90 group-hover:scale-100 duration-200 ease-out">{{ item.icon }}</span>
+                        
+                        <!-- Shape Color Dot -->
+                        @if (item.category === 'shape') {
+                            <div class="absolute top-2 right-2 w-2 h-2 rounded-full ring-1 ring-black/50" [style.background-color]="getAsHex(item.color)"></div>
+                        }
                     </div>
                     
-                    <div class="flex flex-col gap-0.5">
-                      <span class="text-[10px] font-bold text-slate-300 group-hover:text-white leading-tight">{{ item.label }}</span>
-                      <span class="text-[9px] text-slate-500 uppercase">{{ item.geometry }}</span>
+                    <!-- Label -->
+                    <div class="px-2 py-2 bg-slate-950/50 border-t border-slate-800/50 backdrop-blur-sm">
+                      <div class="text-[9px] font-bold text-slate-300 group-hover:text-white leading-tight truncate text-center font-mono">{{ item.label }}</div>
                     </div>
-
-                    <!-- Shape Preview Hint -->
-                    @if (item.category === 'shape') {
-                        <div class="absolute top-2 right-2 w-2 h-2 rounded-full" [style.background-color]="getAsHex(item.color)"></div>
-                    }
                  </button>
               }
            </div>
+        </div>
+        
+        <!-- Mobile Footer Handle (Visual Only) -->
+        <div class="sm:hidden h-6 flex items-center justify-center shrink-0 border-t border-slate-800 bg-slate-950">
+            <div class="w-12 h-1 bg-slate-700 rounded-full"></div>
         </div>
 
       </div>
@@ -76,11 +95,14 @@ import { EngineService } from '../services/engine.service';
   `,
   styles: [`
     .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none;  scrollbar-width: none; }
+    .bg-cyan-950_80 { background-color: rgba(8, 51, 68, 0.8); }
+    .shadow-glow { box-shadow: 0 0 10px rgba(6,182,212,0.15), inset 0 0 0 1px rgba(6,182,212,0.2); }
   `]
 })
 export class SpawnMenuComponent {
   entityLib = inject(EntityLibraryService);
-  engine = inject(EngineService);
+  spawner = inject(SpawnerService);
   
   close = output<void>();
   
@@ -102,7 +124,7 @@ export class SpawnMenuComponent {
   }
 
   spawn(item: EntityTemplate) {
-      this.engine.startPlacement(item.id);
+      this.spawner.startPlacement(item.id);
       this.close.emit();
   }
 

@@ -39,15 +39,12 @@ export class CameraControlService {
     }
   }
 
-  setEnabled(enabled: boolean) {
-      if (this.controls) {
-          this.controls.enabled = enabled;
-      }
-  }
-
-  // Manual Input Driver for Virtual Joysticks
-  handleJoystickInput(moveDelta: {x: number, y: number}, lookDelta: {x: number, y: number}) {
+  // Called by InputManager to pipe virtual inputs
+  updateInput(moveDelta: {x: number, y: number}, lookDelta: {x: number, y: number}) {
      if (!this.controls || !this.camera || !this.controls.enabled) return;
+
+     // If no input, just return (Damping continues in update)
+     if (moveDelta.x === 0 && moveDelta.y === 0 && lookDelta.x === 0 && lookDelta.y === 0) return;
 
      const dt = 0.016; 
      const panSpeed = 30.0 * dt; 
@@ -91,6 +88,12 @@ export class CameraControlService {
          this.camera.position.copy(this.controls.target).add(offset);
          this.camera.lookAt(this.controls.target);
      }
+  }
+
+  setEnabled(enabled: boolean) {
+      if (this.controls) {
+          this.controls.enabled = enabled;
+      }
   }
 
   focusOn(target: THREE.Vector3, distance: number = 10) {

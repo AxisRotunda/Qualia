@@ -3,8 +3,17 @@ import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { AssetService } from '../../services/asset.service';
 import { MaterialService } from '../../services/material.service';
-import { PhysicsBodyDef } from '../../services/physics.service';
-import { EntityTemplate } from '../../data/entity-types';
+import { InstancedMeshService } from './instanced-mesh.service';
+import { PrimitiveRegistryService } from './primitive-registry.service';
+import { PhysicsBodyDef } from '../../engine/schema';
+import { Entity } from '../core';
+
+export interface VisualContext {
+    entity: Entity;
+    templateId: string;
+    category: string;
+    tags: string[];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -12,47 +21,71 @@ import { EntityTemplate } from '../../data/entity-types';
 export class VisualsFactoryService {
   private materialService = inject(MaterialService);
   private assetService = inject(AssetService);
-  
-  // Cache for primitive geometries to reduce draw call overhead and memory usage
-  private primitiveCache = new Map<string, THREE.BufferGeometry>();
+  private instancedService = inject(InstancedMeshService);
+  private primitiveRegistry = inject(PrimitiveRegistryService);
 
-  // Helper to generate cache keys
-  private getPrimitiveKey(data: PhysicsBodyDef): string {
-      if (data.type === 'box') return `box_${data.size?.w}_${data.size?.h}_${data.size?.d}`;
-      if (data.type === 'cylinder') return `cyl_${data.radius}_${data.height}`;
-      if (data.type === 'cone') return `cone_${data.radius}_${data.height}`;
-      if (data.type === 'sphere') return `sph_${data.radius}`;
-      return 'unknown';
-  }
+  createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }, context?: VisualContext): THREE.Object3D {
+    
+    // Check for Instancing Eligibility
+    const isInstanced = context && (context.tags.includes('instanced') || context.category === 'nature');
 
-  createMesh(data: PhysicsBodyDef, options: { color?: number, materialId?: string, meshId?: string }): THREE.Mesh {
-    let mesh: THREE.Mesh;
+    if (isInstanced && options.meshId) {
+       // Create a proxy object. It holds the transform but renders nothing directly.
+       const proxy = new THREE.Object3D();
+       proxy.position.set(data.position.x, data.position.y, data.position.z);
+       if (data.rotation) {
+           proxy.quaternion.set(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
+       }
+       proxy.updateMatrix();
+
+       // Register with Service
+       // Use asset material config if no override provided
+       let matId = options.materialId;
+       if (!matId) {
+           const assetMats = this.assetService.getAssetMaterials(options.meshId);
+           if (typeof assetMats === 'string') matId = assetMats;
+       }
+
+       // Determine if dynamic based on mass or tags
+       const isDynamic = (data.mass !== undefined && data.mass > 0) || context.tags.includes('dynamic');
+
+       this.instancedService.register(
+           context!.templateId, 
+           context!.entity, 
+           proxy, 
+           options.meshId, 
+           matId, 
+           options.color,
+           isDynamic
+       );
+
+       return proxy; // Return proxy
+    }
+
+    // --- Standard Path ---
+    let geometry: THREE.BufferGeometry;
+    let material: THREE.Material | THREE.Material[];
 
     if (options.meshId) {
-        // Asset-based mesh generation (Shared geometries, managed by AssetService)
-        mesh = this.assetService.getMesh(options.meshId);
-    } else {
-        // Primitive generation
-        let geometry: THREE.BufferGeometry;
+        // Asset Path
+        geometry = this.assetService.getGeometry(options.meshId);
         
-        const key = this.getPrimitiveKey(data);
-        if (this.primitiveCache.has(key)) {
-            geometry = this.primitiveCache.get(key)!;
+        if (options.materialId) {
+            // Explicit override
+            material = this.materialService.getMaterial(options.materialId);
         } else {
-            // Generate and cache
-            if (data.type === 'box') {
-                geometry = new THREE.BoxGeometry(data.size!.w, data.size!.h, data.size!.d);
-            } else if (data.type === 'cylinder') {
-                geometry = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
-            } else if (data.type === 'cone') {
-                geometry = new THREE.ConeGeometry(data.radius, data.height, 32);
+            // Load from Asset Config
+            const matDef = this.assetService.getAssetMaterials(options.meshId);
+            if (Array.isArray(matDef)) {
+                material = matDef.map(id => this.materialService.getMaterial(id) as THREE.Material);
             } else {
-                geometry = new THREE.SphereGeometry(data.radius!, 32, 32);
+                material = this.materialService.getMaterial(matDef) as THREE.Material;
             }
-            this.primitiveCache.set(key, geometry);
         }
+    } else {
+        // Primitive Path
+        geometry = this.primitiveRegistry.getGeometry(data);
 
-        let material: THREE.Material | THREE.Material[];
         if (options.materialId && this.materialService.hasMaterial(options.materialId)) {
             material = this.materialService.getMaterial(options.materialId)!;
         } else if (options.color) {
@@ -60,11 +93,11 @@ export class VisualsFactoryService {
         } else {
             material = this.materialService.getMaterial('mat-default')!;
         }
-
-        mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
     }
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     mesh.position.set(data.position.x, data.position.y, data.position.z);
     
@@ -75,63 +108,11 @@ export class VisualsFactoryService {
     return mesh;
   }
 
-  // Creates a visual-only representation for placement ghosting
-  createGhostFromTemplate(tpl: EntityTemplate): THREE.Object3D {
-      let mesh: THREE.Mesh;
-      
-      if (tpl.geometry === 'mesh' && tpl.meshId) {
-          mesh = this.assetService.getMesh(tpl.meshId);
-      } else {
-          // Use cache for ghost primitives too if possible, though ghosts have dynamic materials
-          // We can reuse geometry
-          let geo: THREE.BufferGeometry;
-          let key = 'ghost';
-
-          if (tpl.geometry === 'box') {
-              key = `box_${tpl.size.x}_${tpl.size.y}_${tpl.size.z}`;
-              if (this.primitiveCache.has(key)) geo = this.primitiveCache.get(key)!;
-              else { geo = new THREE.BoxGeometry(tpl.size.x, tpl.size.y, tpl.size.z); this.primitiveCache.set(key, geo); }
-          }
-          else if (tpl.geometry === 'cylinder') {
-              key = `cyl_${tpl.size.x}_${tpl.size.y}`;
-              if (this.primitiveCache.has(key)) geo = this.primitiveCache.get(key)!;
-              else { geo = new THREE.CylinderGeometry(tpl.size.x, tpl.size.x, tpl.size.y, 16); this.primitiveCache.set(key, geo); }
-          }
-          else if (tpl.geometry === 'cone') {
-              key = `cone_${tpl.size.x}_${tpl.size.y}`;
-              if (this.primitiveCache.has(key)) geo = this.primitiveCache.get(key)!;
-              else { geo = new THREE.ConeGeometry(tpl.size.x, tpl.size.y, 16); this.primitiveCache.set(key, geo); }
-          }
-          else {
-              key = `sph_${tpl.size.x}`;
-              if (this.primitiveCache.has(key)) geo = this.primitiveCache.get(key)!;
-              else { geo = new THREE.SphereGeometry(tpl.size.x, 16, 16); this.primitiveCache.set(key, geo); }
-          }
-          
-          mesh = new THREE.Mesh(geo);
+  disposeMesh(mesh: THREE.Mesh | THREE.Object3D) {
+      // Geometry is managed by registries.
+      // We only dispose bespoke materials if necessary, but standard materials are shared.
+      if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.MeshStandardMaterial && !mesh.material.userData['mapId']) {
+          // It might be a custom color material created in createMesh
       }
-      
-      // Override material for ghost look
-      const ghostMat = new THREE.MeshBasicMaterial({
-          color: 0x22d3ee, // Cyan
-          transparent: true,
-          opacity: 0.4,
-          wireframe: true
-      });
-      
-      mesh.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-              child.material = ghostMat;
-          }
-      });
-      mesh.material = ghostMat;
-      
-      return mesh;
-  }
-
-  disposeMesh(mesh: THREE.Mesh) {
-      // We do NOT dispose geometries here anymore because they are cached/shared.
-      // If we implemented a reference counting system we would decrement here.
-      // For now, keeping primitive geometries in memory is safe (low footprint).
   }
 }

@@ -43,14 +43,26 @@ export class SciFiEnvironmentService {
       }
 
       const geos: THREE.BufferGeometry[] = [];
-      if (concreteParts.length > 0) geos.push(BufferUtils.mergeGeometries(concreteParts));
-      else geos.push(new THREE.BufferGeometry());
+      
+      // Merge individual groups first, but only if they have content
+      if (concreteParts.length > 0) {
+          const merged = BufferUtils.mergeGeometries(concreteParts);
+          if (merged) geos.push(merged);
+      }
 
-      if (rockParts.length > 0) geos.push(BufferUtils.mergeGeometries(rockParts));
-      else geos.push(new THREE.BufferGeometry());
+      if (rockParts.length > 0) {
+          const merged = BufferUtils.mergeGeometries(rockParts);
+          if (merged) geos.push(merged);
+      }
 
-      if (crystalParts.length > 0) geos.push(BufferUtils.mergeGeometries(crystalParts));
-      else geos.push(new THREE.BufferGeometry());
+      if (crystalParts.length > 0) {
+          const merged = BufferUtils.mergeGeometries(crystalParts);
+          if (merged) geos.push(merged);
+      }
+
+      // Final Merge
+      if (geos.length === 0) return null;
+      if (geos.length === 1) return geos[0];
 
       return BufferUtils.mergeGeometries(geos, true);
   }

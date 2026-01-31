@@ -4,121 +4,82 @@ import { CommonModule } from '@angular/common';
 import { EngineService } from '../services/engine.service';
 import { InteractionService } from '../engine/interaction.service';
 import { LayoutService } from '../services/ui/layout.service';
-import { SceneTreeComponent } from './scene-tree.component';
-import { InspectorComponent } from './inspector.component';
-import { MenuBarComponent } from './menu/menu-bar.component';
-import { ToolbarComponent } from './toolbar.component';
-import { StatusBarComponent } from './status-bar.component';
-import { DebugOverlayComponent } from './debug-overlay.component';
 import { MainMenuComponent } from './main-menu.component';
 import { ContextMenuComponent } from './ui/context-menu.component';
 import { TouchControlsComponent } from './ui/touch-controls.component';
-import { MobileDrawersComponent } from './ui/mobile-drawers.component';
 import { SpawnMenuComponent } from './spawn-menu.component';
+import { LoadingScreenComponent } from './ui/loading-screen.component';
+import { GameHudComponent } from './ui/game-hud.component';
 
 @Component({
   selector: 'app-main-layout',
   imports: [
       CommonModule, 
-      SceneTreeComponent, 
-      InspectorComponent, 
-      MenuBarComponent, 
-      ToolbarComponent, 
-      StatusBarComponent,
-      DebugOverlayComponent,
       MainMenuComponent,
       ContextMenuComponent,
       TouchControlsComponent,
-      MobileDrawersComponent,
-      SpawnMenuComponent
+      SpawnMenuComponent,
+      LoadingScreenComponent,
+      GameHudComponent
   ],
   template: `
-    <div class="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
+    <div class="relative w-full h-screen bg-slate-950 overflow-hidden isolate">
       
-      <!-- Header Area -->
-      @if (engine.hudVisible()) {
-        <app-menu-bar />
-        <app-toolbar />
-      }
+      <!-- 1. Viewport Layer (Bottom) - Z=0 -->
+      <main class="absolute inset-0 z-0 select-none outline-none touch-none" aria-label="3D Viewport">
+          <canvas #renderCanvas class="block w-full h-full"></canvas>
+      </main>
 
-      <!-- Main Layout Area -->
-      <div class="flex flex-1 overflow-hidden relative">
-        
-        <!-- Main Menu Overlay -->
-        @if (engine.mainMenuVisible()) {
-           <app-main-menu />
-        }
-
-        <!-- Spawn Menu Overlay -->
-        @if (layout.spawnMenuVisible()) {
-            <app-spawn-menu (close)="layout.closeSpawnMenu()" />
-        }
-
-        <!-- Desktop Left Panel -->
-        @if (layout.leftPanelOpen() && !layout.isMobile() && engine.hudVisible()) {
-          <aside class="flex flex-col w-64 bg-slate-950/95 border-r border-slate-800 z-10" aria-label="Outliner">
-            <app-scene-tree />
-          </aside>
-        }
-
-        <!-- Viewport -->
-        <main class="relative flex-1 bg-slate-950 overflow-hidden select-none isolate"
-             aria-label="3D Viewport">
-             
-          @if (engine.loading()) {
-            <div class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 text-cyan-400">
-              <div class="w-12 h-12 border-4 border-cyan-900 border-t-cyan-400 rounded-full animate-spin mb-4"></div>
-              <p class="font-mono text-sm tracking-widest animate-pulse opacity-70">INITIALIZING ENGINE</p>
-            </div>
-          }
-          
-          @if (engine.hudVisible()) {
-            <app-debug-overlay />
-          }
-
-          <canvas #renderCanvas 
-                  class="block w-full h-full outline-none touch-none"></canvas>
-          
+      <!-- 2. Interaction Overlay Layer (Touch Controls) - Z=20 -->
+      <!-- Wrapper must be pointer-events-none to allow pass-through to canvas where no controls exist -->
+      <div class="absolute inset-0 z-20 pointer-events-none">
           <!-- Mobile Controls -->
           @if (layout.isMobile() && !engine.mainMenuVisible()) {
-              <app-touch-controls (toggleInspector)="layout.toggleRight()" />
+              <div class="absolute inset-0 pointer-events-none">
+                  <app-touch-controls (toggleInspector)="layout.toggleRight()" />
+              </div>
           }
+      </div>
 
+      <!-- 3. HUD Layer (Panels, Toolbars) - Z=40 -->
+      <div class="absolute inset-0 z-40 pointer-events-none">
+          <app-game-hud />
+      </div>
+
+      <!-- 4. System Overlay Layer (Context Menus, Modals) - Z=50+ -->
+      <div class="absolute inset-0 z-50 pointer-events-none">
           <!-- Context Menu -->
           @if (contextMenu(); as cm) {
-             <app-context-menu 
-                [x]="cm.x" 
-                [y]="cm.y" 
-                [entityId]="cm.entity"
-                (select)="selectEntity($event)"
-                (duplicate)="duplicateEntity($event)"
-                (delete)="deleteEntity($event)"
-                (close)="closeContextMenu()"
-             />
+             <div class="absolute inset-0 pointer-events-auto">
+                 <app-context-menu 
+                    [x]="cm.x" 
+                    [y]="cm.y" 
+                    [entityId]="cm.entity"
+                    (select)="selectEntity($event)"
+                    (duplicate)="duplicateEntity($event)"
+                    (delete)="deleteEntity($event)"
+                    (close)="closeContextMenu()"
+                 />
+             </div>
           }
-        </main>
 
-        <!-- Desktop Right Panel -->
-        @if (layout.rightPanelOpen() && !layout.isMobile() && engine.hudVisible()) {
-          <aside class="flex flex-col w-80 bg-slate-950/95 border-l border-slate-800 z-10" aria-label="Inspector">
-            <app-inspector />
-          </aside>
-        }
-
-        <!-- Mobile Drawers (Overlay) -->
-        @if (layout.isMobile() && engine.hudVisible()) {
-          <app-mobile-drawers />
-        }
-
+          <!-- Spawn Menu -->
+          @if (layout.spawnMenuVisible()) {
+              <app-spawn-menu (close)="layout.closeSpawnMenu()" />
+          }
       </div>
-      
-      <!-- Bottom Bar -->
-      @if (engine.hudVisible()) {
-        <app-status-bar />
+
+      <!-- 5. Full Screen Blocking Layers - Z=100+ -->
+      @if (engine.mainMenuVisible() && !engine.loading()) {
+         <app-main-menu />
       }
+
+      @if (engine.loading()) {
+         <app-loading-screen />
+      }
+
     </div>
-  `,
-  styles: []
+  `
 })
 export class MainLayoutComponent implements AfterViewInit {
   @ViewChild('renderCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -127,7 +88,6 @@ export class MainLayoutComponent implements AfterViewInit {
   interaction = inject(InteractionService);
   layout = inject(LayoutService);
 
-  // Expose context menu state from interaction service
   contextMenu = this.interaction.contextMenuRequest;
 
   ngAfterViewInit() {
@@ -144,14 +104,14 @@ export class MainLayoutComponent implements AfterViewInit {
   @HostListener('window:keydown.h', ['$event'])
   onToggleHud(event: KeyboardEvent) {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      this.engine.toggleHud();
+      this.engine.viewport.toggleHud();
   }
 
   private checkResponsive() {
     if (this.layout.isMobile()) {
-       this.engine.setGizmoConfig({ size: 1.5 });
+       this.engine.viewport.setGizmoConfig({ size: 1.5 });
     } else {
-       this.engine.setGizmoConfig({ size: 1.0 });
+       this.engine.viewport.setGizmoConfig({ size: 1.0 });
     }
   }
 
@@ -169,12 +129,12 @@ export class MainLayoutComponent implements AfterViewInit {
   }
 
   duplicateEntity(e: number) {
-      this.engine.duplicateEntity(e);
+      this.engine.ops.duplicateEntity(e);
       this.closeContextMenu();
   }
 
   deleteEntity(e: number) {
-      this.engine.deleteEntity(e);
+      this.engine.ops.deleteEntity(e);
       this.closeContextMenu();
   }
 }
