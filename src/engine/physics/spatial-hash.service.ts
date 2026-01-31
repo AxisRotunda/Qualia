@@ -13,7 +13,9 @@ export class SpatialHashService {
 
   private cellSize = 10;
   private buckets = new Map<string, Set<Entity>>();
-  private entityBuckets = new Map<Entity, string[]>();
+  
+  // Optimization: Store tuple of indices [cx, cy, cz, key] to avoid string gen on every update
+  private entityCells = new Map<Entity, { cx: number, cy: number, cz: number, key: string }>();
 
   constructor() {
       this.lifecycle.onEntityCreated.subscribe(e => this.handleCreation(e));
@@ -29,34 +31,47 @@ export class SpatialHashService {
   }
 
   insert(entity: Entity, x: number, y: number, z: number) {
-      this.remove(entity);
-      const key = this.getKey(x, y, z);
+      const cx = Math.floor(x / this.cellSize);
+      const cy = Math.floor(y / this.cellSize);
+      const cz = Math.floor(z / this.cellSize);
+      const key = `${cx}:${cy}:${cz}`;
+
+      // Check if already in this cell
+      const current = this.entityCells.get(entity);
+      if (current && current.key === key) return;
+
+      if (current) this.remove(entity);
+
       this.addToBucket(key, entity);
-      this.entityBuckets.set(entity, [key]);
+      this.entityCells.set(entity, { cx, cy, cz, key });
   }
 
   update(entity: Entity, x: number, y: number, z: number) {
-      const oldKeys = this.entityBuckets.get(entity);
-      const newKey = this.getKey(x, y, z);
+      const current = this.entityCells.get(entity);
       
-      // Optimization: Only update if changed cell
-      if (oldKeys && oldKeys[0] === newKey) return;
+      const cx = Math.floor(x / this.cellSize);
+      const cy = Math.floor(y / this.cellSize);
+      const cz = Math.floor(z / this.cellSize);
+
+      // Fast path: Integer comparison avoids String allocation
+      if (current && current.cx === cx && current.cy === cy && current.cz === cz) {
+          return;
+      }
       
+      // Changed cell, full update
       this.insert(entity, x, y, z);
   }
 
   remove(entity: Entity) {
-      const keys = this.entityBuckets.get(entity);
-      if (keys) {
-          for (const k of keys) {
-              const bucket = this.buckets.get(k);
-              if (bucket) {
-                  bucket.delete(entity);
-                  if (bucket.size === 0) this.buckets.delete(k);
-              }
+      const cell = this.entityCells.get(entity);
+      if (cell) {
+          const bucket = this.buckets.get(cell.key);
+          if (bucket) {
+              bucket.delete(entity);
+              if (bucket.size === 0) this.buckets.delete(cell.key);
           }
       }
-      this.entityBuckets.delete(entity);
+      this.entityCells.delete(entity);
   }
 
   query(x: number, y: number, z: number, radius: number): Set<Entity> {
@@ -83,11 +98,7 @@ export class SpatialHashService {
 
   clear() {
       this.buckets.clear();
-      this.entityBuckets.clear();
-  }
-
-  private getKey(x: number, y: number, z: number): string {
-      return `${Math.floor(x / this.cellSize)}:${Math.floor(y / this.cellSize)}:${Math.floor(z / this.cellSize)}`;
+      this.entityCells.clear();
   }
 
   private addToBucket(key: string, entity: Entity) {

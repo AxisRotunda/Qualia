@@ -16,7 +16,7 @@
 *   **A -> C**: Engine starts Runtime.
 *   **C -> D**: Runtime steps Physics.
 *   **C -> E**: Runtime renders Scene.
-*   **D -> F**: Physics updates ECS Transforms.
+*   **D -> F**: Physics updates ECS Transforms (Via Scalar Callback).
 *   **F -> E**: ECS MeshRefs control Visuals.
 
 ## 3. Subsystem clusters
@@ -35,6 +35,10 @@
 ### 3.4 Environment Cluster
 *   `EnvironmentControlService` (Logic) -> `EnvironmentManagerService` (Render).
 *   `EnvironmentControlService` -> `ParticleService` (Weather).
+
+### 3.5 Optimization Cluster
+*   `PhysicsWorldService` --(Raw)--> `EntityTransformSystem` (Zero-Alloc).
+*   `SpatialHashService` --(Index Cache)--> `EntityTransformSystem`.
 
 ## 4. Ripple Effects
 *   **Modifying `PhysicsBodyDef`**:

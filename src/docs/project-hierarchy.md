@@ -37,6 +37,8 @@ src/
 │       ├── terrain-worker.const.ts # [Assembler] Terrain Worker
 │       └── texture-worker.const.ts # [Assembler] Texture Worker
 ├── physics/                        # [Core] Rapier3D integration
+│   ├── optimization/               # [Opt] Collision Groups & Tuning (**NEW**)
+│   ├── logic/                      # [Logic] Mass & Scaling
 │   └── ...
 ├── services/                       # [Glue] Angular Services (Facades & Factories)
 │   ├── engine.service.ts           # [Facade] Main API Entry point

@@ -17,8 +17,9 @@ export class EntityTransformSystem {
 
   // ECS <-> Physics Sync
   syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {
-    // Optimization: Iterate ACTIVE bodies from Physics engine directly.
-    this.physics.world.syncActiveBodies((entity, p, q) => {
+    // Optimization: Zero-allocation callback.
+    // We receive raw numbers (x, y, z, qx, qy, qz, qw) to avoid creating temporary Objects per entity per frame.
+    this.physics.world.syncActiveBodies((entity, x, y, z, qx, qy, qz, qw) => {
         
         // If dragging this specific entity in Edit mode, visual overrides physics
         if (isDragging && this.entityStore.selectedEntity() === entity) return;
@@ -28,25 +29,25 @@ export class EntityTransformSystem {
         
         if (transform) {
             // Update ECS Data
-            transform.position.x = p.x;
-            transform.position.y = p.y;
-            transform.position.z = p.z;
+            transform.position.x = x;
+            transform.position.y = y;
+            transform.position.z = z;
             
-            transform.rotation.x = q.x;
-            transform.rotation.y = q.y;
-            transform.rotation.z = q.z;
-            transform.rotation.w = q.w;
+            transform.rotation.x = qx;
+            transform.rotation.y = qy;
+            transform.rotation.z = qz;
+            transform.rotation.w = qw;
 
             // Update Visuals Directly (Skip change detection overhead)
             if (meshRef) {
-                meshRef.mesh.position.set(p.x, p.y, p.z);
-                meshRef.mesh.quaternion.set(q.x, q.y, q.z, q.w);
+                meshRef.mesh.position.set(x, y, z);
+                meshRef.mesh.quaternion.set(qx, qy, qz, qw);
                 // Scale is controlled by ECS, not Physics, but we ensure it matches
                 meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
             }
 
             // Update Spatial Hash for active entities
-            this.spatialHash.update(entity, p.x, p.y, p.z);
+            this.spatialHash.update(entity, x, y, z);
         }
     });
   }

@@ -19,12 +19,23 @@ export class PhysicsScaler {
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
-    // Remove existing colliders
+    // 1. Snapshot existing properties before removal
+    let oldGroups = 0xFFFF;
+    let oldEvents = RAPIER.ActiveEvents.NONE;
+    
+    if (body.numColliders() > 0) {
+        const c = body.collider(0);
+        oldGroups = c.collisionGroups();
+        oldEvents = c.activeEvents();
+    }
+
+    // 2. Remove existing colliders
     const n = body.numColliders();
     const collidersToRemove: RAPIER.Collider[] = [];
     for(let i=0; i<n; i++) collidersToRemove.push(body.collider(i));
     collidersToRemove.forEach(c => this.world!.removeCollider(c, false));
 
+    // 3. Create Scaled Collider Desc
     let colliderDesc: RAPIER.ColliderDesc | null = null;
 
     if (def.type === 'box' && def.size) {
@@ -44,49 +55,19 @@ export class PhysicsScaler {
         const r = def.radius * Math.max(scale.x, scale.z);
         colliderDesc = RAPIER.ColliderDesc.cone(Math.abs(h), Math.abs(r));
     } else if (def.type === 'heightfield' && def.heightData && def.fieldSize && def.size) {
-        const nrows = def.fieldSize.rows;
-        const ncols = def.fieldSize.cols;
-        const heights = def.heightData;
-        
-        const numVerts = nrows * ncols;
-        const vertices = new Float32Array(numVerts * 3);
-        const indices = new Uint32Array((nrows - 1) * (ncols - 1) * 6);
-
         const targetW = def.size.w * scale.x;
         const targetD = def.size.d * scale.z;
-        const stepX = targetW / Math.max(1, ncols - 1);
-        const stepZ = targetD / Math.max(1, nrows - 1);
-        const startX = -targetW / 2;
-        const startZ = -targetD / 2;
-
-        for (let i = 0; i < nrows; i++) {
-            for (let j = 0; j < ncols; j++) {
-                const idx = i * ncols + j;
-                vertices[idx * 3 + 0] = startX + j * stepX;
-                vertices[idx * 3 + 1] = heights[idx] * scale.y;
-                vertices[idx * 3 + 2] = startZ + i * stepZ;
-            }
-        }
-
-        let ptr = 0;
-        for (let i = 0; i < nrows - 1; i++) {
-            for (let j = 0; j < ncols - 1; j++) {
-                const row1 = i * ncols;
-                const row2 = (i + 1) * ncols;
-                
-                indices[ptr++] = row1 + j;
-                indices[ptr++] = row2 + j;
-                indices[ptr++] = row1 + j + 1;
-                
-                indices[ptr++] = row1 + j + 1;
-                indices[ptr++] = row2 + j;
-                indices[ptr++] = row2 + j + 1;
-            }
-        }
-
-        colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
+        const targetH = scale.y;
+        
+        colliderDesc = RAPIER.ColliderDesc.heightfield(
+            def.fieldSize.rows, 
+            def.fieldSize.cols, 
+            def.heightData, 
+            { x: targetW, y: targetH, z: targetD }
+        );
     }
 
+    // 4. Apply & Reattach
     if (colliderDesc) {
         // Retrieve base mass from userdata if available
         const userData = (body as any).userData;
@@ -99,6 +80,11 @@ export class PhysicsScaler {
         }
         
         colliderDesc.setRestitution(0.3).setFriction(0.6); 
+        
+        // Restore Optimization Config
+        colliderDesc.setCollisionGroups(oldGroups);
+        colliderDesc.setActiveEvents(oldEvents);
+
         this.world.createCollider(colliderDesc, body);
     }
   }

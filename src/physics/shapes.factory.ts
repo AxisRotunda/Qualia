@@ -5,12 +5,14 @@ import { PhysicsWorldService } from './world.service';
 import { PhysicsBodyDef } from '../engine/schema'; 
 import { MassCalculator } from './logic/mass-calculator';
 import { PhysicsScaler } from './logic/physics-scaler';
+import { PhysicsOptimizerService } from './optimization/physics-optimizer.service';
 
 @Injectable({ providedIn: 'root' })
 export class ShapesFactory {
   private worldService = inject(PhysicsWorldService);
   private massCalc = inject(MassCalculator);
   private scaler = inject(PhysicsScaler);
+  private optimizer = inject(PhysicsOptimizerService);
 
   private get world() {
     return this.worldService.world;
@@ -31,6 +33,10 @@ export class ShapesFactory {
       }
   }
 
+  // Helper to attach tags via metadata or side-channel if needed, 
+  // but here we just use default tags for primitives or allow passing them in future.
+  // Currently primitive methods don't accept tags, so they get default static/dynamic grouping.
+
   createBox(x: number, y: number, z: number, w?: number, h?: number, d?: number, mass?: number, material?: string): PhysicsBodyDef {
     if (!this.world) throw new Error('Physics not initialized');
 
@@ -39,16 +45,14 @@ export class ShapesFactory {
     const depth = d ?? 1;
     
     const props = this.massCalc.resolve('box', { w: width, h: height, d: depth }, mass, material);
-    
-    const rigidBodyDesc = (props.mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+    const isStatic = props.mass === 0;
+
+    const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
     rigidBodyDesc.setTranslation(x, y, z);
     
-    if (props.mass !== 0) {
-        this.configureDynamicBody(rigidBodyDesc);
-    }
+    if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
 
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-    // Cache base properties for scaling
     (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
 
     const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2)
@@ -56,6 +60,9 @@ export class ShapesFactory {
         .setFriction(props.friction);
     
     if (props.mass > 0) colliderDesc.setMass(props.mass);
+    
+    // Apply Optimization
+    this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
     
     this.world.createCollider(colliderDesc, rigidBody);
 
@@ -74,11 +81,12 @@ export class ShapesFactory {
 
     const radius = r ?? 0.5;
     const props = this.massCalc.resolve('sphere', { r: radius }, mass, material);
+    const isStatic = props.mass === 0;
 
-    const rigidBodyDesc = (props.mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+    const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
     rigidBodyDesc.setTranslation(x, y, z);
 
-    if (props.mass !== 0) this.configureDynamicBody(rigidBodyDesc);
+    if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
 
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
     (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
@@ -88,6 +96,8 @@ export class ShapesFactory {
         .setFriction(props.friction);
 
     if (props.mass > 0) colliderDesc.setMass(props.mass);
+    this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
+
     this.world.createCollider(colliderDesc, rigidBody);
 
     return {
@@ -104,11 +114,12 @@ export class ShapesFactory {
       if (!this.world) throw new Error('Physics not initialized');
       
       const props = this.massCalc.resolve('cylinder', { r: radius, h: height }, mass, material);
+      const isStatic = props.mass === 0;
 
-      const rigidBodyDesc = (props.mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+      const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
       rigidBodyDesc.setTranslation(x, y, z);
       
-      if (props.mass !== 0) this.configureDynamicBody(rigidBodyDesc);
+      if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
 
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
       (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
@@ -118,6 +129,8 @@ export class ShapesFactory {
         .setFriction(props.friction);
       
       if (props.mass > 0) colliderDesc.setMass(props.mass);
+      this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
+
       this.world.createCollider(colliderDesc, rigidBody);
 
       return {
@@ -135,11 +148,12 @@ export class ShapesFactory {
       if (!this.world) throw new Error('Physics not initialized');
 
       const props = this.massCalc.resolve('cone', { r: radius, h: height }, mass, material);
+      const isStatic = props.mass === 0;
 
-      const rigidBodyDesc = (props.mass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+      const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
       rigidBodyDesc.setTranslation(x, y, z);
       
-      if (props.mass !== 0) this.configureDynamicBody(rigidBodyDesc);
+      if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
 
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
       (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
@@ -149,6 +163,8 @@ export class ShapesFactory {
         .setFriction(props.friction);
 
       if (props.mass > 0) colliderDesc.setMass(props.mass);
+      this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
+
       this.world.createCollider(colliderDesc, rigidBody);
 
       return {
@@ -165,9 +181,7 @@ export class ShapesFactory {
   createTrimesh(x: number, y: number, z: number, vertices: Float32Array, indices: Uint32Array): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
-      // Safeguard against empty geometry
       if (vertices.length < 9 || indices.length < 3) {
-          console.warn("ShapesFactory: Trimesh too small, fallback to box.");
           return this.createBox(x, y, z, 1, 1, 1, 0);
       }
 
@@ -178,6 +192,7 @@ export class ShapesFactory {
           .setRestitution(0.1)
           .setFriction(0.8);
       
+      this.optimizer.applyTo(colliderDesc, ['static', 'mesh'], true);
       this.world.createCollider(colliderDesc, rigidBody);
 
       return {
@@ -192,25 +207,20 @@ export class ShapesFactory {
   createConvexHull(x: number, y: number, z: number, vertices: Float32Array, mass: number = 1, material?: string): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
-      if (vertices.length < 3) {
-          console.warn("ShapesFactory: Convex hull vertices empty.");
-          return this.createBox(x, y, z, 1, 1, 1, mass);
-      }
-
       let finalMass = mass;
       const matData = this.massCalc.resolveMaterialOnly(material);
+      const isStatic = finalMass === 0;
       
-      const rigidBodyDesc = (finalMass === 0) ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
+      const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
       rigidBodyDesc.setTranslation(x, y, z);
       
-      if (finalMass !== 0) this.configureDynamicBody(rigidBodyDesc);
+      if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
 
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
       (rigidBody as any).userData = { baseMass: finalMass };
       
       const colliderDesc = RAPIER.ColliderDesc.convexHull(vertices);
       if (!colliderDesc) {
-          console.error("Failed to generate convex hull. Falling back to box.");
           return this.createBox(x, y, z, 1, 1, 1, finalMass);
       }
 
@@ -224,6 +234,7 @@ export class ShapesFactory {
           }
       }
       
+      this.optimizer.applyTo(colliderDesc, ['hull'], isStatic);
       this.world.createCollider(colliderDesc, rigidBody);
 
       return {
@@ -238,72 +249,27 @@ export class ShapesFactory {
   createHeightfield(x: number, y: number, z: number, nrows: number, ncols: number, heights: Float32Array, size: {x: number, y: number, z: number}): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
-      // Safeguard against invalid dimensions which crash WASM
-      if (nrows < 2 || ncols < 2 || heights.length < 4) {
-          console.warn(`ShapesFactory: Invalid heightfield dims ${nrows}x${ncols}. Fallback to plane.`);
-          return this.createBox(x, y, z, size.x, 0.1, size.z, 0);
-      }
-
-      // Sanitize heights to prevent WASM panic
-      for(let k=0; k<heights.length; k++) {
-          if (isNaN(heights[k]) || !isFinite(heights[k])) {
-              heights[k] = 0;
-          }
-      }
-
-      // Convert Heightfield to Trimesh to avoid "unreachable" crashes with Rapier Heightfields in compat mode
-      const numVerts = nrows * ncols;
-      const vertices = new Float32Array(numVerts * 3);
+      // Native Heightfield Implementation
+      // Rapier expects row-major heights
       
-      // Allocate double indices for double-sided collision (Back + Front)
-      const numQuads = (nrows - 1) * (ncols - 1);
-      const indices = new Uint32Array(numQuads * 6 * 2);
-
-      // We need to match Rapier's Heightfield layout: centered at (0,0,0)
-      const scaleX = size.x / Math.max(1, ncols - 1);
-      const scaleZ = size.z / Math.max(1, nrows - 1);
-      const startX = -size.x / 2;
-      const startZ = -size.z / 2;
-
-      // Generate Vertices (Y Up)
-      for (let i = 0; i < nrows; i++) {
-          for (let j = 0; j < ncols; j++) {
-              const idx = i * ncols + j;
-              vertices[idx * 3 + 0] = startX + j * scaleX;
-              vertices[idx * 3 + 1] = heights[idx]; 
-              vertices[idx * 3 + 2] = startZ + i * scaleZ;
-          }
-      }
-
-      // Generate Indices (Two triangles per cell, double sided)
-      let ptr = 0;
-      for (let i = 0; i < nrows - 1; i++) {
-          for (let j = 0; j < ncols - 1; j++) {
-              const row1 = i * ncols;
-              const row2 = (i + 1) * ncols;
-              
-              const a = row1 + j;
-              const b = row2 + j;
-              const c = row1 + j + 1;
-              const d = row2 + j + 1;
-
-              // Front Face (CCW)
-              indices[ptr++] = a; indices[ptr++] = b; indices[ptr++] = c;
-              indices[ptr++] = c; indices[ptr++] = b; indices[ptr++] = d;
-
-              // Back Face (CW) - Ensures collision even if normal logic is flipped or mesh is entered from below
-              indices[ptr++] = a; indices[ptr++] = c; indices[ptr++] = b;
-              indices[ptr++] = c; indices[ptr++] = d; indices[ptr++] = b;
-          }
-      }
+      // Calculate scale factors
+      // Rapier heightfield spans 0 to 1 on X and Z by default if scaling not applied, 
+      // but ColliderDesc.heightfield takes specific sizing args.
+      // Actually, ColliderDesc.heightfield(nrows, ncols, heights, scale) where scale is vector
+      const scale = {
+          x: size.x,
+          y: 1.0, 
+          z: size.z
+      };
 
       const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
 
-      const colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices)
+      const colliderDesc = RAPIER.ColliderDesc.heightfield(nrows, ncols, heights, scale)
           .setFriction(0.5)
           .setRestitution(0.1);
-
+      
+      this.optimizer.applyTo(colliderDesc, ['terrain'], true);
       this.world.createCollider(colliderDesc, rigidBody);
 
       return {

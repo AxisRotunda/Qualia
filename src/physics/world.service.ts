@@ -54,7 +54,11 @@ export class PhysicsWorldService {
     });
   }
 
-  syncActiveBodies(callback: (entityId: number, pos: {x:number, y:number, z:number}, rot: {x:number, y:number, z:number, w:number}) => void) {
+  /**
+   * Optimized Sync Loop (Zero-Allocation)
+   * Passes raw scalars instead of objects to prevent GC pressure during high-frequency loops.
+   */
+  syncActiveBodies(callback: (entityId: number, x: number, y: number, z: number, qx: number, qy: number, qz: number, qw: number) => void) {
       if (!this.world) return;
       
       this.world.forEachActiveRigidBody((body) => {
@@ -62,7 +66,7 @@ export class PhysicsWorldService {
           if (entityId !== undefined) {
               const t = body.translation();
               const r = body.rotation();
-              callback(entityId, { x: t.x, y: t.y, z: t.z }, { x: r.x, y: r.y, z: r.z, w: r.w });
+              callback(entityId, t.x, t.y, t.z, r.x, r.y, r.z, r.w);
           }
       });
   }

@@ -6,6 +6,7 @@ import { PhysicsMaterialsService } from '../physics/physics-materials.service';
 import { ShapesFactory } from '../physics/shapes.factory';
 import { PhysicsInteractionService } from '../physics/physics-interaction.service';
 import { PhysicsRegistryService } from '../physics/physics-registry.service';
+import { PhysicsOptimizerService } from '../physics/optimization/physics-optimizer.service';
 import { PhysicsBodyDef } from '../engine/schema';
 
 export { PhysicsBodyDef } from '../engine/schema';
@@ -20,6 +21,7 @@ export class PhysicsService {
   public readonly materials = inject(PhysicsMaterialsService);
   public readonly shapes = inject(ShapesFactory);
   public readonly interaction = inject(PhysicsInteractionService);
+  public readonly optimizer = inject(PhysicsOptimizerService);
 
   // Events
   public collision$ = this.world.collision$;

@@ -1,6 +1,6 @@
 
 # Qualia 3D System Manifest
-> **VERSION**: 1.1.0 (Module Decomposition)
+> **VERSION**: 1.2.0 (Optimization Pass)
 > **TYPE**: Master Index / Meta-Architecture
 > **TARGET**: AI Agent Context Window
 > **META_RULE**: Root Node. Recursive dependency resolution start point.
@@ -24,9 +24,10 @@
 *   **[Refactoring State](./refactoring-state.md)**: Tracking debt, deprecations, and bottlenecks.
 *   **[Meta-Commentary](./meta-commentary.md)**: Internal dev diary and aesthetic guidelines.
 *   **[Knowledge Graph](./knowledge-graph.md)**: System dependency topology.
+*   **[Optimization Report](./optimization-report.md)**: Performance analysis and heuristics.
 
 ### 2.2 Core Engine & Mathematics
-*   **[Math & Algorithms](./math-algorithms.md)**: **NEW**. Detailed formula reference for Procedural Gen, Physics, and Shaders.
+*   **[Math & Algorithms](./math-algorithms.md)**: Detailed formula reference for Procedural Gen, Physics, and Shaders.
 *   **[Runtime Architecture](./runtime-architecture.md)**: Game Loop, System Priorities, Transform Sync.
 *   **[ECS Architecture](./ecs-architecture.md)**: Data structures (`ComponentStore`), Entity Lifecycle, Assemblers.
 *   **[Physics Integration](./physics-integration.md)**: Rapier setup, Collision Events, Mass Calculation logic.
