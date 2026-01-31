@@ -43,6 +43,8 @@ export class EngineStateService {
   
   // Environment State
   readonly timeOfDay = signal(12); // 0-24
+  readonly dayNightActive = signal(false);
+  readonly dayNightSpeed = signal(0.1); // Game hours per second
   readonly weather = signal<WeatherType>('clear');
   readonly atmosphere = signal('clear');
   

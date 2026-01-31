@@ -6,7 +6,7 @@ import { CityAlgorithm } from '../algorithms/city.algorithm';
 export const CITY_SCENE: ScenePreset = {
   id: 'city', 
   label: 'Metropolis', 
-  description: 'Dense urban center with elevated highway ring road, interchanges, and varied zoning.', 
+  description: 'Dense urban center with procedural zoning, grid infrastructure, and elevated highways.', 
   theme: 'city', 
   previewColor: 'from-blue-700 to-slate-900',
   
@@ -36,10 +36,11 @@ export const CITY_SCENE: ScenePreset = {
       // Delegate procedural generation to Algorithm
       const cityRadius = await CityAlgorithm.generate(ctx, engine);
 
-      // 6. View
+      // 6. View - Street Level for Immersion
       engine.input.setMode('walk');
       const cam = engine.sceneService.getCamera();
-      cam.position.set(0, 15, cityRadius + 10); 
-      cam.lookAt(0, 5, 0);
+      // Position on a sidewalk intersection near center
+      cam.position.set(12, 1.7, 12); 
+      cam.lookAt(0, 5, 100);
   }
 };

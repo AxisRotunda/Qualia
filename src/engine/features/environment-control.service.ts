@@ -19,7 +19,8 @@ export class EnvironmentControlService {
       this.envManager.setAtmosphere(preset);
       
       // Auto-set time context based on preset for best look
-      if (preset === 'night' || preset === 'space') this.setTimeOfDay(22);
+      if (preset === 'night') this.setTimeOfDay(22);
+      else if (preset === 'space') this.setTimeOfDay(12); // Space usually static lighting
       else if (preset === 'forest' || preset === 'fog') this.setTimeOfDay(8); // Morning light
       else if (preset === 'city' || preset === 'ice' || preset === 'desert') this.setTimeOfDay(14); // Bright afternoon
       else this.setTimeOfDay(12);
@@ -41,6 +42,14 @@ export class EnvironmentControlService {
   setTimeOfDay(hour: number) {
       this.state.timeOfDay.set(hour);
       this.envManager.setTimeOfDay(hour);
+  }
+
+  toggleDayNightCycle(active: boolean) {
+      this.state.dayNightActive.set(active);
+  }
+
+  setCycleSpeed(speed: number) {
+      this.state.dayNightSpeed.set(speed);
   }
 
   setLightSettings(settings: { ambientIntensity?: number; dirIntensity?: number; dirColor?: string }) {

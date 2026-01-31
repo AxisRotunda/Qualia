@@ -48,17 +48,17 @@ export const NATURE_TEMPLATES: EntityTemplate[] = [
     { id: 'terrain-road', label: 'Asphalt 15x15', category: 'terrain', icon: 'add_road',
       geometry: 'mesh', meshId: 'gen-road-straight',
       physicsShape: 'box', size: new THREE.Vector3(15, 0.4, 15), 
-      mass: 0, physicsMaterial: 'concrete', friction: 0.9, restitution: 0.05, tags: ['terrain'] },
+      mass: 0, physicsMaterial: 'concrete', friction: 0.9, restitution: 0.05, tags: ['terrain', 'instanced'] },
     
     { id: 'terrain-highway', label: 'Highway Seg', category: 'terrain', icon: 'directions_car',
       geometry: 'mesh', meshId: 'gen-road-highway',
       physicsShape: 'trimesh', size: new THREE.Vector3(12, 1.5, 30),
-      mass: 0, physicsMaterial: 'concrete', friction: 0.9, restitution: 0.05, tags: ['terrain', 'infrastructure'] },
+      mass: 0, physicsMaterial: 'concrete', friction: 0.9, restitution: 0.05, tags: ['terrain', 'infrastructure', 'instanced'] },
 
     { id: 'terrain-intersection', label: 'Intersection 4-Way', category: 'terrain', icon: 'hub',
       geometry: 'mesh', meshId: 'gen-road-intersection',
       physicsShape: 'trimesh', size: new THREE.Vector3(15, 0.3, 15),
-      mass: 0, physicsMaterial: 'concrete', friction: 0.9, restitution: 0.05, tags: ['terrain', 'infrastructure'] },
+      mass: 0, physicsMaterial: 'concrete', friction: 0.9, restitution: 0.05, tags: ['terrain', 'infrastructure', 'instanced'] },
 
     { id: 'terrain-ramp', label: 'Highway Ramp', category: 'terrain', icon: 'trending_up',
       geometry: 'mesh', meshId: 'gen-road-ramp',
@@ -72,7 +72,7 @@ export const NATURE_TEMPLATES: EntityTemplate[] = [
     
     { id: 'terrain-platform', label: 'Platform', category: 'terrain', icon: 'layers',
       geometry: 'box', size: new THREE.Vector3(10, 0.5, 10), materialId: 'mat-metal',
-      mass: 0, physicsMaterial: 'metal', friction: 0.7, restitution: 0.2, tags: ['terrain'] },
+      mass: 0, physicsMaterial: 'metal', friction: 0.7, restitution: 0.2, tags: ['terrain', 'instanced'] },
       
     { id: 'terrain-ice', label: 'Ice Patch', category: 'terrain', icon: 'ac_unit',
       geometry: 'box', size: new THREE.Vector3(20, 0.5, 20), materialId: 'mat-ice',
