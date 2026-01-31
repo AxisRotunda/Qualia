@@ -8,9 +8,11 @@ import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
 })
 export class NatureGeologyService {
 
-  generateRock(type: 'granite' | 'sedimentary' = 'granite'): THREE.BufferGeometry {
+  generateRock(type: 'granite' | 'sedimentary' = 'granite', complexity: number = 1.0): THREE.BufferGeometry {
     // 1. Base Topology: Dodecahedron provides better blocky variation than Icosahedron
-    let geo: THREE.BufferGeometry = new THREE.DodecahedronGeometry(1.0, 1); 
+    // Scale detail of base geometry by complexity
+    const detail = complexity > 0.8 ? 1 : 0;
+    let geo: THREE.BufferGeometry = new THREE.DodecahedronGeometry(1.0, detail); 
     geo = geo.toNonIndexed();
     
     const pos = geo.getAttribute('position');
@@ -37,18 +39,21 @@ export class NatureGeologyService {
             vertex.z += layers;
         }
 
-        // Surface Grain (High Frequency Noise)
-        vertex.x += (Math.random() - 0.5) * 0.05;
-        vertex.y += (Math.random() - 0.5) * 0.05;
-        vertex.z += (Math.random() - 0.5) * 0.05;
+        // Surface Grain (High Frequency Noise) - Only at higher complexity
+        if (complexity > 0.5) {
+            vertex.x += (Math.random() - 0.5) * 0.05;
+            vertex.y += (Math.random() - 0.5) * 0.05;
+            vertex.z += (Math.random() - 0.5) * 0.05;
+        }
 
         pos.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
     geo.computeVertexNormals();
 
     // 3. Planar Chiseling (Fracture Simulation)
-    // Creates sharp, flat faces typical of hard rock cleavage
-    const numPlanes = type === 'sedimentary' ? 3 : 6;
+    // Scale number of planes by complexity
+    let numPlanes = type === 'sedimentary' ? 3 : 6;
+    if (complexity < 0.5) numPlanes = Math.max(1, Math.floor(numPlanes / 2));
     
     // Optimization: Pre-allocate projection target to avoid N*P allocations
     const projected = new THREE.Vector3();
@@ -86,10 +91,10 @@ export class NatureGeologyService {
     return geo;
   }
 
-  generateIceChunk(): THREE.BufferGeometry {
+  generateIceChunk(complexity: number = 1.0): THREE.BufferGeometry {
     // Jagged shard logic - Sharp, angular, vertical bias
     const height = 2.5;
-    const segments = 5; // Low poly for sharp edges
+    const segments = complexity > 0.5 ? 5 : 3; // Low poly for sharp edges
     let geo: THREE.BufferGeometry = new THREE.ConeGeometry(0.7, height, segments, 1);
     geo = geo.toNonIndexed();
     geo.translate(0, height/2, 0); 

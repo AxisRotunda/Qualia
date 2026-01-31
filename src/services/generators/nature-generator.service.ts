@@ -15,20 +15,20 @@ export class NatureGeneratorService {
   // Public for access by Scenes
   public terrain = inject(NatureTerrainService);
 
-  generateTree(): THREE.BufferGeometry | null {
-    return this.flora.generateTree();
+  generateTree(complexity: number = 1.0): THREE.BufferGeometry | null {
+    return this.flora.generateTree(complexity);
   }
 
-  generatePalmTree(): THREE.BufferGeometry | null {
-    return this.flora.generatePalmTree();
+  generatePalmTree(complexity: number = 1.0): THREE.BufferGeometry | null {
+    return this.flora.generatePalmTree(complexity);
   }
 
-  generateRock(type?: 'granite' | 'sedimentary'): THREE.BufferGeometry {
-    return this.geology.generateRock(type);
+  generateRock(type?: 'granite' | 'sedimentary', complexity: number = 1.0): THREE.BufferGeometry {
+    return this.geology.generateRock(type, complexity);
   }
 
-  generateIceChunk(): THREE.BufferGeometry {
-    return this.geology.generateIceChunk();
+  generateIceChunk(complexity: number = 1.0): THREE.BufferGeometry {
+    return this.geology.generateIceChunk(complexity);
   }
 
   generateLog(): THREE.BufferGeometry {

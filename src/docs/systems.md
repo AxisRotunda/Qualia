@@ -1,5 +1,6 @@
+
 # Qualia 3D System Manifest
-> **VERSION**: 2.0.0 (Neural Framework)
+> **VERSION**: 2.1.0 (Recursive Framework)
 > **TYPE**: Master Index
 > **ROOT**: `src/docs/kernel.md` (READ THIS FIRST)
 
@@ -10,6 +11,7 @@
 The documentation is now driven by the **Qualia Neural Kernel**.
 *   **Kernel**: `src/docs/kernel.md` - Command Registry & Axioms.
 *   **Memory**: `src/docs/memory-stream.md` - Active State & Decisions.
+*   **Constructor**: `src/docs/protocol-constructor.md` - **[NEW]** Meta-Protocol Factory.
 *   **Protocols**: Executable Agent Workflows (Optimize, Refactor, Content).
 
 ## 3. Sub-System Map

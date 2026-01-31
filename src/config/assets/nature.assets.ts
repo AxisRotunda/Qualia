@@ -3,12 +3,12 @@ import * as THREE from 'three';
 import { AssetDef, simple, complex } from '../asset-types';
 
 export const NATURE_ASSETS: Record<string, AssetDef> = {
-    'tree-01': complex(ctx => ctx.nature.generateTree(), ['mat-bark', 'mat-leaf']),
-    'rock-01': simple(ctx => ctx.nature.generateRock('granite'), 'mat-rock'),
-    'rock-sandstone': simple(ctx => ctx.nature.generateRock('sedimentary'), 'mat-sandstone'),
-    'hero-palm': complex(ctx => ctx.nature.generatePalmTree(), ['mat-palm-bark', 'mat-palm-leaf']),
+    'tree-01': complex(ctx => ctx.nature.generateTree(1.0), ['mat-bark', 'mat-leaf']),
+    'rock-01': simple(ctx => ctx.nature.generateRock('granite', 1.0), 'mat-rock'),
+    'rock-sandstone': simple(ctx => ctx.nature.generateRock('sedimentary', 1.0), 'mat-sandstone'),
+    'hero-palm': complex(ctx => ctx.nature.generatePalmTree(1.0), ['mat-palm-bark', 'mat-palm-leaf']),
     
-    'ice-01': simple(ctx => ctx.nature.generateIceChunk(), 'mat-ice'),
+    'ice-01': simple(ctx => ctx.nature.generateIceChunk(1.0), 'mat-ice'),
     'log-01': simple(ctx => ctx.nature.generateLog(), 'mat-bark'),
     'ice-terrain-lg': simple(ctx => ctx.nature.generateIceTerrain(128), 'mat-snow'),
     'ice-spire-lg': simple(ctx => ctx.nature.generateIceSpire(), 'mat-ice'),

@@ -162,12 +162,15 @@ export class NatureFloraService {
       return geo;
   }
 
-  generatePalmTree(): THREE.BufferGeometry | null {
+  generatePalmTree(complexity: number = 1.0): THREE.BufferGeometry | null {
       const trunkParts: THREE.BufferGeometry[] = [];
       const leafParts: THREE.BufferGeometry[] = [];
 
-      // 1. Curved Trunk (Segments)
-      const segments = 8;
+      // Scale detail based on complexity
+      const segments = Math.max(3, Math.floor(8 * complexity));
+      const frondCount = Math.max(5, Math.floor(12 * complexity));
+      const frondDetail = complexity > 0.5 ? 5 : 2;
+
       const totalH = 6;
       const segH = totalH / segments;
       const baseR = 0.4;
@@ -218,12 +221,11 @@ export class NatureFloraService {
 
       // 2. Fronds
       const topPos = points[segments];
-      const frondCount = 12;
       
       for(let i=0; i<frondCount; i++) {
           const frondLen = 2.5 + Math.random();
           // Plane bent into arch
-          const frond = new THREE.PlaneGeometry(0.6, frondLen, 3, 5);
+          const frond = new THREE.PlaneGeometry(0.6, frondLen, 3, frondDetail);
           frond.toNonIndexed();
           
           const pos = frond.getAttribute('position');
