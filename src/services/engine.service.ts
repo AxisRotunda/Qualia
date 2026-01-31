@@ -1,11 +1,13 @@
 
 import { Injectable, inject } from '@angular/core';
 import { EngineStateService } from '../engine/engine-state.service';
-import { EngineRuntimeService } from '../engine/runtime/engine-runtime.service';
 import { EntityStoreService } from '../engine/ecs/entity-store.service';
 import { InputManagerService } from '../engine/input-manager.service';
 import { SubsystemsService } from '../engine/subsystems.service';
-import { DebugService } from './debug.service';
+import { EntityLibraryService } from './entity-library.service';
+import { BootstrapService } from '../engine/bootstrap.service';
+
+// Feature Modules
 import { LevelManagerService } from '../engine/features/level-manager.service';
 import { EnvironmentControlService } from '../engine/features/environment-control.service';
 import { InteractionService } from '../engine/interaction.service';
@@ -20,9 +22,10 @@ import { TerrainManagerService } from '../engine/features/terrain-manager.servic
 export class EngineService {
   // --- Architecture & State ---
   public readonly state = inject(EngineStateService);
-  private readonly runtime = inject(EngineRuntimeService);
   public readonly entityMgr = inject(EntityStoreService);
   public readonly sys = inject(SubsystemsService); 
+  public readonly library = inject(EntityLibraryService); 
+  private readonly bootstrap = inject(BootstrapService);
 
   // --- Feature Modules (Public API) ---
   public readonly ops = inject(EntityOpsService);
@@ -34,8 +37,6 @@ export class EngineService {
   public readonly interaction = inject(InteractionService);
   public readonly terrain = inject(TerrainManagerService);
   
-  private readonly debugService = inject(DebugService);
-
   // --- Subsystem Accessors (Legacy/Compat) ---
   get physicsService() { return this.sys.physics; }
   get sceneService() { return this.sys.scene; }
@@ -49,25 +50,18 @@ export class EngineService {
   get buoyancySystem() { return this.sys.buoyancy; }
 
   // --- State Shortcuts (Read-Only) ---
-  // Core
   get mode() { return this.state.mode; }
   get loading() { return this.state.loading; }
   get isPaused() { return this.state.isPaused; }
-  
-  // Stats
   get fps() { return this.state.fps; }
   get physicsTime() { return this.state.physicsTime; }
   get renderTime() { return this.state.renderTime; }
   get objectCount() { return this.entityMgr.objectCount; }
   get debugInfo() { return this.state.debugInfo; }
-  
-  // Settings
   get timeScale() { return this.state.timeScale; }
   get gravityY() { return this.state.gravityY; }
   get wireframe() { return this.state.wireframe; }
   get texturesEnabled() { return this.state.texturesEnabled; }
-  
-  // UI
   get transformMode() { return this.state.transformMode; }
   get currentSceneId() { return this.state.currentSceneId; }
   get selectedEntity() { return this.entityMgr.selectedEntity; }
@@ -75,40 +69,20 @@ export class EngineService {
   get hudVisible() { return this.state.hudVisible; }
   get showDebugOverlay() { return this.state.showDebugOverlay; }
   get showPhysicsDebug() { return this.state.showPhysicsDebug; }
-  
-  // History
   get canUndo() { return this.state.canUndo; }
   get canRedo() { return this.state.canRedo; }
-
-  // Environment
   get weather() { return this.state.weather; }
   get timeOfDay() { return this.state.timeOfDay; }
   get atmosphere() { return this.state.atmosphere; }
   get world() { return this.entityMgr.world; }
 
-  constructor() {
-    this.debugService.init(this);
-  }
+  constructor() {}
 
   async init(canvas: HTMLCanvasElement) {
-    try {
-      await this.sys.physics.init();
-      this.sys.scene.init(canvas);
-      
-      this.interaction.bind(canvas);
-      this.input.init();
-
-      this.state.loading.set(false);
-      this.runtime.init();
-      
-      this.level.loadScene(this, 'city');
-    } catch (err) {
-      console.error("Engine Init Failed", err);
-    }
+    // Pass 'this' to bootstrap manually to resolve circular dependency
+    await this.bootstrap.init(canvas, this);
   }
   
-  // Helper for UI
   getEntityName(e: number) { return this.ops.getEntityName(e); }
-  
   resize(w: number, h: number) { this.sys.scene.resize(w, h); }
 }

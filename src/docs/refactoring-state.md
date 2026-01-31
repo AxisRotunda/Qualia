@@ -22,23 +22,22 @@ These files have been successfully removed to reduce cognitive load.
 Classes approaching high complexity. Refactor if adding > 3 new methods.
 *   **`EngineService`**: [STABLE] Acts as a clean facade. Complex logic delegates to `EntityAssembler` or `LevelManager`.
 *   **`SceneService`**: [STABLE] Rendering pipeline coordinator.
+*   **`EntityAssemblerService`**: [WATCH] High coupling. Manages Physics, Visuals, and ECS. Candidate for decomposition into `EntityFactory`.
 
 ## 3. Optimization Queue (Bottlenecks)
 *   **`ECS ComponentStore`**: Uses `Map<number, T>`.
     *   *Issue*: Iteration overhead.
-    *   *Fix*: Move hot components to TypedArrays.
+    *   *Fix*: Move hot components (Transform) to TypedArrays (SoA).
 
 ## 4. Pending Architecture Changes
-1.  **Strict Typing**: Refactor `inject()` calls to use explicit types where inference is weak. (In Progress: Asset Templates heavily typed).
+1.  **Strict Typing**: Refactor `inject()` calls to use explicit types where inference is weak.
 
 ## 5. Completed Refactors
-*   **Terrain Generation**: Broken down monolithic `TERRAIN_WORKER_SCRIPT` into modular constants (`noise`, `erosion`, `main`). Extracted geometry generation logic from `TerrainManagerService` to `NatureTerrainService`.
-*   **Instancing**: `InstancedMeshService` logic extracted to `InstancedGroup` class to handle large scale object counts cleanly.
-*   **Input Handling**: `PointerListenerService` now uses Lazy Binding (attaching window listeners only on interaction) to prevent event pollution.
-*   **Worker Utilities**: `createInlineWorker` implemented to standardize procedural generation threading.
+*   **Level Management**: Extracted `SceneLoaderService` from `LevelManagerService`. Loading logic is now separate from Game State logic.
+*   **Physics Loop**: Extracted `PhysicsStepService` from `PhysicsWorldService`. Simulation accumulator logic is now isolated.
+*   **Entity Management**: Extracted `duplicateEntity` logic from `EntityAssembler` to `EntityOpsService`.
+*   **Terrain Generation**: Broken down monolithic `TERRAIN_WORKER_SCRIPT` into modular constants.
+*   **Instancing**: `InstancedMeshService` logic extracted to `InstancedGroup`.
+*   **Input Handling**: `PointerListenerService` now uses Lazy Binding.
+*   **Worker Utilities**: `createInlineWorker` implemented.
 *   **Graphics Pipeline**: `StageService` created to handle static world generation.
-*   **Input Normalization**: `GameInputService` refactored to unify Joystick and Mouse sensitivity math.
-*   **Physics Loop**: Timestep clamping implemented.
-*   **Level Management**: `reset()` now correctly disposes of Meshes via `EntityAssembler`, fixing "ghost mesh" memory leaks.
-*   **Spawning**: `SpawnerService` now supports aerial spawning (camera forward vector) when raycast fails.
-*   **Scene Context**: Added `modifyBatch` and `hero-ice-spire` template to cleanup `Ice` scene logic.

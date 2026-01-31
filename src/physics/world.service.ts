@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Subject } from 'rxjs';
 import { PhysicsRegistryService } from './physics-registry.service';
+import { PhysicsStepService } from './physics-step.service';
 
 export interface CollisionEvent {
   entityA: number;
@@ -13,6 +14,7 @@ export interface CollisionEvent {
 @Injectable({ providedIn: 'root' })
 export class PhysicsWorldService {
   private registry = inject(PhysicsRegistryService);
+  private stepper = inject(PhysicsStepService);
 
   world: RAPIER.World | null = null;
   eventQueue: RAPIER.EventQueue | null = null;
@@ -20,11 +22,6 @@ export class PhysicsWorldService {
 
   public collision$ = new Subject<CollisionEvent>();
 
-  // Fixed Timestep Logic (60Hz)
-  private accumulator = 0;
-  private readonly stepSize = 1 / 60; 
-  private readonly maxFrameTime = 0.1; 
-  
   get rWorld(): RAPIER.World | null {
     return this.world;
   }
@@ -48,60 +45,26 @@ export class PhysicsWorldService {
     this.initialized = true;
   }
 
-  getAlpha(): number {
-      return this.accumulator / this.stepSize;
-  }
-
   step(dtMs: number): void {
     if (!this.world || !this.eventQueue) return;
     
-    let dtSec = dtMs / 1000;
-    if (dtSec > this.maxFrameTime) {
-        dtSec = this.maxFrameTime;
-    }
-
-    this.accumulator += dtSec;
-    
-    let steps = 0;
-    const MAX_STEPS = 5;
-
-    while (this.accumulator >= this.stepSize) {
-      this.world.step(this.eventQueue);
-      this.drainEvents();
-      
-      this.accumulator -= this.stepSize;
-      steps++;
-      
-      if (steps >= MAX_STEPS) {
-          this.accumulator = 0;
-          break;
-      }
-    }
+    // Delegate the accumulator logic
+    this.stepper.step(this.world, this.eventQueue, dtMs, () => {
+        this.drainEvents();
+    });
   }
 
-  syncActiveBodies(callback: (entityId: number, pos: RAPIER.Vector, rot: RAPIER.Rotation) => void) {
+  syncActiveBodies(callback: (entityId: number, pos: {x:number, y:number, z:number}, rot: {x:number, y:number, z:number, w:number}) => void) {
       if (!this.world) return;
       
-      // Buffer updates to avoid "recursive use of an object" error in WASM.
-      // Iterating active bodies locks the body list; calling external logic inside 
-      // the loop might trigger other Rapier calls (even indirectly), causing a crash.
-      const updates: { id: number, p: RAPIER.Vector, q: RAPIER.Rotation }[] = [];
-
       this.world.forEachActiveRigidBody((body) => {
           const entityId = this.registry.getEntityId(body.handle);
           if (entityId !== undefined) {
-              updates.push({ 
-                  id: entityId, 
-                  p: body.translation(), 
-                  q: body.rotation() 
-              });
+              const t = body.translation();
+              const r = body.rotation();
+              callback(entityId, { x: t.x, y: t.y, z: t.z }, { x: r.x, y: r.y, z: r.z, w: r.w });
           }
       });
-
-      // Apply updates after lock is released
-      for (const u of updates) {
-          callback(u.id, u.p, u.q);
-      }
   }
 
   private drainEvents() {
@@ -144,19 +107,21 @@ export class PhysicsWorldService {
     });
     
     bodies.forEach(b => {
-        if(this.world && this.world.bodies.contains(b.handle)) {
+        if(this.world && this.world.getRigidBody(b.handle)) {
             this.world.removeRigidBody(b);
         }
     });
     
+    if (this.eventQueue) {
+        this.eventQueue.clear();
+    }
+    
     this.registry.clear();
-    this.accumulator = 0;
+    this.stepper.reset();
   }
 
   getBodyPose(handle: number): { p: RAPIER.Vector, q: RAPIER.Rotation } | null {
     if (!this.world) return null;
-    if (!this.world.bodies.contains(handle)) return null;
-    
     const body = this.world.getRigidBody(handle);
     if (!body) return null;
     return {
@@ -167,8 +132,6 @@ export class PhysicsWorldService {
 
   updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
     if (!this.world) return;
-    if (!this.world.bodies.contains(handle)) return;
-
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
@@ -184,8 +147,6 @@ export class PhysicsWorldService {
 
   removeBody(handle: number) {
     if (!this.world) return;
-    if (!this.world.bodies.contains(handle)) return;
-
     const body = this.world.getRigidBody(handle);
     if (body) {
       this.world.removeRigidBody(body);

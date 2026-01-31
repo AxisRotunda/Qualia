@@ -42,6 +42,10 @@ export class BuoyancySystem {
       const linearDrag = 0.05;
       const quadraticDrag = 0.02;
 
+      // Substep config for stability
+      const substeps = 3;
+      const dtSub = dt / substeps;
+
       // Optimization: Iterate ONLY entities marked as 'buoyant'
       this.entityStore.world.buoyant.forEach((isBuoyant, entity) => {
           if (!isBuoyant) return;
@@ -52,50 +56,52 @@ export class BuoyancySystem {
           const body = world.getRigidBody(rbRef.handle);
           if (!body || body.isFixed() || body.isKinematic()) return;
 
+          // Prediction Loop
           const pos = body.translation();
+          const vel = body.linvel();
+          let totalBuoyantForceY = 0;
           
-          // Calculate realistic water height at this X/Z
-          const waveHeight = this.getWaveHeight(pos.x, pos.z, time);
-          const currentWaterLevel = baseWaterLevel + waveHeight;
+          const mass = body.mass();
+          const props = this.entityStore.world.physicsProps.get(entity);
+          const objectDensity = props?.density || 500;
+          const volumeTotal = mass / objectDensity;
+          const characteristicLength = Math.pow(volumeTotal, 0.33); // approx height
 
-          if (pos.y < currentWaterLevel) {
-              const depth = currentWaterLevel - pos.y;
-              
-              // Get object properties
-              const mass = body.mass();
-              const props = this.entityStore.world.physicsProps.get(entity);
-              const objectDensity = props?.density || 500; // Default to floaty wood/plastic if unknown
-              
-              // Archimedes Principle: F_buoyancy = rho_fluid * V_displaced * g
-              // V_total = mass / objectDensity
-              // V_displaced = V_total * submergedRatio
-              
-              // Approximate submerged ratio based on depth vs approx height (assumed 1.5m characteristic length)
-              // Clamped 0..1
-              const submergedRatio = Math.min(Math.max(depth / 1.5, 0), 1.0);
-              
-              const volumeTotal = mass / objectDensity;
-              const volumeDisplaced = volumeTotal * submergedRatio;
-              
-              // Buoyant Force (Upwards)
-              // Impulse = Force * dt
-              const buoyantForce = fluidDensity * volumeDisplaced * gravity * dt; 
-              
-              body.applyImpulse({ x: 0, y: buoyantForce, z: 0 }, true);
+          // Integrate force over multiple predicted substeps
+          for (let i = 0; i < substeps; i++) {
+              const tOffset = i * dtSub;
+              const predY = pos.y + (vel.y * tOffset);
+              const predTime = time + tOffset;
 
-              // Hydrodynamic Drag
-              const vel = body.linvel();
+              const waveHeight = this.getWaveHeight(pos.x, pos.z, predTime);
+              const currentWaterLevel = baseWaterLevel + waveHeight;
+
+              if (predY < currentWaterLevel) {
+                  const depth = currentWaterLevel - predY;
+                  // Submerged ratio 0..1
+                  const submergedRatio = Math.min(Math.max(depth / characteristicLength, 0), 1.0);
+                  const volumeDisplaced = volumeTotal * submergedRatio;
+                  
+                  // F = rho * V * g
+                  const force = fluidDensity * volumeDisplaced * gravity;
+                  totalBuoyantForceY += force;
+              }
+          }
+
+          // Apply average impulse
+          const avgForce = totalBuoyantForceY / substeps;
+          if (avgForce > 0) {
+              const impulse = avgForce * dt;
+              body.applyImpulse({ x: 0, y: impulse, z: 0 }, true);
+
+              // Hydrodynamic Drag (Simplistic linear drag based on current velocity)
+              // Only apply drag if submerged (avgForce > 0 implies at least partially submerged)
               const speedSq = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
-              
               if (speedSq > 0.001) {
                   const speed = Math.sqrt(speedSq);
-                  
-                  // Drag depends on cross-sectional area. A approx V^(2/3)
                   const area = Math.pow(volumeTotal, 0.66); 
-                  
                   const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * dt; 
                   
-                  // Drag opposes velocity
                   body.applyImpulse({ 
                       x: -vel.x / speed * dragFactor, 
                       y: -vel.y / speed * dragFactor, 
@@ -106,7 +112,7 @@ export class BuoyancySystem {
               // Angular Drag
               const ang = body.angvel();
               body.applyTorqueImpulse({
-                  x: -ang.x * 0.02 * mass * (dt * 60), // Scale approx to frame rate for consistent damping feel
+                  x: -ang.x * 0.02 * mass * (dt * 60), 
                   y: -ang.y * 0.02 * mass * (dt * 60),
                   z: -ang.z * 0.02 * mass * (dt * 60)
               }, true);

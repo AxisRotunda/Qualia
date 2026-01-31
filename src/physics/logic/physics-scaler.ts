@@ -44,8 +44,6 @@ export class PhysicsScaler {
         const r = def.radius * Math.max(scale.x, scale.z);
         colliderDesc = RAPIER.ColliderDesc.cone(Math.abs(h), Math.abs(r));
     } else if (def.type === 'heightfield' && def.heightData && def.fieldSize && def.size) {
-        // Robust Fallback: Re-generate as Trimesh to match ShapesFactory logic
-        // This avoids "unreachable" errors with Rapier Heightfields
         const nrows = def.fieldSize.rows;
         const ncols = def.fieldSize.cols;
         const heights = def.heightData;
@@ -54,7 +52,6 @@ export class PhysicsScaler {
         const vertices = new Float32Array(numVerts * 3);
         const indices = new Uint32Array((nrows - 1) * (ncols - 1) * 6);
 
-        // Calculate new dimensions based on scale
         const targetW = def.size.w * scale.x;
         const targetD = def.size.d * scale.z;
         const stepX = targetW / Math.max(1, ncols - 1);
@@ -62,17 +59,15 @@ export class PhysicsScaler {
         const startX = -targetW / 2;
         const startZ = -targetD / 2;
 
-        // Generate Scaled Vertices
         for (let i = 0; i < nrows; i++) {
             for (let j = 0; j < ncols; j++) {
                 const idx = i * ncols + j;
                 vertices[idx * 3 + 0] = startX + j * stepX;
-                vertices[idx * 3 + 1] = heights[idx] * scale.y; // Apply Y scale to height
+                vertices[idx * 3 + 1] = heights[idx] * scale.y;
                 vertices[idx * 3 + 2] = startZ + i * stepZ;
             }
         }
 
-        // Generate Indices (Standard Grid)
         let ptr = 0;
         for (let i = 0; i < nrows - 1; i++) {
             for (let j = 0; j < ncols - 1; j++) {
@@ -93,8 +88,15 @@ export class PhysicsScaler {
     }
 
     if (colliderDesc) {
-        if (def.mass && def.mass > 0) colliderDesc.setMass(def.mass * scale.x * scale.y * scale.z); 
-        else colliderDesc.setDensity(1.0);
+        // Retrieve base mass from userdata if available
+        const userData = (body as any).userData;
+        const baseMass = userData?.baseMass ?? def.mass;
+
+        if (baseMass && baseMass > 0) {
+            colliderDesc.setMass(baseMass * scale.x * scale.y * scale.z);
+        } else {
+            colliderDesc.setDensity(1.0);
+        }
         
         colliderDesc.setRestitution(0.3).setFriction(0.6); 
         this.world.createCollider(colliderDesc, body);

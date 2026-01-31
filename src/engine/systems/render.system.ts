@@ -19,11 +19,13 @@ export class RenderSystem implements GameSystem {
   private selectionManager = inject(SelectionManagerService);
 
   update(): void {
-    // 0. Update Instanced Meshes
-    this.instancedService.update();
-
-    // 1. View Culling Pass (LOD)
+    // 1. View Culling Pass (LOD & Frustum)
+    // Run this FIRST so that visibility flags are set before InstancedMesh update
     const visibleCount = this.visibilityManager.updateVisibility();
+
+    // 2. Update Instanced Meshes (Sync Matrices & Visibility)
+    // This polls the proxy objects updated by visibilityManager
+    this.instancedService.update();
 
     // Update View Stats only (lightweight)
     if (this.state.showDebugOverlay()) {
@@ -33,12 +35,12 @@ export class RenderSystem implements GameSystem {
         }));
     }
 
-    // 2. Selection Helper Update
+    // 3. Selection Helper Update
     if (this.entityStore.selectedEntity() !== null) {
       this.selectionManager.updateHelper();
     }
 
-    // 3. Render
+    // 4. Render
     const rStart = performance.now();
     this.scene.render();
     this.state.renderTime.set(Math.round((performance.now() - rStart) * 100) / 100);

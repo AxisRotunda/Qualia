@@ -5,11 +5,10 @@ import { EntityStoreService } from './entity-store.service';
 import { PhysicsService, PhysicsBodyDef } from '../../services/physics.service';
 import { SceneGraphService } from '../graphics/scene-graph.service';
 import { VisualsFactoryService } from '../graphics/visuals-factory.service';
-import { PhysicsFactoryService } from '../../services/factories/physics-factory.service';
 import { InstancedMeshService } from '../graphics/instanced-mesh.service';
-import { EntityTemplate, ENTITY_TEMPLATES } from '../../data/entity-templates';
+import { EntityLibraryService } from '../../services/entity-library.service';
+import { EntityLifecycleService } from './entity-lifecycle.service';
 import { Entity } from '../core';
-import { VisibilityManagerService } from '../graphics/visibility-manager.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,9 +19,12 @@ export class EntityAssemblerService {
   private sceneGraph = inject(SceneGraphService);
   private visualsFactory = inject(VisualsFactoryService);
   private instancedService = inject(InstancedMeshService);
-  private physicsFactory = inject(PhysicsFactoryService);
-  private visibilityManager = inject(VisibilityManagerService);
+  private entityLib = inject(EntityLibraryService);
+  private lifecycle = inject(EntityLifecycleService);
 
+  /**
+   * Core Assembler: Wires up Physics, Visuals, and ECS Data for a new entity.
+   */
   createEntityFromDef(
     bodyDef: PhysicsBodyDef, 
     visualOpts: { color?: number, materialId?: string, meshId?: string }, 
@@ -37,7 +39,7 @@ export class EntityAssemblerService {
       let isStatic = true; // Default to static
       
       if (templateId) {
-          const tpl = ENTITY_TEMPLATES.find(t => t.id === templateId);
+          const tpl = this.entityLib.getTemplate(templateId);
           if (tpl) {
               category = tpl.category;
               tags = tpl.tags;
@@ -50,17 +52,19 @@ export class EntityAssemblerService {
       // Fallback: If mass in bodyDef is > 0, it's dynamic
       if (bodyDef.mass && bodyDef.mass > 0) isStatic = false;
 
+      // Create Visual Representation (Mesh or Proxy)
       const mesh = this.visualsFactory.createMesh(
           bodyDef, 
           visualOpts, 
           templateId ? { entity, templateId, category, tags } : undefined
       );
       
-      // Add to optimized entity group
+      // Add to optimized entity group if it's a real mesh (Proxies are handled by InstancedMeshService)
       if (mesh instanceof THREE.Mesh) {
           this.sceneGraph.addEntity(mesh);
       }
 
+      // Populate ECS Components
       world.rigidBodies.add(entity, { handle: bodyDef.handle });
       world.meshes.add(entity, { mesh: mesh as THREE.Mesh });
       world.transforms.add(entity, {
@@ -78,62 +82,28 @@ export class EntityAssemblerService {
           world.buoyant.add(entity, true);
       }
 
-      // Register with new Registry Service
+      // Register with Physics Registry (Handle -> Entity)
+      // Kept here as it's tightly coupled with the Handle creation which just happened
       this.physics.registry.register(bodyDef.handle, entity);
       
-      // Register for Culling
-      this.visibilityManager.register(entity, isStatic);
+      // Notify Systems via Event Bus
+      this.lifecycle.onEntityCreated.next({ entity, isStatic, tags });
       
       this.store.objectCount.update(c => c + 1);
       
       return entity;
   }
 
-  duplicateEntity(e: Entity) {
-      const world = this.store.world;
-      const t = world.transforms.get(e);
-      const oldDef = world.bodyDefs.get(e);
-      const meshRef = world.meshes.get(e);
-      const name = world.names.get(e) || 'Object';
-      const tplId = world.templateIds.get(e);
-
-      if (!t || !oldDef || !meshRef) return;
-
-      const newPos = { x: t.position.x + 1, y: t.position.y, z: t.position.z };
-      
-      const bodyDef = this.physicsFactory.recreateBody(oldDef, newPos.x, newPos.y, newPos.z);
-      this.physics.shapes.updateBodyScale(bodyDef.handle, bodyDef, t.scale);
-      
-      bodyDef.rotation = { ...t.rotation };
-      this.physics.world.updateBodyTransform(bodyDef.handle, newPos, t.rotation);
-
-      const mat = (meshRef.mesh as any).material;
-      const visualOpts = {
-          color: mat?.color?.getHex(),
-          materialId: mat?.userData ? mat.userData['mapId'] : undefined,
-          meshId: tplId ? ENTITY_TEMPLATES.find(x => x.id === tplId)?.meshId : undefined
-      };
-      
-      const newEntity = this.createEntityFromDef(bodyDef, visualOpts, `${name}_copy`, tplId);
-      
-      const newT = world.transforms.get(newEntity);
-      if (newT) newT.scale = { ...t.scale };
-      
-      const oldProps = world.physicsProps.get(e);
-      if (oldProps) {
-          world.physicsProps.add(newEntity, { ...oldProps });
-          this.physics.materials.updateBodyMaterial(bodyDef.handle, oldProps);
-      }
-  }
-
   destroyEntity(e: Entity) {
     if (this.store.selectedEntity() === e) this.store.selectedEntity.set(null);
     
+    // Cleanup Physics
     const rb = this.store.world.rigidBodies.get(e);
     if (rb) {
         this.physics.world.removeBody(rb.handle);
     }
     
+    // Cleanup Visuals
     const meshRef = this.store.world.meshes.get(e);
     if (meshRef) {
         const mesh = meshRef.mesh;
@@ -146,7 +116,10 @@ export class EntityAssemblerService {
         this.visualsFactory.disposeMesh(mesh);
     }
     
-    this.visibilityManager.unregister(e);
+    // Notify Systems
+    this.lifecycle.onEntityDestroyed.next(e);
+    
+    // Cleanup ECS
     this.store.world.destroyEntity(e);
     this.store.objectCount.update(c => c - 1);
   }

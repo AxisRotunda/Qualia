@@ -49,8 +49,8 @@ export class SceneContext {
       ? new THREE.Quaternion().setFromEuler(options.rotation) 
       : undefined;
     
-    // Look up template data using the injected asset service's reference
-    const tpl = this.engine.assetService['entityLib']?.getTemplate(templateId); 
+    // Access template via exposed library on EngineService Facade
+    const tpl = this.engine.library.getTemplate(templateId); 
     
     if (tpl) {
         return this.engine.sys.entityFactory.spawn(

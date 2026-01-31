@@ -57,7 +57,7 @@ export class EngineStateService {
   readonly canRedo = signal(false);
   
   // Debug
-  readonly showDebugOverlay = signal(true);
+  readonly showDebugOverlay = signal(false);
   readonly debugInfo = signal<DebugState>({ 
       paused: false, 
       bodyCount: 0,

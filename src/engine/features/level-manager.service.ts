@@ -3,13 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { EngineStateService } from '../engine-state.service';
 import { EntityStoreService } from '../ecs/entity-store.service';
 import { PhysicsService } from '../../services/physics.service';
-import { SceneRegistryService } from '../../services/scene-registry.service';
 import { PersistenceService } from '../persistence.service';
 import { InputManagerService } from '../input-manager.service';
 import { EnvironmentControlService } from './environment-control.service';
 import { SceneGraphService } from '../graphics/scene-graph.service';
 import { VisualsFactoryService } from '../graphics/visuals-factory.service';
-import { VisibilityManagerService } from '../graphics/visibility-manager.service';
+import { EntityLifecycleService } from '../ecs/entity-lifecycle.service';
+import { SceneLoaderService } from '../level/scene-loader.service';
 import { wait } from '../utils/thread.utils';
 
 @Injectable({
@@ -19,13 +19,13 @@ export class LevelManagerService {
   private state = inject(EngineStateService);
   private entityStore = inject(EntityStoreService);
   private physicsService = inject(PhysicsService);
-  private sceneRegistry = inject(SceneRegistryService);
   private persistence = inject(PersistenceService);
   private inputManager = inject(InputManagerService);
   private envControl = inject(EnvironmentControlService);
   private sceneGraph = inject(SceneGraphService);
   private visualsFactory = inject(VisualsFactoryService);
-  private visibilityManager = inject(VisibilityManagerService);
+  private lifecycle = inject(EntityLifecycleService);
+  private loader = inject(SceneLoaderService);
 
   async loadScene(engineContext: any, id: string) {
       this.state.loading.set(true);
@@ -36,26 +36,20 @@ export class LevelManagerService {
       // Brief delay to allow UI to render the loading screen
       await wait(50);
 
-      let success = false;
+      const success = await this.loader.load(engineContext, id);
 
-      try {
-        await this.sceneRegistry.loadScene(engineContext, id);
-        success = true;
-      } catch (err) {
-        console.error('Scene load failed', err);
-        this.state.loadingStage.set('CRITICAL FAIL - RESETTING');
-        await wait(1000);
-        this.reset();
-      } finally {
-        if (success) {
-            this.state.loadingProgress.set(100);
-            this.state.loadingStage.set('SYSTEM READY');
-            await wait(600); 
-            this.state.currentSceneId.set(id);
-        } else {
-            this.state.currentSceneId.set(null); 
-        }
-        this.state.loading.set(false);
+      if (success) {
+          this.state.loadingProgress.set(100);
+          this.state.loadingStage.set('SYSTEM READY');
+          await wait(600); 
+          this.state.currentSceneId.set(id);
+          this.state.loading.set(false);
+      } else {
+          this.state.loadingStage.set('CRITICAL FAIL - RESETTING');
+          await wait(1000);
+          this.reset(); // Fallback to safe state
+          this.state.currentSceneId.set(null);
+          this.state.loading.set(false);
       }
   }
 
@@ -77,7 +71,7 @@ export class LevelManagerService {
 
       // 4. ECS & Systems Reset
       this.entityStore.reset();
-      this.visibilityManager.reset();
+      this.lifecycle.onWorldReset.next();
       
       // 5. Restore Defaults
       this.state.isPaused.set(false);

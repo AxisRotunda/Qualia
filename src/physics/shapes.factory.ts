@@ -48,6 +48,9 @@ export class ShapesFactory {
     }
 
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+    // Cache base properties for scaling
+    (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
+
     const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2)
         .setRestitution(props.restitution)
         .setFriction(props.friction);
@@ -78,6 +81,8 @@ export class ShapesFactory {
     if (props.mass !== 0) this.configureDynamicBody(rigidBodyDesc);
 
     const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+    (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
+
     const colliderDesc = RAPIER.ColliderDesc.ball(radius)
         .setRestitution(props.restitution)
         .setFriction(props.friction);
@@ -106,6 +111,8 @@ export class ShapesFactory {
       if (props.mass !== 0) this.configureDynamicBody(rigidBodyDesc);
 
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+      (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
+
       const colliderDesc = RAPIER.ColliderDesc.cylinder(height / 2, radius)
         .setRestitution(props.restitution)
         .setFriction(props.friction);
@@ -135,6 +142,8 @@ export class ShapesFactory {
       if (props.mass !== 0) this.configureDynamicBody(rigidBodyDesc);
 
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+      (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
+
       const colliderDesc = RAPIER.ColliderDesc.cone(height / 2, radius)
         .setRestitution(props.restitution)
         .setFriction(props.friction);
@@ -155,6 +164,12 @@ export class ShapesFactory {
 
   createTrimesh(x: number, y: number, z: number, vertices: Float32Array, indices: Uint32Array): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
+
+      // Safeguard against empty geometry
+      if (vertices.length < 9 || indices.length < 3) {
+          console.warn("ShapesFactory: Trimesh too small, fallback to box.");
+          return this.createBox(x, y, z, 1, 1, 1, 0);
+      }
 
       const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
@@ -177,6 +192,11 @@ export class ShapesFactory {
   createConvexHull(x: number, y: number, z: number, vertices: Float32Array, mass: number = 1, material?: string): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
+      if (vertices.length < 3) {
+          console.warn("ShapesFactory: Convex hull vertices empty.");
+          return this.createBox(x, y, z, 1, 1, 1, mass);
+      }
+
       let finalMass = mass;
       const matData = this.massCalc.resolveMaterialOnly(material);
       
@@ -186,6 +206,7 @@ export class ShapesFactory {
       if (finalMass !== 0) this.configureDynamicBody(rigidBodyDesc);
 
       const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+      (rigidBody as any).userData = { baseMass: finalMass };
       
       const colliderDesc = RAPIER.ColliderDesc.convexHull(vertices);
       if (!colliderDesc) {
@@ -217,6 +238,12 @@ export class ShapesFactory {
   createHeightfield(x: number, y: number, z: number, nrows: number, ncols: number, heights: Float32Array, size: {x: number, y: number, z: number}): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
+      // Safeguard against invalid dimensions which crash WASM
+      if (nrows < 2 || ncols < 2 || heights.length < 4) {
+          console.warn(`ShapesFactory: Invalid heightfield dims ${nrows}x${ncols}. Fallback to plane.`);
+          return this.createBox(x, y, z, size.x, 0.1, size.z, 0);
+      }
+
       // Sanitize heights to prevent WASM panic
       for(let k=0; k<heights.length; k++) {
           if (isNaN(heights[k]) || !isFinite(heights[k])) {
@@ -224,7 +251,7 @@ export class ShapesFactory {
           }
       }
 
-      // Convert Heightfield to Trimesh to avoid "unreachable" crashes with Rapier Heightfields
+      // Convert Heightfield to Trimesh to avoid "unreachable" crashes with Rapier Heightfields in compat mode
       const numVerts = nrows * ncols;
       const vertices = new Float32Array(numVerts * 3);
       

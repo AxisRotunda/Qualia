@@ -20,20 +20,20 @@ export class SciFiStructureService {
       const partsAccents: THREE.BufferGeometry[] = [];
 
       // 1. Floor
-      const floor = new THREE.BoxGeometry(w, 0.5, d);
+      const floor = new THREE.BoxGeometry(w, 0.5, d).toNonIndexed();
       floor.translate(0, 0.25, 0);
       partsInteriorFloor.push(floor);
 
       // 2. Ceiling / Roof
-      const roof = new THREE.BoxGeometry(w, 0.5, d);
+      const roof = new THREE.BoxGeometry(w, 0.5, d).toNonIndexed();
       roof.translate(0, h - 0.25, 0);
       partsExterior.push(roof);
 
       // 3. Side Walls (Long)
-      const wallL = new THREE.BoxGeometry(wallThick, h, d);
+      const wallL = new THREE.BoxGeometry(wallThick, h, d).toNonIndexed();
       wallL.translate(-w/2 + wallThick/2, h/2, 0);
       
-      const wallR = new THREE.BoxGeometry(wallThick, h, d);
+      const wallR = new THREE.BoxGeometry(wallThick, h, d).toNonIndexed();
       wallR.translate(w/2 - wallThick/2, h/2, 0);
 
       partsExterior.push(wallL.clone()); // Outer shell
@@ -44,24 +44,24 @@ export class SciFiStructureService {
       const panelW = (w - doorW) / 2;
 
       // Front
-      const frontL = new THREE.BoxGeometry(panelW, h, wallThick);
+      const frontL = new THREE.BoxGeometry(panelW, h, wallThick).toNonIndexed();
       frontL.translate(-w/2 + panelW/2, h/2, d/2 - wallThick/2);
       
-      const frontR = new THREE.BoxGeometry(panelW, h, wallThick);
+      const frontR = new THREE.BoxGeometry(panelW, h, wallThick).toNonIndexed();
       frontR.translate(w/2 - panelW/2, h/2, d/2 - wallThick/2);
 
-      const frontHeader = new THREE.BoxGeometry(doorW, 1.5, wallThick);
+      const frontHeader = new THREE.BoxGeometry(doorW, 1.5, wallThick).toNonIndexed();
       frontHeader.translate(0, h - 0.75, d/2 - wallThick/2);
 
       partsExterior.push(frontL, frontR, frontHeader);
 
       // Back (Solid)
-      const back = new THREE.BoxGeometry(w, h, wallThick);
+      const back = new THREE.BoxGeometry(w, h, wallThick).toNonIndexed();
       back.translate(0, h/2, -d/2 + wallThick/2);
       partsExterior.push(back);
 
       // 5. Interior Cladding
-      const iWallL = new THREE.BoxGeometry(0.1, h - 1, d - 1);
+      const iWallL = new THREE.BoxGeometry(0.1, h - 1, d - 1).toNonIndexed();
       iWallL.translate(-w/2 + wallThick + 0.1, h/2, 0);
       partsInteriorWalls.push(iWallL);
 
@@ -70,7 +70,7 @@ export class SciFiStructureService {
       partsInteriorWalls.push(iWallR);
 
       // 6. Support Legs
-      const legGeo = new THREE.CylinderGeometry(0.4, 0.4, 2);
+      const legGeo = new THREE.CylinderGeometry(0.4, 0.4, 2).toNonIndexed();
       const legPos = [
           [w/2 - 1, d/2 - 2], [-w/2 + 1, d/2 - 2],
           [w/2 - 1, -d/2 + 2], [-w/2 + 1, -d/2 + 2],
@@ -83,15 +83,18 @@ export class SciFiStructureService {
       });
 
       // Merge
-      const grpExt = BufferUtils.mergeGeometries(partsExterior);
-      const grpFlr = BufferUtils.mergeGeometries(partsInteriorFloor);
-      const grpInt = BufferUtils.mergeGeometries(partsInteriorWalls);
-      const grpAcc = BufferUtils.mergeGeometries(partsAccents);
+      const grpExt = partsExterior.length ? BufferUtils.mergeGeometries(partsExterior) : null;
+      const grpFlr = partsInteriorFloor.length ? BufferUtils.mergeGeometries(partsInteriorFloor) : null;
+      const grpInt = partsInteriorWalls.length ? BufferUtils.mergeGeometries(partsInteriorWalls) : null;
+      const grpAcc = partsAccents.length ? BufferUtils.mergeGeometries(partsAccents) : null;
 
       if (grpExt && grpFlr && grpInt && grpAcc) {
          const final = BufferUtils.mergeGeometries([grpExt, grpFlr, grpInt, grpAcc], true);
-         final.translate(0, -h/2, 0); // Center at body position (legs go below)
-         return final;
+         // Ensure merge succeeded before transforming
+         if (final) {
+             final.translate(0, -h/2, 0); 
+             return final;
+         }
       }
       return null;
   }
@@ -106,20 +109,20 @@ export class SciFiStructureService {
       const wallThick = 0.5;
 
       // 1. Floor
-      const floor = new THREE.BoxGeometry(width, 0.5, depth);
+      const floor = new THREE.BoxGeometry(width, 0.5, depth).toNonIndexed();
       floor.translate(0, 0.25, 0);
       floorParts.push(floor);
 
       // 2. Ceiling
-      const ceil = new THREE.BoxGeometry(width, 0.5, depth);
+      const ceil = new THREE.BoxGeometry(width, 0.5, depth).toNonIndexed();
       ceil.translate(0, height - 0.25, 0);
       frameParts.push(ceil);
 
       // 3. Walls
-      const wallL = new THREE.BoxGeometry(wallThick, height, depth);
+      const wallL = new THREE.BoxGeometry(wallThick, height, depth).toNonIndexed();
       wallL.translate(-width/2 + wallThick/2, height/2, 0);
       
-      const wallR = new THREE.BoxGeometry(wallThick, height, depth);
+      const wallR = new THREE.BoxGeometry(wallThick, height, depth).toNonIndexed();
       wallR.translate(width/2 - wallThick/2, height/2, 0);
       
       frameParts.push(wallL, wallR);
@@ -132,38 +135,38 @@ export class SciFiStructureService {
           const z = -depth/2 + (i * (depth/ribCount));
           
           // Ribs
-          const rL = new THREE.BoxGeometry(0.4, ribH, 0.6);
+          const rL = new THREE.BoxGeometry(0.4, ribH, 0.6).toNonIndexed();
           rL.translate(-width/2, height/2, z);
           frameParts.push(rL);
           
-          const rR = new THREE.BoxGeometry(0.4, ribH, 0.6);
+          const rR = new THREE.BoxGeometry(0.4, ribH, 0.6).toNonIndexed();
           rR.translate(width/2, height/2, z);
           frameParts.push(rR);
           
-          const rT = new THREE.BoxGeometry(width + 0.8, 0.4, 0.6);
+          const rT = new THREE.BoxGeometry(width + 0.8, 0.4, 0.6).toNonIndexed();
           rT.translate(0, height, z);
           frameParts.push(rT);
 
           // Light Strip on ribs
-          const lStrip = new THREE.BoxGeometry(width - 1, 0.05, 0.2);
+          const lStrip = new THREE.BoxGeometry(width - 1, 0.05, 0.2).toNonIndexed();
           lStrip.translate(0, 0.51, z);
           lightParts.push(lStrip);
           
           // Vents (Inset in walls between ribs)
           if (i < ribCount) {
               const ventZ = z + (depth/ribCount) * 0.5;
-              const ventL = new THREE.BoxGeometry(0.1, 1.5, 1.5);
+              const ventL = new THREE.BoxGeometry(0.1, 1.5, 1.5).toNonIndexed();
               ventL.translate(-width/2 + wallThick + 0.05, height/2, ventZ);
               ventParts.push(ventL);
               
-              const ventR = new THREE.BoxGeometry(0.1, 1.5, 1.5);
+              const ventR = new THREE.BoxGeometry(0.1, 1.5, 1.5).toNonIndexed();
               ventR.translate(width/2 - wallThick - 0.05, height/2, ventZ);
               ventParts.push(ventR);
           }
       }
 
       // 5. Pipes (Running along top corners)
-      const pipeGeo = new THREE.CylinderGeometry(0.2, 0.2, depth);
+      const pipeGeo = new THREE.CylinderGeometry(0.2, 0.2, depth).toNonIndexed();
       pipeGeo.rotateX(Math.PI / 2); // Align Z
       
       const pL = pipeGeo.clone();
@@ -175,14 +178,14 @@ export class SciFiStructureService {
       pipeParts.push(pR);
 
       // Central Light Bar
-      const lightBar = new THREE.BoxGeometry(0.4, 0.1, depth * 0.8);
+      const lightBar = new THREE.BoxGeometry(0.4, 0.1, depth * 0.8).toNonIndexed();
       lightBar.translate(0, height - 0.55, 0);
       lightParts.push(lightBar);
 
       // Merge Groups
-      const gFrame = BufferUtils.mergeGeometries(frameParts);
-      const gFloor = BufferUtils.mergeGeometries(floorParts);
-      const gLight = BufferUtils.mergeGeometries(lightParts);
+      const gFrame = frameParts.length ? BufferUtils.mergeGeometries(frameParts) : null;
+      const gFloor = floorParts.length ? BufferUtils.mergeGeometries(floorParts) : null;
+      const gLight = lightParts.length ? BufferUtils.mergeGeometries(lightParts) : null;
       const gPipe = pipeParts.length ? BufferUtils.mergeGeometries(pipeParts) : null;
       const gVent = ventParts.length ? BufferUtils.mergeGeometries(ventParts) : null;
       
@@ -195,8 +198,10 @@ export class SciFiStructureService {
 
       if (validParts.length >= 3) {
           const final = BufferUtils.mergeGeometries(validParts, true);
-          final.translate(0, -height/2, 0);
-          return final;
+          if (final) {
+              final.translate(0, -height/2, 0);
+              return final;
+          }
       }
       return null;
   }
@@ -230,13 +235,13 @@ export class SciFiStructureService {
           const x = Math.cos(i * segmentAngle) * (radius - 0.5);
           const z = Math.sin(i * segmentAngle) * (radius - 0.5);
           
-          const pillar = new THREE.CylinderGeometry(0.5, 0.8, height);
+          const pillar = new THREE.CylinderGeometry(0.5, 0.8, height).toNonIndexed();
           pillar.translate(x, height/2, z);
-          frameParts.push(pillar.toNonIndexed());
+          frameParts.push(pillar);
           
-          const band = new THREE.CylinderGeometry(0.55, 0.85, 0.2);
+          const band = new THREE.CylinderGeometry(0.55, 0.85, 0.2).toNonIndexed();
           band.translate(x, height * 0.8, z);
-          lightParts.push(band.toNonIndexed());
+          lightParts.push(band);
       }
       
       // Large Vents on Walls (simulated)
@@ -246,19 +251,19 @@ export class SciFiStructureService {
           const x = Math.cos(angle) * dist;
           const z = Math.sin(angle) * dist;
           
-          const vent = new THREE.BoxGeometry(2, 2, 0.5);
+          const vent = new THREE.BoxGeometry(2, 2, 0.5).toNonIndexed();
           vent.rotateY(-angle + Math.PI/2);
           vent.translate(x, height/2, z);
           ventParts.push(vent);
       }
       
-      const tableBase = new THREE.CylinderGeometry(1.5, 1.0, 1.0, 8);
+      const tableBase = new THREE.CylinderGeometry(1.5, 1.0, 1.0, 8).toNonIndexed();
       tableBase.translate(0, 0.5, 0);
-      frameParts.push(tableBase.toNonIndexed());
+      frameParts.push(tableBase);
       
-      const tableTop = new THREE.CylinderGeometry(1.5, 1.5, 0.1, 16);
+      const tableTop = new THREE.CylinderGeometry(1.5, 1.5, 0.1, 16).toNonIndexed();
       tableTop.translate(0, 1.0, 0);
-      lightParts.push(tableTop.toNonIndexed());
+      lightParts.push(tableTop);
 
       const gFrame = BufferUtils.mergeGeometries(frameParts);
       const gFloor = BufferUtils.mergeGeometries(floorParts);
@@ -267,8 +272,10 @@ export class SciFiStructureService {
       
       if (gFrame && gFloor && gLight && gVent) {
           const final = BufferUtils.mergeGeometries([gFrame, gFloor, gLight, gVent], true);
-          final.translate(0, -height/2, 0);
-          return final;
+          if (final) {
+              final.translate(0, -height/2, 0);
+              return final;
+          }
       }
       return null;
   }
@@ -283,38 +290,38 @@ export class SciFiStructureService {
       const floorParts: THREE.BufferGeometry[] = [];
       const panelParts: THREE.BufferGeometry[] = [];
 
-      const floor = new THREE.BoxGeometry(w, 0.2, d);
+      const floor = new THREE.BoxGeometry(w, 0.2, d).toNonIndexed();
       floor.translate(0, 0.1, 0);
       floorParts.push(floor);
 
-      const ceiling = new THREE.BoxGeometry(w, 0.2, d);
+      const ceiling = new THREE.BoxGeometry(w, 0.2, d).toNonIndexed();
       ceiling.translate(0, h - 0.1, 0);
       frameParts.push(ceiling);
 
       const pillarSize = 0.3;
       [-w/2 + pillarSize/2, w/2 - pillarSize/2].forEach(x => {
           [-d/2 + pillarSize/2, d/2 - pillarSize/2].forEach(z => {
-              const p = new THREE.BoxGeometry(pillarSize, h, pillarSize);
+              const p = new THREE.BoxGeometry(pillarSize, h, pillarSize).toNonIndexed();
               p.translate(x, h/2, z);
               frameParts.push(p);
           });
       });
 
       const glassThick = 0.05;
-      const gSide = new THREE.BoxGeometry(glassThick, h - 0.4, d - pillarSize*2);
+      const gSide = new THREE.BoxGeometry(glassThick, h - 0.4, d - pillarSize*2).toNonIndexed();
       gSide.translate(-w/2 + glassThick/2, h/2, 0);
       glassParts.push(gSide);
       glassParts.push(gSide.clone().translate(w - glassThick, 0, 0));
 
-      const gBack = new THREE.BoxGeometry(w - pillarSize*2, h - 0.4, glassThick);
+      const gBack = new THREE.BoxGeometry(w - pillarSize*2, h - 0.4, glassThick).toNonIndexed();
       gBack.translate(0, h/2, -d/2 + glassThick/2);
       glassParts.push(gBack);
 
-      const pedestal = new THREE.BoxGeometry(0.6, 1.2, 0.4);
+      const pedestal = new THREE.BoxGeometry(0.6, 1.2, 0.4).toNonIndexed();
       pedestal.translate(1.2, 0.6, 1.5);
       frameParts.push(pedestal);
 
-      const panel = new THREE.BoxGeometry(0.5, 0.4, 0.1);
+      const panel = new THREE.BoxGeometry(0.5, 0.4, 0.1).toNonIndexed();
       panel.rotateX(-Math.PI/4);
       panel.translate(1.2, 1.3, 1.5);
       panelParts.push(panel);
@@ -326,8 +333,10 @@ export class SciFiStructureService {
 
       if (mergedFrame && mergedGlass && mergedFloor && mergedPanel) {
           const final = BufferUtils.mergeGeometries([mergedFrame, mergedGlass, mergedFloor, mergedPanel], true);
-          final.translate(0, -h/2, 0);
-          return final;
+          if (final) {
+              final.translate(0, -h/2, 0);
+              return final;
+          }
       }
       return null;
   }

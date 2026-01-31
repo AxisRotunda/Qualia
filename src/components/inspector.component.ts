@@ -14,37 +14,35 @@ import { WorldSettingsPanelComponent } from './inspector/world-settings-panel.co
       WorldSettingsPanelComponent
   ],
   template: `
-    <div class="h-full flex flex-col gap-2 p-0 bg-transparent">
+    <!-- 
+      Layout Change: 
+      Instead of flex-1 (which tries to fit content into exactly 100% height),
+      we use a simple scrollable container. This allows the panels to expand naturally.
+      On mobile, this ensures the bottom of the world settings is reachable.
+    -->
+    <div class="h-full flex flex-col gap-3 p-1 overflow-y-auto custom-scrollbar">
       
-      <!-- Panel 1: Selection Inspector -->
-      <div class="flex-1 min-h-0">
-        <app-ui-panel [title]="selectionTitle()">
-          
-          @if (engine.selectedEntity() !== null) {
-            <app-entity-inspector />
-          } @else {
-             <div class="h-full flex flex-col items-center justify-center text-slate-600 space-y-3 opacity-60">
-                <div class="w-16 h-16 rounded-full border border-slate-700 flex items-center justify-center bg-slate-900/50">
-                    <span class="material-symbols-outlined text-3xl text-slate-500">data_object</span>
-                </div>
-                <div class="text-center">
-                    <div class="text-[10px] font-mono uppercase tracking-widest text-slate-500">No Target</div>
-                    <div class="text-[9px] text-slate-600 mt-1">Select an entity to analyze</div>
-                </div>
-             </div>
-          }
-        </app-ui-panel>
-      </div>
+      <!-- Panel 1: Selection Inspector (Only shows when selected) -->
+      @if (engine.selectedEntity() !== null) {
+        <div class="shrink-0 animate-in slide-in-from-left-2 duration-300">
+          <app-ui-panel [title]="selectionTitle()">
+             <app-entity-inspector />
+          </app-ui-panel>
+        </div>
+      }
 
       <!-- Panel 2: World Settings -->
-      <div class="shrink-0 h-auto">
-        <app-ui-panel title="Environment Systems">
+      <!-- shrink-0 ensures it doesn't get crushed if selection is huge -->
+      <div class="shrink-0">
+        <app-ui-panel title="Environment">
            <app-world-settings-panel 
               [gravity]="engine.gravityY()"
+              [timeScale]="engine.timeScale()"
               [currentTime]="engine.timeOfDay()"
               [currentWeather]="engine.weather()"
               [currentAtmosphere]="engine.atmosphere()"
               (gravityChange)="engine.sim.setGravity($event)"
+              (timeScaleChange)="engine.sim.setTimeScale($event)"
               (timeChange)="engine.env.setTimeOfDay($event)"
               (weatherChange)="engine.env.setWeather($event)"
               (atmosphereChange)="engine.env.setAtmosphere($event)"
@@ -53,8 +51,16 @@ import { WorldSettingsPanelComponent } from './inspector/world-settings-panel.co
         </app-ui-panel>
       </div>
 
+      <!-- Spacer for mobile bottom safe area -->
+      <div class="h-8 shrink-0"></div>
+
     </div>
-  `
+  `,
+  styles: [`
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  `]
 })
 export class InspectorComponent {
   engine = inject(EngineService);

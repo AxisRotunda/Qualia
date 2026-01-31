@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { EntityStoreService } from '../ecs/entity-store.service';
 import { PhysicsService } from '../../services/physics.service';
 import { SceneService } from '../../services/scene.service';
+import { SpatialHashService } from '../physics/spatial-hash.service';
 import { Entity } from '../core';
 
 @Injectable({
@@ -12,11 +13,11 @@ export class EntityTransformSystem {
   private entityStore = inject(EntityStoreService);
   private physics = inject(PhysicsService);
   private scene = inject(SceneService); 
+  private spatialHash = inject(SpatialHashService);
 
   // ECS <-> Physics Sync
   syncPhysicsTransforms(mode: 'edit' | 'play', isDragging: boolean) {
     // Optimization: Iterate ACTIVE bodies from Physics engine directly.
-    // This avoids O(N) iteration over all entities in ECS, most of which are sleeping.
     this.physics.world.syncActiveBodies((entity, p, q) => {
         
         // If dragging this specific entity in Edit mode, visual overrides physics
@@ -43,6 +44,9 @@ export class EntityTransformSystem {
                 // Scale is controlled by ECS, not Physics, but we ensure it matches
                 meshRef.mesh.scale.set(transform.scale.x, transform.scale.y, transform.scale.z);
             }
+
+            // Update Spatial Hash for active entities
+            this.spatialHash.update(entity, p.x, p.y, p.z);
         }
     });
   }
@@ -64,6 +68,9 @@ export class EntityTransformSystem {
               this.physics.world.updateBodyTransform(rb.handle, transform.position, transform.rotation);
               if (def) this.physics.shapes.updateBodyScale(rb.handle, def, transform.scale);
           }
+          
+          // Update Spatial Hash for manipulated entity
+          this.spatialHash.update(entity, transform.position.x, transform.position.y, transform.position.z);
       }
   }
 }

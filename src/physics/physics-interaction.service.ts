@@ -52,9 +52,9 @@ export class PhysicsInteractionService {
       let stiffness = baseStiffness * mass;
       stiffness = Math.max(10, Math.min(stiffness, 20000)); // Cap for stability
 
-      // Critical damping ratio approx: damping = 2 * sqrt(mass * stiffness)
-      // We want slightly under-damped for "springy" feel or critically damped for "tight" grip.
-      const damping = 2 * Math.sqrt(mass * stiffness) * 0.8; 
+      // Critical damping ratio: damping = 1.6 * sqrt(stiffness * mass)
+      // Tuned for a tight, non-oscillating grip
+      const damping = 1.6 * Math.sqrt(stiffness * mass);
 
       const params = RAPIER.JointData.spring(0.0, stiffness, damping, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 });
       
@@ -81,8 +81,6 @@ export class PhysicsInteractionService {
       if (this.grabJoint && world) {
           try {
               // CRITICAL: Check if joint handle is still valid. 
-              // If the body was deleted, the joint is auto-deleted by Rapier.
-              // Attempting to remove it again causes WASM "unreachable" or "recursive use" errors.
               if (world.impulseJoints.contains(this.grabJoint.handle)) {
                   world.removeImpulseJoint(this.grabJoint, true);
               }

@@ -49,7 +49,18 @@ export class AssetService {
     }
     
     // Fallback for unknown assets
+    console.warn(`AssetService: Geometry '${id}' not found, returning fallback box.`);
     return new THREE.BoxGeometry(1, 1, 1);
+  }
+
+  /**
+   * Forces generation of an asset and caches it. 
+   * Used by LevelManager during preloading phase.
+   */
+  warmupAsset(id: string) {
+      if (!this.geometries.has(id)) {
+          this.getGeometry(id);
+      }
   }
 
   getAssetMaterials(assetId: string): string | string[] {
