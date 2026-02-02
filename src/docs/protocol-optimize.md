@@ -3,11 +3,13 @@
 > **Trigger**: `RUN_OPT`
 > **Target**: Runtime Performance (FPS, Memory, GC).
 > **Input**: `src/docs/optimization-report.md`
-> **Version**: 1.9 (Self-Learning: Copy & Redundancy)
+> **Version**: 2.3 (Singleton State Update)
 
 ## 1. Diagnosis Routine
 1.  **READ** `src/docs/optimization-report.md` for current bottlenecks.
 2.  **SCAN** target files using these evolved heuristics:
+    *   **Library Sync**: Verify `index.html` importmaps. Ensure all sub-modules of a library (e.g., Three.js and its Addons) use the EXACT SAME version string. Mismatches cause multiple library instances in memory and shader compilation failures.
+    *   **String Thrashing**: Detect `.toLowerCase()`, `.trim()`, or string concatenation inside `update()` loops. These create high-frequency GC pressure. Cache results or use boolean flags.
     *   **Math Allocations**: Search for `new Vector3`, `new Quaternion`, `new Matrix4` inside `update()`, `render()`, or `tick()` methods.
     *   **Color Allocations**: Search for `new Color()` or `new Fog()` inside `update()` loops (e.g., Day/Night cycles).
     *   **Factory Churn**: Identify config factories (e.g., `() => ({ ... })`) being called repeatedly in hot loops instead of cached.
@@ -18,10 +20,7 @@
     *   **Signal Thrashing**: Search for `effect()` or `computed()` reading signals updated at 60fps (e.g., `physicsTime`, `renderTime`).
     *   **Physics Argument Allocation**: Search for object literals `{x, y, z}` passed to `applyImpulse` or `applyForce` in loops.
     *   **Closure Allocation**: Search for `(item) => { ... }` defined inside loop bodies or `forEach` calls in `update()` methods.
-    *   **Vertex Loop Allocation**: Search for `new Vector3()` inside `for` loops iterating over BufferAttributes.
-    *   **Getter Allocation**: Search for methods returning `{ ... }` or `[ ... ]` called in loops.
-    *   **Redundant Checks**: Search for `has(key)` immediately followed by `get(key)` or `set(key)` on the same collection if the latter method safely handles missing keys.
-    *   **Scene Graph Search**: Identify `scene.children.find(...)` or `scene.traverse(...)` inside `update()` loops. Replace with direct dependency injection or caching.
+    *   **Vector Math**: Search for `vec.length()` in threshold checks. Replace with `vec.lengthSq()` and squared constant.
 
 ## 2. Execution Template
 Output the optimization using this structure:
@@ -46,13 +45,15 @@ Output the optimization using this structure:
 *   **Filtering**: Use `.find()` instead of `.filter()` when only the first match is needed to avoid allocating a new array.
 *   **Config Caching**: If a config object is generated via function, cache the result if the inputs haven't changed, especially in `update()` loops.
 *   **Return Values**: Prefer `copyTo(target)` pattern over returning new objects for frequent getters.
+*   **Singleton State**: For static logic engines (e.g., Celestial Math), return a reference to a reused static state object instead of returning a new Object literal every call.
 *   **Geometry Generation**:
-    *   **Clone over New**: In generators, create a base `BufferGeometry` once and use `.clone()` inside loops. `new BoxGeometry` calculates internal topology every time; `clone` copies buffers (faster).
-    *   **Zero-Alloc Vertex loops**: When modifying vertex positions in a loop, allocate `const v = new Vector3()` *outside* the loop and reuse it with `.fromBufferAttribute(pos, i)`.
+    *   **Clone over New**: In generators, create a base `BufferGeometry` once and use `.clone()` inside loops.
+    *   **Zero-Alloc Vertex loops**: Allocate `const v = new Vector3()` *outside* the loop and reuse it with `.fromBufferAttribute(pos, i)`.
+*   **Identity Injection**:
+    *   **Raycasting**: Inject `userData.entityId` into Meshes during creation. This allows O(1) lookup during Raycasts, eliminating the need for maintaining a separate `meshId -> entityId` map which incurs O(N) updates.
 
 ## 4. Meta-Update (Self-Optimization)
 **INSTRUCTION**: After applying an optimization, perform the **Mutation Check**:
-1.  **Discovery**: Did you identify a new type of bottleneck not listed in Section 1 or 3?
+1.  **Discovery**: Did you identify a new type of bottleneck?
 2.  **Action**: If yes, **APPEND** the new pattern to the `Heuristic Database` or `Diagnosis Routine` in this file immediately.
-    *   *Goal*: The `Diagnosis Routine` should become a comprehensive list of all known anti-patterns over time.
 3.  **Logging**: Append the specific optimization result to `src/docs/optimization-report.md`.

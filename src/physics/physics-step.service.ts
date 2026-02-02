@@ -13,6 +13,10 @@ export class PhysicsStepService {
 
   step(world: RAPIER.World, eventQueue: RAPIER.EventQueue, dtMs: number, onStep: () => void) {
     let dtSec = dtMs / 1000;
+    
+    // RUN_REPAIR: Guard against non-finite delta times which crash Rapier WASM
+    if (!Number.isFinite(dtSec) || dtSec <= 0) return;
+
     if (dtSec > this.maxFrameTime) {
         dtSec = this.maxFrameTime;
     }

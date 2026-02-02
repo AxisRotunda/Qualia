@@ -1,11 +1,11 @@
 
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
-import { EntityLibraryService } from '../../services/entity-library.service';
+import { EntityLibraryService } from './entity-library.service';
 import { TemplateFactoryService } from '../../services/factories/template-factory.service';
 import { EntityStoreService } from '../ecs/entity-store.service';
 import { RaycasterService } from '../interaction/raycaster.service';
-import { PlacementService } from '../../services/placement.service';
+import { PlacementService } from './placement.service';
 import { EngineStateService } from '../engine-state.service';
 import { InputManagerService } from '../input-manager.service';
 import { SceneService } from '../../services/scene.service';
@@ -49,12 +49,17 @@ export class SpawnerService {
           useBottomAlign = false; // Center at air point
       }
 
-      this.factory.spawn(this.entityStore, tpl, pos, rot, { alignToBottom: useBottomAlign });
+      const entity = this.factory.spawn(this.entityStore, tpl, pos, rot, { alignToBottom: useBottomAlign });
+
+      // 4. Initialize Integrity for Fragile objects
+      if (tpl.tags.includes('fragile')) {
+          this.entityStore.world.integrity.add(entity, 100, 1000);
+      }
   }
   
   startPlacement(id: string) {
       if (this.state.mode() !== 'edit') {
-          this.state.mode.set('edit');
+          this.state.setMode('edit');
           this.inputManager.setMode('edit');
       }
       this.placementService.startPlacement(id);

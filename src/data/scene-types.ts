@@ -6,7 +6,7 @@ export interface ScenePreset {
   id: string;
   label: string;
   description: string;
-  theme: 'city' | 'forest' | 'ice' | 'space' | 'default';
+  theme: 'city' | 'forest' | 'ice' | 'space' | 'desert' | 'default';
   previewColor: string;
   /**
    * List of Asset IDs to generate/load before the scene logic starts.

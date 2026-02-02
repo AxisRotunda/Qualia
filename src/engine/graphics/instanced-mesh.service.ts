@@ -26,14 +26,14 @@ export class InstancedMeshService {
       entity: Entity, 
       proxy: THREE.Object3D, 
       meshId: string, 
-      materialId?: string, 
+      materialConfig?: string | string[], 
       color?: number,
       isDynamic: boolean = false
   ) {
     let group = this.groups.get(templateId);
 
     if (!group) {
-      this.createGroup(templateId, meshId, materialId, color);
+      this.createGroup(templateId, meshId, materialConfig, color);
       group = this.groups.get(templateId)!;
     }
 
@@ -64,12 +64,28 @@ export class InstancedMeshService {
     return null;
   }
 
-  private createGroup(id: string, meshId: string, materialId?: string, color?: number) {
+  /**
+   * Universal purge of all instanced resources.
+   * Part of RUN_LIFECYCLE protocol.
+   */
+  clear() {
+      this.groups.forEach(group => {
+          this.sceneGraph.removeEntity(group.mesh);
+          group.dispose();
+      });
+      this.groups.clear();
+  }
+
+  private createGroup(id: string, meshId: string, materialConfig?: string | string[], color?: number) {
     const geometry = this.assetService.getGeometry(meshId);
     
     let material: THREE.Material | THREE.Material[];
-    if (materialId && this.materialService.hasMaterial(materialId)) {
-        material = this.materialService.getMaterial(materialId);
+
+    // RUN_REF: Enhanced material resolution for arrays (Multi-material instancing)
+    if (Array.isArray(materialConfig)) {
+        material = materialConfig.map(mid => this.materialService.getMaterial(mid) as THREE.Material);
+    } else if (materialConfig && this.materialService.hasMaterial(materialConfig)) {
+        material = this.materialService.getMaterial(materialConfig);
     } else if (color) {
         material = new THREE.MeshStandardMaterial({ color: color });
     } else {

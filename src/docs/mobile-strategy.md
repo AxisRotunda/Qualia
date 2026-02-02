@@ -19,7 +19,10 @@ The touch interface changes based on the user's context (Mode & Selection).
 *   **Active**: When `ControlMode == 'camera'`.
 *   **Left Stick**: Move Character / Pan Camera.
 *   **Right Stick**: Look / Orbit Camera.
-*   **Actions**: Jump Button (Walk Mode only).
+*   **Action Cluster** (`TouchActionClusterComponent`):
+    *   Visible only in `Walk` mode.
+    *   Contains discrete buttons for **Jump**, **Sprint**, **Fire**, and **Cycle Weapon**.
+    *   Uses ergonomic "Thumb Grid" layout in bottom-right.
 
 ### 2.2 Object Layer (Manipulation)
 *   **Active**: When `ControlMode == 'object'` (Requires Selection).

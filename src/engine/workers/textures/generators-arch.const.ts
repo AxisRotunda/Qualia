@@ -1,46 +1,79 @@
 
 export const TEXTURE_GEN_ARCH = `
     function generateArch(ctx, type, params, size) {
-        // --- Concrete (Enhanced Panelized) ---
+        // --- Concrete (Enhanced Panelized with Hard Realism Weathering) ---
         if (type === 'concrete-base' || type === 'concrete-height') {
             const isHeight = type === 'concrete-height';
             
+            // Baseline contrast adjustment for Metropolis
             ctx.fillStyle = isHeight ? '#808080' : '#8c8c8c'; 
             ctx.fillRect(0, 0, size, size);
 
             const panels = 4;
             const panelSize = size / panels;
-            const gap = isHeight ? 2 : 1;
+            const gap = isHeight ? 3 : 2; 
 
             for(let py=0; py<panels; py++) {
                 for(let px=0; px<panels; px++) {
                     const x = px * panelSize;
                     const y = py * panelSize;
-                    const variance = (Math.random() - 0.5) * 20;
-                    const baseVal = isHeight ? 128 : 120; 
+                    
+                    const panelSeed = px * 13 + py * 91;
+                    const variance = (hash(panelSeed) - 0.5) * 25; // Increased variance
+                    const baseVal = isHeight ? 128 : 155; 
                     const val = Math.max(0, Math.min(255, baseVal + variance));
                     
                     ctx.fillStyle = isHeight 
                         ? 'rgb('+val+','+val+','+val+')'
-                        : 'rgb('+(val+10)+','+(val+8)+','+val+')';
+                        : 'rgb('+(val+5)+','+(val+4)+','+val+')';
                     
                     ctx.fillRect(x + gap, y + gap, panelSize - gap*2, panelSize - gap*2);
+
+                    if (!isHeight) {
+                        // 1. Edge Staining (Moisture accumulation at seams)
+                        const edgeGrad = ctx.createLinearGradient(x, y, x, y + panelSize);
+                        edgeGrad.addColorStop(0, 'rgba(0,0,0,0.15)'); // Increased depth
+                        edgeGrad.addColorStop(0.1, 'rgba(0,0,0,0)');
+                        edgeGrad.addColorStop(0.9, 'rgba(0,0,0,0)');
+                        edgeGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+                        ctx.fillStyle = edgeGrad;
+                        ctx.fillRect(x + gap, y + gap, panelSize - gap*2, panelSize - gap*2);
+
+                        // 2. Ambient Occlusion Holes (Formwork anchors)
+                        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                        const bSize = 6;
+                        const bOff = 16;
+                        [
+                            [x+bOff, y+bOff], [x+panelSize-bOff-bSize, y+bOff],
+                            [x+bOff, y+panelSize-bOff-bSize], [x+panelSize-bOff-bSize, y+panelSize-bOff-bSize]
+                        ].forEach(p => {
+                             ctx.beginPath();
+                             ctx.arc(p[0], p[1], bSize/2, 0, Math.PI*2);
+                             ctx.fill();
+                        });
+                    }
                 }
             }
 
             const imgData = ctx.getImageData(0, 0, size, size);
-            applyNoise(imgData.data, isHeight ? 15 : 20);
+            applyNoise(imgData.data, isHeight ? 10 : 12);
             ctx.putImageData(imgData, 0, 0);
 
             if (!isHeight) {
+                // 3. Grime Streaks (RUN_TEXTURE contrast update)
                 ctx.globalCompositeOperation = 'multiply';
-                const grad = ctx.createLinearGradient(0, 0, 0, size);
-                grad.addColorStop(0, 'rgba(120,120,120,0.2)');
-                grad.addColorStop(0.2, 'rgba(255,255,255,1)');
-                grad.addColorStop(0.8, 'rgba(255,255,255,1)');
-                grad.addColorStop(1, 'rgba(60,50,40,0.5)');
-                ctx.fillStyle = grad;
-                ctx.fillRect(0,0,size,size);
+                for(let i=0; i<25; i++) {
+                    const lx = hash(i * 22.7) * size;
+                    const ly = hash(i * 33.2) * size * 0.4;
+                    const lh = 120 + hash(i * 11.1) * 300;
+                    const lgrad = ctx.createLinearGradient(lx, ly, lx, ly + lh);
+                    lgrad.addColorStop(0, 'rgba(40,35,30,0.4)');
+                    lgrad.addColorStop(1, 'rgba(40,35,30,0)');
+                    ctx.fillStyle = lgrad;
+                    ctx.fillRect(lx - 1.5, ly, 3, lh);
+                }
+                
+                ctx.globalCompositeOperation = 'source-over';
             }
             return;
         }
@@ -51,9 +84,9 @@ export const TEXTURE_GEN_ARCH = `
             
             const panels = 4;
             const panelSize = size / panels;
-            const gap = 2;
+            const gap = 3;
 
-            ctx.fillStyle = '#606060';
+            ctx.fillStyle = '#555555'; // Deeper normal insets
             for(let py=0; py<panels; py++) {
                 for(let px=0; px<panels; px++) {
                     ctx.fillRect(px*panelSize + gap, py*panelSize + gap, panelSize - gap*2, panelSize - gap*2);
@@ -61,32 +94,51 @@ export const TEXTURE_GEN_ARCH = `
             }
 
             const imgData = ctx.getImageData(0,0,size,size);
-            applyNoise(imgData.data, 20);
-            const normalData = new ImageData(generateNormalMap(imgData.data, size, 4.0), size, size);
+            const normalData = new ImageData(generateNormalMap(imgData.data, size, 8.0), size, size); // Boosted strength
             ctx.putImageData(normalData, 0, 0);
             return;
         }
 
-        // --- City Windows (Deterministic Facade) ---
+        // --- Asphalt (Road Surface) ---
+        if (type === 'asphalt' || type === 'asphalt-normal') {
+            const isNormal = type === 'asphalt-normal';
+            ctx.fillStyle = isNormal ? '#808080' : '#222222'; 
+            ctx.fillRect(0, 0, size, size);
+            
+            const imgData = ctx.getImageData(0, 0, size, size);
+            applyNoise(imgData.data, isNormal ? 55 : 30);
+            
+            const data = imgData.data;
+            for(let i=0; i<data.length; i+=4) {
+                const x = (i / 4) % size;
+                const y = Math.floor((i / 4) / size);
+                const patch = Math.sin(x * 0.02) * Math.cos(y * 0.03) + Math.sin(x * 0.05 + y * 0.05);
+                if (patch > 1.2) {
+                    data[i] *= 0.7; data[i+1] *= 0.7; data[i+2] *= 0.7;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            if (isNormal) {
+                const normalData = new ImageData(generateNormalMap(imgData.data, size, 8.0), size, size);
+                ctx.putImageData(normalData, 0, 0);
+            }
+            return;
+        }
+
+        // --- City Windows ---
         if (type === 'city-window' || type === 'city-window-normal') {
             const { frameHex, glassHex, litHex, density } = params;
             const isNormal = type === 'city-window-normal';
-            
-            // 1. Background
-            // Normal: High (Frame sticks out -> White)
-            // Color: Frame Color (Dark Grey)
             ctx.fillStyle = isNormal ? '#ffffff' : frameHex;
             ctx.fillRect(0, 0, size, size);
             
             const paneSize = size / density;
-            const gap = paneSize * 0.15; // Frame thickness
-            
-            // Deterministic Seed
+            const gap = paneSize * 0.12; 
             const seed = 1337; 
 
             for(let y=0; y<density; y++) {
                 const rowHash = hash(y * 42.0 + seed);
-                
                 for(let x=0; x<density; x++) {
                     const px = x * paneSize + gap/2;
                     const py = y * paneSize + gap/2;
@@ -94,31 +146,19 @@ export const TEXTURE_GEN_ARCH = `
                     const h = paneSize - gap;
                     
                     if (isNormal) {
-                        // Windows are recessed -> Black
                         ctx.fillStyle = '#000000';
                         ctx.fillRect(px, py, w, h);
                     } else {
-                        // Albedo Logic
                         const cellHash = hash(x * 12.3 + y * 91.1 + seed);
-                        
-                        // Lit probability logic
-                        const isLit = cellHash < (0.15 + (rowHash > 0.8 ? 0.5 : 0));
+                        const isLit = cellHash < (0.15 + (rowHash > 0.85 ? 0.3 : 0));
                         
                         if (isLit) {
                             ctx.fillStyle = litHex;
-                            // Variation in light intensity
-                            ctx.globalAlpha = 0.6 + hash(cellHash * 10) * 0.4;
+                            ctx.globalAlpha = 0.8;
                             ctx.fillRect(px, py, w, h);
                         } else {
-                            ctx.fillStyle = glassHex;
+                            ctx.fillStyle = glassHex; 
                             ctx.globalAlpha = 1.0;
-                            
-                            // Fake reflection gradient (Horizon line)
-                            const grad = ctx.createLinearGradient(px, py, px, py+h);
-                            grad.addColorStop(0, glassHex);
-                            grad.addColorStop(0.4, '#050505'); // Horizon reflection dark
-                            grad.addColorStop(1, glassHex);
-                            ctx.fillStyle = grad;
                             ctx.fillRect(px, py, w, h);
                         }
                     }
@@ -126,38 +166,18 @@ export const TEXTURE_GEN_ARCH = `
             }
             ctx.globalAlpha = 1.0;
             
-            // 2. Post-Processing
             if (isNormal) {
-                // Convert Height (B&W) to Normal Map
                 const imgData = ctx.getImageData(0, 0, size, size);
-                // Strong edges for frames (Strength 8.0)
-                const normalData = new ImageData(generateNormalMap(imgData.data, size, 8.0), size, size);
+                const normalData = new ImageData(generateNormalMap(imgData.data, size, 12.0), size, size);
                 ctx.putImageData(normalData, 0, 0);
             } else {
-                // Albedo Noise & Grime
-                const imgData = ctx.getImageData(0, 0, size, size);
-                const data = imgData.data;
-                for(let i=0; i<data.length; i+=4) {
-                    const bright = data[i] + data[i+1] + data[i+2];
-                    
-                    // Only apply noise if pixel is dark (frame or unlit glass)
-                    if (bright < 400) { 
-                        const n = (hash(i) - 0.5) * 15;
-                        data[i] = Math.max(0, Math.min(255, data[i] + n));
-                        data[i+1] = Math.max(0, Math.min(255, data[i+1] + n));
-                        data[i+2] = Math.max(0, Math.min(255, data[i+2] + n));
-                    }
-                }
-                ctx.putImageData(imgData, 0, 0);
-                
-                // Vertical Grime Gradient
                 ctx.globalCompositeOperation = 'multiply';
                 const grad = ctx.createLinearGradient(0, 0, 0, size);
-                grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(0.5, '#eeeeee');
-                grad.addColorStop(1, '#aaaaaa');
+                grad.addColorStop(0.8, '#ffffff');
+                grad.addColorStop(1, '#888888'); 
                 ctx.fillStyle = grad;
                 ctx.fillRect(0,0,size,size);
+                ctx.globalCompositeOperation = 'source-over';
             }
             return;
         }
@@ -237,4 +257,4 @@ export const TEXTURE_GEN_ARCH = `
             return;
         }
     }
-`
+`;

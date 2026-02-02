@@ -1,5 +1,5 @@
 
-import { Component, ElementRef, ViewChild, AfterViewInit, HostListener, inject } from '@angular/core';
+import { Component, ElementRef, viewChild, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngineService } from '../services/engine.service';
 import { InteractionService } from '../engine/interaction.service';
@@ -10,6 +10,7 @@ import { TouchControlsComponent } from './ui/touch-controls.component';
 import { SpawnMenuComponent } from './spawn-menu.component';
 import { LoadingScreenComponent } from './ui/loading-screen.component';
 import { GameHudComponent } from './ui/game-hud.component';
+import { SystemLauncherComponent } from './ui/system-launcher.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -20,24 +21,24 @@ import { GameHudComponent } from './ui/game-hud.component';
       TouchControlsComponent,
       SpawnMenuComponent,
       LoadingScreenComponent,
-      GameHudComponent
+      GameHudComponent,
+      SystemLauncherComponent
   ],
+  host: {
+    '(window:keydown.h)': 'onToggleHud($event)'
+  },
   template: `
     <div class="relative w-full h-screen bg-slate-950 overflow-hidden isolate">
       
       <!-- 1. Viewport Layer (Bottom) - Z=0 -->
-      <main class="absolute inset-0 z-0 select-none outline-none touch-none" aria-label="3D Viewport">
+      <main #viewport class="absolute inset-0 z-0 select-none outline-none touch-none" aria-label="3D Viewport">
           <canvas #renderCanvas class="block w-full h-full"></canvas>
       </main>
 
       <!-- 2. Interaction Overlay Layer (Touch Controls) - Z=20 -->
-      <!-- Wrapper must be pointer-events-none to allow pass-through to canvas where no controls exist -->
       <div class="absolute inset-0 z-20 pointer-events-none">
-          <!-- Mobile Controls -->
-          @if (layout.isMobile() && !engine.mainMenuVisible()) {
-              <div class="absolute inset-0 pointer-events-none">
-                  <app-touch-controls (toggleInspector)="layout.toggleRight()" />
-              </div>
+          @if ((layout.isTouch() || layout.isMobile()) && !engine.mainMenuVisible()) {
+              <app-touch-controls (toggleInspector)="layout.toggleRight()" />
           }
       </div>
 
@@ -48,13 +49,15 @@ import { GameHudComponent } from './ui/game-hud.component';
 
       <!-- 4. System Overlay Layer (Context Menus, Modals) - Z=50+ -->
       <div class="absolute inset-0 z-50 pointer-events-none">
-          <!-- Context Menu -->
+          <app-system-launcher />
+
           @if (contextMenu(); as cm) {
-             <div class="absolute inset-0 pointer-events-auto">
+             <div class="fixed inset-0 z-[100] pointer-events-auto bg-black/5 backdrop-blur-[1px]" (click)="closeContextMenu()">
                  <app-context-menu 
                     [x]="cm.x" 
                     [y]="cm.y" 
                     [entityId]="cm.entity"
+                    (click)="$event.stopPropagation()"
                     (select)="selectEntity($event)"
                     (duplicate)="duplicateEntity($event)"
                     (delete)="deleteEntity($event)"
@@ -63,13 +66,12 @@ import { GameHudComponent } from './ui/game-hud.component';
              </div>
           }
 
-          <!-- Spawn Menu -->
           @if (layout.spawnMenuVisible()) {
               <app-spawn-menu (close)="layout.closeSpawnMenu()" />
           }
       </div>
 
-      <!-- 5. Full Screen Blocking Layers - Z=100+ -->
+      <!-- 5. Full Screen Blocking Layers - Z=300+ -->
       @if (engine.mainMenuVisible() && !engine.loading()) {
          <app-main-menu />
       }
@@ -81,34 +83,46 @@ import { GameHudComponent } from './ui/game-hud.component';
     </div>
   `
 })
-export class MainLayoutComponent implements AfterViewInit {
-  @ViewChild('renderCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
+export class MainLayoutComponent implements AfterViewInit, OnDestroy {
+  canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('renderCanvas');
+  viewportRef = viewChild.required<ElementRef<HTMLElement>>('viewport');
   
   engine = inject(EngineService);
   interaction = inject(InteractionService);
   layout = inject(LayoutService);
 
   contextMenu = this.interaction.contextMenuRequest;
+  private resizeObserver: ResizeObserver | null = null;
 
   ngAfterViewInit() {
-    this.engine.init(this.canvasRef.nativeElement);
+    this.engine.init(this.canvasRef().nativeElement);
+    this.initResizeObserver();
     this.checkResponsive();
   }
 
-  @HostListener('window:resize')
-  onResize() {
-    this.engine.resize(window.innerWidth, window.innerHeight);
-    this.checkResponsive();
+  ngOnDestroy() {
+    this.resizeObserver?.disconnect();
+  }
+
+  private initResizeObserver() {
+    this.resizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+            const { width, height } = entry.contentRect;
+            if (width > 0 && height > 0) {
+                this.engine.resize(width, height);
+            }
+        }
+    });
+    this.resizeObserver.observe(this.viewportRef().nativeElement);
   }
   
-  @HostListener('window:keydown.h', ['$event'])
   onToggleHud(event: KeyboardEvent) {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       this.engine.viewport.toggleHud();
   }
 
   private checkResponsive() {
-    if (this.layout.isMobile()) {
+    if (this.layout.isMobile() || this.layout.isTouch()) {
        this.engine.viewport.setGizmoConfig({ size: 1.5 });
     } else {
        this.engine.viewport.setGizmoConfig({ size: 1.0 });

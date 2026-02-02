@@ -1,4 +1,3 @@
-
 import { BUILDING_TEMPLATES } from './templates/buildings';
 import { PROP_TEMPLATES } from './templates/props';
 import { NATURE_TEMPLATES } from './templates/nature';

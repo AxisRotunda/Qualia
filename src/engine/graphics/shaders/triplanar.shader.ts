@@ -1,6 +1,5 @@
 
 export const TRIPLANAR_VERTEX_HEAD = `
-    #include <common>
     varying vec3 vWorldPosition;
     varying vec3 vWorldNormal;
 `;
@@ -12,7 +11,6 @@ export const TRIPLANAR_VERTEX_MAIN = `
 `;
 
 export const TRIPLANAR_FRAGMENT_HEAD = `
-    #include <common>
     varying vec3 vWorldPosition;
     varying vec3 vWorldNormal;
     uniform float uTriplanarScale;
@@ -20,22 +18,26 @@ export const TRIPLANAR_FRAGMENT_HEAD = `
 
 export const TRIPLANAR_FRAGMENT_MAP = `
     #ifdef USE_MAP
-        // Triplanar Weights
-        vec3 absNorm = abs(vWorldNormal);
-        absNorm /= (absNorm.x + absNorm.y + absNorm.z);
+        // Triplanar Weights (sharpened)
+        vec3 blending = abs(vWorldNormal);
+        blending = normalize(max(blending, 0.00001));
+        float b = (blending.x + blending.y + blending.z);
+        blending /= vec3(b);
+
+        // Scale factor
+        float scale = uTriplanarScale;
         
         // UVs
-        vec2 uvX = vWorldPosition.yz * uTriplanarScale;
-        vec2 uvY = vWorldPosition.xz * uTriplanarScale;
-        vec2 uvZ = vWorldPosition.xy * uTriplanarScale;
+        vec2 uvX = vWorldPosition.zy * scale;
+        vec2 uvY = vWorldPosition.xz * scale;
+        vec2 uvZ = vWorldPosition.xy * scale;
         
         // Samples
         vec4 texX = texture2D(map, uvX);
         vec4 texY = texture2D(map, uvY);
         vec4 texZ = texture2D(map, uvZ);
         
-        // Blend
-        vec4 blendedColor = texX * absNorm.x + texY * absNorm.y + texZ * absNorm.z;
-        diffuseColor *= blendedColor;
+        // Final Blended Color
+        diffuseColor *= (texX * blending.x + texY * blending.y + texZ * blending.z);
     #endif
 `;

@@ -31,6 +31,7 @@ Wrapper around `Map<Entity, T>` optimized for iteration speed and cache locality
 | `meshes` | `MeshRef` | `{ mesh: THREE.Mesh }`. Link to Three.js. | Runtime |
 | `bodyDefs` | `PhysicsBodyDef` | Config used to spawn the body. | **Saved** |
 | `physicsProps` | `PhysicsProps` | `{ friction, restitution }`. | **Saved** |
+| `projectiles` | `Projectile` | `{ damage, spawnTime, ownerId }`. | Runtime |
 | `names` | `string` | User-facing label. | **Saved** |
 | `templateIds` | `string` | ID of the `EntityTemplate`. | **Saved** |
 
@@ -50,6 +51,12 @@ interface PhysicsBodyDef {
   fieldSize?: { rows: number, cols: number };
 }
 ```
+
+### 2.2 Projectile Data (SoA)
+Stored in `ProjectileStore` using parallel arrays:
+*   `damage`: `Float32Array`
+*   `spawnTime`: `Float64Array`
+*   `ownerId`: `Int32Array`
 
 ## 3. Entity Lifecycle (`EntityAssemblerService`)
 

@@ -2,32 +2,35 @@
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { GameInputService } from '../../services/game-input.service';
+import { CameraManagerService } from '../graphics/camera-manager.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FlyControlsService {
-  private input = inject(GameInputService);
+  private gameInput = inject(GameInputService);
+  private cameraManager = inject(CameraManagerService);
   
   private camera!: THREE.Camera;
-  private domElement!: HTMLElement;
   private enabled = false;
   
   private rotation = { pitch: 0, yaw: 0 };
-  
-  // Inertia state
   private velocity = new THREE.Vector3();
   
   // Configuration
-  speed = 10;
-  sensitivity = 0.0015; 
-  damping = 4.0; 
+  speed = 15; 
+  sensitivity = 0.002; 
+  damping = 6.0; 
+
+  // RUN_OPT: Scratch objects
+  private readonly _vecInput = new THREE.Vector3();
+  private readonly _vecFwd = new THREE.Vector3();
+  private readonly _vecRgt = new THREE.Vector3();
+  private readonly _vecUp = new THREE.Vector3(0, 1, 0);
+  private readonly _euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
   init(camera: THREE.Camera, domElement: HTMLElement) {
     this.camera = camera;
-    this.domElement = domElement;
-    
-    // Capture initial rotation
     const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
     this.rotation.pitch = euler.x;
     this.rotation.yaw = euler.y;
@@ -35,58 +38,63 @@ export class FlyControlsService {
 
   enable() {
     this.enabled = true;
+    this.velocity.set(0, 0, 0);
   }
 
   disable() {
     this.enabled = false;
-    this.velocity.set(0,0,0);
+    // Reset FOV when exiting mode
+    this.cameraManager.setFovOffset(0);
   }
 
   update(dt: number) {
     if (!this.enabled || !this.camera) return;
 
     const delta = dt / 1000;
-
-    // 1. Look
-    const look = this.input.getLookDelta();
+    const look = this.gameInput.getLookDelta(delta);
     
     this.rotation.yaw -= look.x * this.sensitivity;
-    this.rotation.pitch += look.y * this.sensitivity;
+    
+    // RUN_FIX: Inverted Pitch Logic (Standard Look)
+    // Up Input (Negative Delta) -> Pitch Increase (Look Up)
+    this.rotation.pitch -= look.y * this.sensitivity;
 
-    // Clamp pitch
     const limit = Math.PI / 2 - 0.1; 
     this.rotation.pitch = Math.max(-limit, Math.min(limit, this.rotation.pitch));
 
-    this.camera.quaternion.setFromEuler(new THREE.Euler(this.rotation.pitch, this.rotation.yaw, 0, 'YXZ'));
+    this._euler.set(this.rotation.pitch, this.rotation.yaw, 0, 'YXZ');
+    this.camera.quaternion.setFromEuler(this._euler);
     
-    // 2. Move
-    const moveDir = this.input.getMoveDir(); // x: Right, y: Forward
-    const vertical = this.input.getAscend(); // +1 Up, -1 Down
+    const moveInput = this.gameInput.getMoveDir(); 
+    const ascendInput = this.gameInput.getAscend(); 
     
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    const up = new THREE.Vector3(0, 1, 0); 
+    // RUN_INDUSTRY: Sprint / Turbo Mode
+    const isSprinting = this.gameInput.getRun();
+    const currentSpeed = isSprinting ? this.speed * 2.5 : this.speed;
 
-    const inputDir = new THREE.Vector3();
+    this._vecFwd.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    this._vecRgt.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
 
-    if (Math.abs(moveDir.y) > 0.01) inputDir.addScaledVector(forward, moveDir.y);
-    if (Math.abs(moveDir.x) > 0.01) inputDir.addScaledVector(right, moveDir.x);
-    if (Math.abs(vertical) > 0.01) inputDir.addScaledVector(up, vertical);
+    this._vecInput.set(0, 0, 0);
+    if (Math.abs(moveInput.y) > 0.01) this._vecInput.addScaledVector(this._vecFwd, moveInput.y);
+    if (Math.abs(moveInput.x) > 0.01) this._vecInput.addScaledVector(this._vecRgt, moveInput.x);
+    if (Math.abs(ascendInput) > 0.01) this._vecInput.addScaledVector(this._vecUp, ascendInput);
 
-    if (inputDir.lengthSq() > 1) {
-        inputDir.normalize();
+    if (this._vecInput.lengthSq() > 1) this._vecInput.normalize();
+
+    this._vecInput.multiplyScalar(currentSpeed);
+    const lerpAlpha = Math.min(1.0, this.damping * delta);
+    this.velocity.lerp(this._vecInput, lerpAlpha);
+
+    const speedSq = this.velocity.lengthSq();
+    if (speedSq > 0.0001) {
+        this.camera.position.addScaledVector(this.velocity, delta);
     }
 
-    // 3. Apply Acceleration / Inertia
-    const targetVelocity = inputDir.multiplyScalar(this.speed);
-    
-    const lerpFactor = Math.min(1, this.damping * delta);
-    this.velocity.lerp(targetVelocity, lerpFactor);
-
-    // 4. Apply Velocity
-    if (this.velocity.lengthSq() > 0.001) {
-        const moveVec = this.velocity.clone().multiplyScalar(delta);
-        this.camera.position.add(moveVec);
-    }
+    // RUN_INDUSTRY: FOV Effect based on speed ratio
+    // Target FOV increases by up to 10 degrees at max turbo speed
+    const maxSpeedSq = (this.speed * 2.5) ** 2;
+    const speedRatio = Math.min(1.0, speedSq / maxSpeedSq);
+    this.cameraManager.setFovOffset(speedRatio * 12.0);
   }
 }

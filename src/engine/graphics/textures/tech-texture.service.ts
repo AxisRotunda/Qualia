@@ -42,6 +42,11 @@ export class TechTextureService {
     return this.createAsyncTexture('tech-vent', { size: 512 }, scale);
   }
 
+  createIndustrialRust(scale = 1): THREE.Texture {
+      // Uses FBM/Worley noise via worker for complex organic corrosion
+      return this.createAsyncTexture('industrial-rust', { size: 512 }, scale);
+  }
+
   // --- PBR Metal ---
   
   createScratchedMetal(scale = 1): THREE.Texture {
@@ -50,5 +55,15 @@ export class TechTextureService {
 
   createScratchedMetalNormal(scale = 1): THREE.Texture {
       return this.createAsyncTexture('scratched-metal-normal', { size: 512 }, scale, true);
+  }
+
+  // --- Weapon Textures ---
+
+  createTechGrip(scale = 1): THREE.Texture {
+      return this.createAsyncTexture('tech-grip', { size: 512 }, scale);
+  }
+
+  createTechGripNormal(scale = 1): THREE.Texture {
+      return this.createAsyncTexture('tech-grip-normal', { size: 512 }, scale, true);
   }
 }

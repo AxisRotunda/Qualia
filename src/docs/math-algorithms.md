@@ -59,17 +59,26 @@ $V$: box $whd$, sphere $\frac{4}{3}\pi r^3$, cyl $\pi r^2 h$, cone $\frac{1}{3}\
 $$
 F_b = \rho_f g dt \cdot \left(\frac{M}{\rho_o}\right) S,\quad S = \mathrm{clamp}\left(\frac{d}{h},0,1\right)
 $$
-**Drag**:
+**Hydrodynamic Drag**:
 $$
 F_d = -\hat{v} (C_L |v| + C_Q |v|^2) A \rho_f,\quad A = V^{2/3}
 $$
 
-### 2.3 Spring Joint
+### 2.3 Aerodynamic Drag (Ballistics)
+Hard Realism requires Quadratic Drag, not Linear Damping.
+$$
+F_{drag} = -\frac{1}{2} \rho_{air} v^2 C_d A
+$$
+*   $\rho_{air} \approx 1.225 \, kg/m^3$
+*   $C_d \approx 0.47$ (Sphere)
+*   $A \approx \pi r^2$
+
+### 2.4 Spring Joint
 $$
 k = \mathrm{clamp}(k_b M_t,10,20000),\quad c = 1.6 \sqrt{k M}
 $$
 
-### 2.4 Accumulator
+### 2.5 Accumulator
 $$
 a \leftarrow a + \Delta t_r;\quad\mathrm{while}(a \ge \Delta t_p)\{\mathrm{step}();\ a \leftarrow a - \Delta t_p\};\quad\alpha = a / \Delta t_p
 $$
@@ -84,12 +93,21 @@ Wave 2 chop: $\sin^3(\cdot)$.
 
 **Normal**: $\epsilon=0.1$,
 $$
-n = \frac{(p_x - p) \times (p_z - p)}{||(p_x - p) \times (p_z - p)||}
+n = \frac{(p_x - p) \times (p_z - p)}{||(p_x - p) \times (p_z - p injection)}
 $$
 
 ### 3.2 Triplanar
 $$
 w_{xyz} = \frac{|n_{xyz}|}{\sum |n_i|},\quad C = \sum w_i C_i(p_i)
+$$
+
+### 3.3 Volumetric Height-Fog (RUN_VOLUMETRICS)
+Exponential vertical density modulation applied to standard distance-based fog factor.
+$$
+D_v = \mathrm{clamp}(e^{-(y - y_{base}) \cdot \sigma_v}, 0, 1)
+$$
+$$
+F_{final} = F_{dist} \cdot D_v
 $$
 
 ## 4. Input/Camera

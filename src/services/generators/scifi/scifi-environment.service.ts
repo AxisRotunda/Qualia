@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { Geo } from '../architecture/architecture.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -25,11 +26,12 @@ export class SciFiEnvironmentService {
               ring.translate(0, y + segmentH/2, 0);
               concreteParts.push(ring);
               
-              const r1 = new THREE.BoxGeometry(width+2, 1, 1); r1.translate(0, y+5, -width/2 - 0.5);
-              const r2 = new THREE.BoxGeometry(width+2, 1, 1); r2.translate(0, y+5, width/2 + 0.5);
-              const r3 = new THREE.BoxGeometry(1, 1, width); r3.translate(-width/2 - 0.5, y+5, 0);
-              const r4 = new THREE.BoxGeometry(1, 1, width); r4.translate(width/2 + 0.5, y+5, 0);
-              concreteParts.push(r1, r2, r3, r4);
+              concreteParts.push(
+                  Geo.box(width+2, 1, 1).toNonIndexed().translate(0, y+5, -width/2 - 0.5).get(),
+                  Geo.box(width+2, 1, 1).toNonIndexed().translate(0, y+5, width/2 + 0.5).get(),
+                  Geo.box(1, 1, width).toNonIndexed().translate(-width/2 - 0.5, y+5, 0).get(),
+                  Geo.box(1, 1, width).toNonIndexed().translate(width/2 + 0.5, y+5, 0).get()
+              );
 
           } else if (y < 300) {
               const cave = this.createShaftRing(width + (Math.random()*4), segmentH, 2.0, 1.5);
@@ -71,7 +73,11 @@ export class SciFiEnvironmentService {
       const walls: THREE.BufferGeometry[] = [];
       
       const mkWall = (w: number, d: number, dx: number, dz: number) => {
-          const g = new THREE.BoxGeometry(w, height, d, 4, 4, 4);
+          // Use segments (4,4,4) for noise resolution if needed
+          const segs = noise > 0 ? 4 : 1;
+          const geoBuilder = Geo.box(w, height, d, segs, segs, segs).toNonIndexed();
+          const g = geoBuilder.get();
+
           if (noise > 0) {
               const pos = g.getAttribute('position');
               const v = new THREE.Vector3();
@@ -83,7 +89,7 @@ export class SciFiEnvironmentService {
               }
               g.computeVertexNormals();
           }
-          g.translate(dx, 0, dz);
+          geoBuilder.translate(dx, 0, dz);
           return g;
       };
 

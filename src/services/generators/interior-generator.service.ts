@@ -17,12 +17,28 @@ export class InteriorGeneratorService {
     return this.structureGen.generateWallSegment(w, h, thick);
   }
 
+  generateDoorway(w: number, h: number, thick: number): THREE.BufferGeometry | null {
+    return this.structureGen.generateDoorway(w, h, thick);
+  }
+
+  generateWindowWall(w: number, h: number, thick: number): THREE.BufferGeometry | null {
+    return this.structureGen.generateWindowWall(w, h, thick);
+  }
+
   generateSofa(): THREE.BufferGeometry | null {
     return this.furnishingsGen.generateSofa();
   }
 
+  generateBed(): THREE.BufferGeometry | null {
+    return this.furnishingsGen.generateBed();
+  }
+
   generateChandelier(): THREE.BufferGeometry | null {
     return this.furnishingsGen.generateChandelier();
+  }
+
+  generateOfficeChair(): THREE.BufferGeometry | null {
+    return this.furnishingsGen.generateOfficeChair();
   }
 
   generateStaircase(width: number, height: number, depth: number, steps: number): THREE.BufferGeometry | null {

@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { PhysicsBodyDef } from '../../engine/schema';
+import { Geo } from './geo-builder';
 
 @Injectable({
   providedIn: 'root'
@@ -32,10 +33,10 @@ export class PrimitiveRegistryService {
 
       let geo: THREE.BufferGeometry;
       // Ghosts are always low poly (LOD 2 equivalent)
-      if (type === 'box') geo = new THREE.BoxGeometry(size.x, size.y, size.z);
-      else if (type === 'cylinder') geo = new THREE.CylinderGeometry(size.x, size.x, size.y, 16);
-      else if (type === 'cone') geo = new THREE.ConeGeometry(size.x, size.y, 16);
-      else geo = new THREE.SphereGeometry(size.x, 16, 16);
+      if (type === 'box') geo = Geo.box(size.x, size.y, size.z).get();
+      else if (type === 'cylinder') geo = Geo.cylinder(size.x, size.x, size.y, 16).get();
+      else if (type === 'cone') geo = Geo.cone(size.x, size.y, 16).get();
+      else geo = Geo.sphere(size.x, 16, 16).get();
 
       this.cache.set(key, geo);
       return geo;
@@ -43,24 +44,34 @@ export class PrimitiveRegistryService {
 
   private generateGeometry(data: PhysicsBodyDef, lod: number): THREE.BufferGeometry {
     // LOD Heuristics (Self-Learning from Protocol)
-    // LOD 0: 32 segments
-    // LOD 1: 16 segments
-    // LOD 2: 8 segments
     const radialSegs = lod === 0 ? 32 : (lod === 1 ? 16 : 8);
-    const heightSegs = lod === 0 ? 1 : 1; 
-
+    
     switch (data.type) {
       case 'box':
-        // Boxes don't really have LODs unless we bevel them (not implemented yet)
-        return new THREE.BoxGeometry(data.size!.w, data.size!.h, data.size!.d);
+        // RUN_GEO: Ensure UVs are scaled for box mapping to prevent texture stretch
+        return Geo.box(data.size!.w, data.size!.h, data.size!.d)
+                  .mapBox(data.size!.w, data.size!.h, data.size!.d)
+                  .get();
+                  
       case 'cylinder':
-        return new THREE.CylinderGeometry(data.radius, data.radius, data.height, radialSegs, heightSegs);
+        // RUN_GEO: Normalize UVs for cylindrical mapping
+        return Geo.cylinder(data.radius!, data.radius!, data.height!, radialSegs)
+                  .mapCylinder(data.radius!, data.height!)
+                  .get();
+                  
       case 'cone':
-        return new THREE.ConeGeometry(data.radius, data.height, radialSegs, heightSegs);
+        return Geo.cone(data.radius!, data.height!, radialSegs).get();
+        
+      case 'capsule':
+        // Polyfill for Capsule using Three.js built-in geometry
+        // Height in CapsuleGeometry is the Length of the cylindrical part
+        const capHeight = Math.max(0, data.height! - (data.radius! * 2));
+        return new THREE.CapsuleGeometry(data.radius, capHeight, 4, radialSegs * 2);
+
       case 'sphere':
       default:
         // Spheres degrade to 16x16 or 8x8
-        return new THREE.SphereGeometry(data.radius!, radialSegs, Math.max(8, radialSegs / 2));
+        return Geo.sphere(data.radius!, radialSegs, Math.max(8, radialSegs / 2)).get();
     }
   }
 
@@ -73,6 +84,7 @@ export class PrimitiveRegistryService {
     if (data.type === 'box') return `box_${data.size?.w}_${data.size?.h}_${data.size?.d}`;
     if (data.type === 'cylinder') return `cyl_${data.radius}_${data.height}`;
     if (data.type === 'cone') return `cone_${data.radius}_${data.height}`;
+    if (data.type === 'capsule') return `cap_${data.radius}_${data.height}`;
     if (data.type === 'sphere') return `sph_${data.radius}`;
     return 'unknown';
   }

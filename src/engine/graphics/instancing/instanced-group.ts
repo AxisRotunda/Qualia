@@ -138,4 +138,15 @@ export class InstancedGroup {
   getEntityId(instanceId: number): Entity | null {
     return this.indexToEntity.get(instanceId) ?? null;
   }
+
+  dispose() {
+      // Release GPU resources
+      this.mesh.geometry.dispose();
+      // Reset tracking state
+      this.activeEntries.length = 0;
+      this.entityToEntryIndex.clear();
+      this.indexToEntity.clear();
+      this.freeIndices.length = 0;
+      this.highWaterMark = 0;
+  }
 }

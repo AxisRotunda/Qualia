@@ -21,13 +21,14 @@ export class BootstrapService {
   private interaction = inject(InteractionService);
   private debugService = inject(DebugService);
   
-  // Fixed: Removed injected EngineService to break circular dependency (NG0200)
-
   async init(canvas: HTMLCanvasElement, engine: EngineService) {
     try {
       // 1. Initialize Core Systems (Physics & Graphics)
       await this.sys.physics.init();
       this.sys.scene.init(canvas);
+      
+      // RUN_THREAD: Warm up procedural generation pool
+      (this.sys.assets as any).natureGen?.terrain?.warmup();
       
       // 2. Bind Input & Interaction
       this.interaction.bind(canvas);
@@ -37,11 +38,12 @@ export class BootstrapService {
       this.debugService.init(engine);
 
       // 4. Start Runtime Loop
-      this.state.loading.set(false);
+      this.state.setLoading(false); 
       this.runtime.init();
       
       // 5. Load Default Level
-      this.level.loadScene(engine, 'city');
+      // RUN_SCENE_OPT: Switched to 'proving-grounds'
+      this.level.loadScene(engine, 'proving-grounds');
       
     } catch (err) {
       console.error("CRITICAL: Engine Boot Sequence Failed", err);

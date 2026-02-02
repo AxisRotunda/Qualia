@@ -2,6 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { TextureGeneratorService } from '../engine/graphics/texture-generator.service';
+import { EnvironmentManagerService } from '../engine/graphics/environment-manager.service';
 import { MATERIAL_DEFINITIONS } from '../config/material.config';
 import { TEXTURE_DEFINITIONS } from '../config/texture.config';
 import { registerCustomMaterials } from '../engine/graphics/materials/custom-material.registry';
@@ -11,6 +12,7 @@ import { registerCustomMaterials } from '../engine/graphics/materials/custom-mat
 })
 export class MaterialService {
   private texGen = inject(TextureGeneratorService);
+  private envManager = inject(EnvironmentManagerService);
   
   private materialRegistry = new Map<string, THREE.Material | THREE.Material[]>();
   private textures = new Map<string, THREE.Texture>();
@@ -74,7 +76,12 @@ export class MaterialService {
         this.materialRegistry.set(def.id, mat);
     });
 
-    registerCustomMaterials(this.materialRegistry, (id) => this.getTexture(id));
+    // RUN_SHADER: Pass fog uniforms to allow volumetric height fog injection
+    registerCustomMaterials(
+        this.materialRegistry, 
+        (id) => this.getTexture(id),
+        this.envManager.heightFogUniforms
+    );
   }
 
   setTexturesEnabled(enabled: boolean) {

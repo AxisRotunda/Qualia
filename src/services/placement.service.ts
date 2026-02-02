@@ -40,7 +40,7 @@ export class PlacementService {
     this.currentTemplate.set(tpl);
     this.active.set(true);
     this.valid.set(true);
-    this.state.isPlacementActive.set(true);
+    this.state.setPlacementActive(true);
 
     this.ghost = this.ghostService.createGhostFromTemplate(tpl);
     this.sceneService.getScene().add(this.ghost);
@@ -53,7 +53,7 @@ export class PlacementService {
 
   stopPlacement() {
     this.active.set(false);
-    this.state.isPlacementActive.set(false);
+    this.state.setPlacementActive(false);
     this.currentTemplate.set(null);
     
     if (this.ghost) {

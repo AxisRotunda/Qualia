@@ -2,7 +2,7 @@
 import { Injectable, inject, Injector } from '@angular/core';
 import { GameSystem } from '../system';
 import { EngineStateService } from '../engine-state.service';
-import { SceneRegistryService } from '../../services/scene-registry.service';
+import { SceneRegistryService } from '../level/scene-registry.service';
 import { EngineService } from '../../services/engine.service';
 
 @Injectable({ providedIn: 'root' })

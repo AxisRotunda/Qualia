@@ -6,6 +6,8 @@ import { NatureGeneratorService } from './generators/nature-generator.service';
 import { ArchitectureGeneratorService } from './generators/architecture-generator.service';
 import { InteriorGeneratorService } from './generators/interior-generator.service';
 import { SciFiGeneratorService } from './generators/scifi-generator.service';
+import { WeaponGeneratorService } from './generators/weapon-generator.service';
+import { ActorGeneratorService } from './generators/actor-generator.service';
 import { ASSET_CONFIG } from '../config/asset.config';
 import { GeneratorContext } from '../config/asset-types';
 
@@ -18,6 +20,8 @@ export class AssetService {
   public readonly archGen = inject(ArchitectureGeneratorService);
   public readonly interiorGen = inject(InteriorGeneratorService);
   public readonly scifiGen = inject(SciFiGeneratorService);
+  public readonly weaponGen = inject(WeaponGeneratorService);
+  public readonly actorGen = inject(ActorGeneratorService);
   
   private geometries = new Map<string, THREE.BufferGeometry>();
 
@@ -27,7 +31,9 @@ export class AssetService {
           nature: this.natureGen,
           arch: this.archGen,
           interior: this.interiorGen,
-          scifi: this.scifiGen
+          scifi: this.scifiGen,
+          weapon: this.weaponGen,
+          actor: this.actorGen
       };
   }
 

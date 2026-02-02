@@ -1,15 +1,20 @@
 
 export const NOISE_FUNCTIONS = `
-    // --- High-Performance Integer Hash (Squirrel3/Murmur Variant) ---
-    function hash(n) {
-        let i = Math.floor(n);
-        i = Math.imul(i, 0xB5297A4D);
-        i ^= i >>> 8;
-        i = Math.imul(i, 0x68E31DA4);
-        i ^= i << 8;
-        i = Math.imul(i, 0x1B56C4E9);
-        i ^= i >>> 8;
-        return (i >>> 0) / 4294967296.0;
+    // --- Optimized Bitwise Hash (Murmur3 Variant) ---
+    // RUN_OPT: Replaced sine-based hashing with integer permutations for high-frequency terrain loops.
+    function hash(x, z) {
+        let h = (Math.imul(x, 0xCC9E2D51) | 0);
+        h = (h << 15) | (h >>> 17);
+        h = (Math.imul(h, 0x1B873593) | 0);
+        h ^= (Math.imul(z, 0x85EBCA6B) | 0);
+        h = (h << 13) | (h >>> 19);
+        h = (Math.imul(h, 0x5) + 0xE6546B64) | 0;
+        h ^= h >>> 16;
+        h = (Math.imul(h, 0x85EBCA6B) | 0);
+        h ^= h >>> 13;
+        h = (Math.imul(h, 0xC2B2AE35) | 0);
+        h ^= h >>> 16;
+        return (h >>> 0) / 4294967296.0;
     }
     
     function noise(x, z) {
@@ -18,36 +23,20 @@ export const NOISE_FUNCTIONS = `
         const fractX = x - floorX;
         const fractZ = z - floorZ;
         
-        // Quintic Interpolation
+        // Quintic Interpolation (C2 Continuity)
         const u = fractX * fractX * fractX * (fractX * (fractX * 6 - 15) + 10);
         const v = fractZ * fractZ * fractZ * (fractZ * (fractZ * 6 - 15) + 10);
         
-        const n00 = hash(floorX + floorZ * 57.0);
-        const n10 = hash(floorX + 1.0 + floorZ * 57.0);
-        const n01 = hash(floorX + (floorZ + 1.0) * 57.0);
-        const n11 = hash(floorX + 1.0 + (floorZ + 1.0) * 57.0);
+        const n00 = hash(floorX, floorZ);
+        const n10 = hash(floorX + 1, floorZ);
+        const n01 = hash(floorX, floorZ + 1);
+        const n11 = hash(floorX + 1, floorZ + 1);
         
         const x1 = n00 + u * (n10 - n00);
         const x2 = n01 + u * (n11 - n01);
         return x1 + v * (x2 - x1);
     }
 
-    // Standard FBM
-    function fbm(x, z, octaves) {
-        let total = 0;
-        let amplitude = 1.0;
-        let frequency = 1.0;
-        let maxValue = 0;
-        for(let i = 0; i < octaves; i++) {
-            total += noise(x * frequency, z * frequency) * amplitude;
-            maxValue += amplitude;
-            amplitude *= 0.5;
-            frequency *= 2.0;
-        }
-        return total / maxValue;
-    }
-
-    // Ridged Multifractal Noise (Volcanic/Glacial peaks)
     function ridgedFbm(x, z, octaves) {
         let total = 0;
         let amplitude = 1.0;
@@ -57,103 +46,100 @@ export const NOISE_FUNCTIONS = `
 
         for(let i = 0; i < octaves; i++) {
             let n = noise(x * frequency, z * frequency);
-            n = 1.0 - Math.abs(n); // Invert ridges
-            n = n * n; // Sharpen
-            n *= weight;
-            weight = n; // Weight next octave by current (erosion simulation)
+            n = 1.0 - Math.abs(n * 2.0 - 1.0); 
+            n = n * n * weight;
+            weight = Math.max(0.0, Math.min(1.0, n * 2.0));
             
             total += n * amplitude;
             maxValue += amplitude;
             amplitude *= 0.5;
             frequency *= 2.0;
         }
-        return total / maxValue;
+        // Division-by-zero safeguard
+        return maxValue > 0 ? total / maxValue : 0;
     }
 
-    // Domain Warping
     function warp(x, z) {
-        const qx = ridgedFbm(x + 0.0, z + 0.0, 4);
+        const qx = ridgedFbm(x, z, 4);
         const qz = ridgedFbm(x + 5.2, z + 1.3, 4);
-
-        const rx = ridgedFbm(x + 4.0 * qx + 1.7, z + 4.0 * qz + 9.2, 4);
-        const rz = ridgedFbm(x + 4.0 * qx + 8.3, z + 4.0 * qz + 2.8, 4);
-
-        return ridgedFbm(x + 4.0 * rx, z + 4.0 * rz, 4);
+        return ridgedFbm(x + 4.0 * qx, z + 4.0 * qz, 4);
     }
 
-    function duneNoise(x, z) {
-        let nx = x * 0.02;
-        let nz = z * 0.02;
-        let n = noise(nx, nz);
-        n = 1.0 - Math.abs(n);
-        n = n * n; 
-        const ripples = noise(x * 0.15, z * 0.15 + n * 2.0) * 0.05;
-        return n * 12.0 + ripples; 
+    function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
     }
 
-    // --- Biome Logic (Self-Optimizing Protocol) ---
-    // Returns mixture weights. [0] = Mountains, [1] = Plains
-    function getBiome(x, z) {
-        // Large scale noise for biome transitions (e.g. 500m)
-        const scale = 0.002; 
-        const val = noise(x * scale, z * scale);
-        // Smoothstep for sharper transition
-        const t = val * val * (3 - 2 * val); 
-        return t; // 0 = Plains, 1 = Mountains
+    function mix(x, y, a) {
+        return x * (1 - a) + y * a;
     }
 
     function getHeight(x, z, type) {
         if (type === 'dunes') {
-            const distSq = x*x + z*z;
-            const craterRadius = 45.0;
-            const waterRadius = 25.0;
-            let h = duneNoise(x, z);
-            if (distSq < (craterRadius * craterRadius)) {
-                const dist = Math.sqrt(distSq);
-                let factor = Math.max(0, (dist - waterRadius) / (craterRadius - waterRadius));
-                const ease = factor * factor * (3 - 2 * factor); 
-                const targetH = -4.0;
-                if (dist < waterRadius) {
-                    h = targetH;
+            const nx = x * 0.02;
+            const nz = z * 0.02;
+            let n = noise(nx, nz);
+            n = 1.0 - Math.abs(n * 2.0 - 1.0);
+            return n * n * 12.0 + noise(x * 0.15, z * 0.15) * 0.2;
+        } else if (type === 'islands') {
+            // --- RIGID ATOLL MORPHOLOGY ---
+            const dist = Math.sqrt(x*x + z*z);
+            const ringRadius = 80.0;
+            const ringWidth = 35.0; 
+            
+            // Organic perturbation (Coastline jitter)
+            const pDist = dist + noise(x * 0.04, z * 0.04) * 12.0;
+            
+            // Ring SDF: 0.0 at center/far-ocean, 1.0 at ring peak
+            let ringShape = 1.0 - (Math.abs(pDist - ringRadius) / ringWidth);
+            
+            // Detail Noise (Coral / Rock) - Warped for craggy look
+            let detail = warp(x * 0.03, z * 0.03) * 6.0; 
+            
+            // Elevations
+            const deepOcean = -25.0;
+            const reefShelf = -3.0; 
+            const beach = 1.2;      
+            const ridge = 9.0;      
+            const lagoonBed = -5.0;
+            
+            let h = deepOcean;
+            
+            if (ringShape > 0.0) {
+                // Inside the ring influence
+                // 1. The Shelf (Reef base)
+                let hShelf = mix(deepOcean, reefShelf, smoothstep(0.0, 0.15, ringShape));
+                
+                // 2. The Land (Beach to Ridge)
+                let hLand = mix(beach, ridge, smoothstep(0.4, 0.9, ringShape));
+                
+                // 3. Composite Blend (Trapezoidal shaping)
+                h = mix(hShelf, hLand, smoothstep(0.25, 0.4, ringShape));
+                
+                // Add detail only to the land/reef parts
+                h += detail * smoothstep(0.1, 0.3, ringShape);
+            } else {
+                // Inside Lagoon or Deep Ocean
+                if (pDist < ringRadius) {
+                    h = lagoonBed + noise(x*0.1, z*0.1) * 2.0;
                 } else {
-                    h = (targetH * (1.0 - ease)) + (h * ease);
+                    h = deepOcean;
                 }
             }
+            
             return h;
-        } else if (type === 'biome') {
-            // Mixed Terrain Logic
-            const mix = getBiome(x, z);
-            
-            // 1. Plains (Low FBM)
-            const hPlains = fbm(x * 0.01, z * 0.01, 3) * 5.0;
-            
-            // 2. Mountains (Warped Ridges)
-            const hMount = warp(x * 0.015, z * 0.015);
-            const hMountScaled = (hMount - 0.5) * 2.0; 
-            const hMountFinal = Math.sign(hMountScaled) * Math.pow(Math.abs(hMountScaled), 1.2) * 40;
 
-            // Blend
-            return (hPlains * (1.0 - mix)) + (hMountFinal * mix);
-
+        } else if (type === 'volcano') {
+            const dist = Math.sqrt(x*x + z*z);
+            let shape = 120.0 * Math.exp(-dist * 0.015);
+            const crater = 80.0 * Math.exp(-dist * 0.05);
+            shape -= crater;
+            const detail = warp(x * 0.02, z * 0.02) * 15.0;
+            const parkMask = smoothstep(150.0, 200.0, dist);
+            return (shape + detail) * (1.0 - parkMask * 0.5);
         } else {
-            // Hard Realism: Glacial/Rocky (Standard)
-            const scale = 0.015; // Slightly larger scale features
-            const nx = x * scale;
-            const nz = z * scale;
-            
-            // Domain Warped Ridged Noise
-            let h = warp(nx, nz);
-            
-            // Nonlinear scaling for dramatic peaks
-            h = (h - 0.5) * 2.0; // -1 to 1
-            h = Math.sign(h) * Math.pow(Math.abs(h), 1.2); 
-            
-            h = h * 35; // Vertical Scale
-            
-            // Base noise for floor variation
-            h += noise(x * 0.1, z * 0.1) * 0.5;
-            
-            return h;
+            let h = warp(x * 0.015, z * 0.015);
+            return (h - 0.5) * 70.0;
         }
     }
 `;

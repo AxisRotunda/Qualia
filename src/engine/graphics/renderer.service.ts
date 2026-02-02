@@ -10,43 +10,46 @@ export class RendererService {
   public pmremGenerator!: THREE.PMREMGenerator;
 
   init(canvas: HTMLCanvasElement) {
-    // Renderer Setup - HIGH REALISM CONFIG
+    // RUN_INDUSTRY: Advanced Mobile Hardware Detection
+    const isMobile = window.innerWidth < 1024 || window.matchMedia('(pointer: coarse)').matches;
+    
+    // On high-DPI mobile, MSAA (antialias) is often unnecessary and costly.
     this.renderer = new THREE.WebGLRenderer({ 
       canvas, 
-      antialias: false, // Disabling MSAA on mobile by default for performance
+      antialias: !isMobile, 
       powerPreference: 'high-performance',
       stencil: false,
-      depth: true
+      depth: true,
+      alpha: false
     });
     
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     
-    // CRITICAL OPTIMIZATION: Mobile GPUs cannot handle DPR > 1.0 with PBR and Shadows.
-    // We strictly cap DPR to 1.0 on mobile, and 1.5 on desktop (2.0 is usually overkill/slow).
-    const isMobile = window.innerWidth < 800;
+    // RUN_INDUSTRY: Enforce strict pixel ratio caps to prevent 4K/Retina fill-rate death
     this.renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
     
-    // Shadow Map
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
     
-    // Tone Mapping & Color Space for Hard Realism
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // Lowered exposure from 1.0 to 0.8 to help prevent whiteout in bright scenes
-    this.renderer.toneMappingExposure = 0.8; 
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Essential for correct PBR colors
+    this.renderer.toneMappingExposure = 1.25; 
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    // PMREM for IBL
     this.pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.pmremGenerator.compileEquirectangularShader();
+  }
+
+  setExposure(val: number) {
+      if (this.renderer) {
+          this.renderer.toneMappingExposure = val;
+      }
   }
 
   resize(width: number, height: number, camera: THREE.PerspectiveCamera) {
     if (!this.renderer) return;
     this.renderer.setSize(width, height);
     
-    // Re-evaluate DPR on resize (e.g. orientation change)
-    const isMobile = width < 800;
+    const isMobile = width < 1024 || window.matchMedia('(pointer: coarse)').matches;
     this.renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
 
     camera.aspect = width / height;
@@ -54,8 +57,9 @@ export class RendererService {
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera) {
-    if (!this.renderer) return;
-    this.renderer.render(scene, camera);
+    if (this.renderer) {
+        this.renderer.render(scene, camera);
+    }
   }
 
   get domElement(): HTMLCanvasElement {

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 import { InteriorAlgorithm } from '../algorithms/interior.algorithm';
@@ -26,7 +25,8 @@ export const INTERIOR_SCENE: ScenePreset = {
       InteriorAlgorithm.generateLobby(ctx, engine);
 
       engine.input.setMode('walk');
-      const cam = engine.sceneService.getCamera();
+      // FIX: Access scene service through sys
+      const cam = engine.sys.scene.getCamera();
       cam.position.set(0, 1.7, 18);
       cam.lookAt(0, 1.7, 0);
   }

@@ -27,31 +27,35 @@ export const SPACESHIP_SCENE: ScenePreset = {
 
       if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
 
-      const physicsFactory = engine.physicsFactory;
-      const assetService = engine.assetService;
+      // FIX: Access subsystems through sys
+      const physicsFactory = engine.sys.physicsFactory;
+      const assetService = engine.sys.assets;
 
       const spawnStructure = (id: string, x: number, y: number, z: number, rotationY = 0) => {
           const pos = new THREE.Vector3(x, y + 4, z);
           const rot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), rotationY);
           
-          const mesh = engine.visualsFactory.createMesh({
+          // FIX: Access visuals factory through sys
+          const mesh = engine.sys.visualsFactory.createMesh({
              type: 'box', handle: -1, position: pos, rotation: {x: rot.x, y: rot.y, z: rot.z, w: rot.w}
           }, { meshId: id });
           
-          if (mesh instanceof THREE.Mesh) engine.sceneGraph.addEntity(mesh);
+          // FIX: Access scene graph through sys
+          if (mesh instanceof THREE.Mesh) engine.sys.graph.addEntity(mesh);
           
           const geo = assetService.getGeometry(id);
           const bodyDef = physicsFactory.createTrimeshFromGeometry(geo, pos.x, pos.y, pos.z);
           
-          engine.physicsService.world.updateBodyTransform(bodyDef.handle, pos, {x: rot.x, y: rot.y, z: rot.z, w: rot.w});
+          // FIX: Access physics service through sys
+          engine.sys.physics.world.updateBodyTransform(bodyDef.handle, pos, {x: rot.x, y: rot.y, z: rot.z, w: rot.w});
 
           const entity = engine.world.createEntity();
-          engine.world.rigidBodies.add(entity, { handle: bodyDef.handle });
+          engine.world.rigidBodies.add(entity, bodyDef.handle);
           engine.world.meshes.add(entity, { mesh: mesh as THREE.Mesh });
           engine.world.transforms.add(entity, { position: pos, rotation: {x: rot.x, y: rot.y, z: rot.z, w: rot.w}, scale: {x:1,y:1,z:1} });
           engine.world.bodyDefs.add(entity, bodyDef);
           engine.world.names.add(entity, `Hull Segment ${entity}`);
-          engine.objectCount.update(c => c + 1);
+          engine.entityMgr.objectCount.update(c => c + 1);
       };
 
       const bridgeZ = -24;
@@ -77,7 +81,8 @@ export const SPACESHIP_SCENE: ScenePreset = {
       }
 
       engine.input.setMode('walk');
-      const cam = engine.sceneService.getCamera();
+      // FIX: Access scene service through sys
+      const cam = engine.sys.scene.getCamera();
       cam.position.set(0, 2, 0); 
       cam.lookAt(0, 2, bridgeZ);
   }

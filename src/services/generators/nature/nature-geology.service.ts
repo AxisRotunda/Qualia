@@ -2,228 +2,249 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { Geo } from '../architecture/architecture.utils';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NatureGeologyService {
 
-  generateRock(type: 'granite' | 'sedimentary' = 'granite', complexity: number = 1.0): THREE.BufferGeometry {
-    // 1. Base Topology: Dodecahedron provides better blocky variation than Icosahedron
-    // Scale detail of base geometry by complexity
+  // Deterministic RNG Factory
+  private mkRng(seed: number) {
+      let s = seed;
+      return () => {
+          s = (Math.imul(s, 0x41C64E6D) + 12345) & 0x7FFFFFFF;
+          return (s >>> 0) / 2147483648.0; // 0..1
+      };
+  }
+
+  generateGeyserVent(seed: number = 888): THREE.BufferGeometry {
+      const nextRnd = this.mkRng(seed);
+      const parts: THREE.BufferGeometry[] = [];
+
+      // Base Mound
+      const mound = Geo.cone(2.0, 1.0, 8).toNonIndexed().mapVertices(v => {
+          v.y *= 0.5; // Flatten
+          v.y += (nextRnd()-0.5) * 0.2;
+          // Noise radius
+          const angle = Math.atan2(v.z, v.x);
+          const r = Math.sqrt(v.x*v.x + v.z*v.z);
+          const noise = 1.0 + Math.sin(angle * 5) * 0.2;
+          v.x *= noise; v.z *= noise;
+      }).get();
+      parts.push(mound);
+
+      // Central Vent Hole (Inverted Cone subtraction simulated by additive ring)
+      // Actually simpler to just not have a hole physically but use material later? 
+      // Let's make a ring.
+      const rim = Geo.torus(0.5, 0.2, 5, 8).rotateX(Math.PI/2).translate(0, 0.4, 0).toNonIndexed().get();
+      parts.push(rim);
+
+      return BufferUtils.mergeGeometries(parts);
+  }
+
+  generateRock(type: 'granite' | 'sedimentary' = 'granite', complexity: number = 1.0, seed: number = 12345): THREE.BufferGeometry {
+    const nextRnd = this.mkRng(seed);
+
+    // 1. Base Topology
     const detail = complexity > 0.8 ? 1 : 0;
-    let geo: THREE.BufferGeometry = new THREE.DodecahedronGeometry(1.0, detail); 
-    geo = geo.toNonIndexed();
     
-    const pos = geo.getAttribute('position');
-    const vertex = new THREE.Vector3();
+    // Create Dodecahedron via Builder
+    const builder = Geo.dodecahedron(1.0, detail).toNonIndexed();
     
     // 2. Base Deformation & Strata
     const strataFreq = 8.0;
     const strataAmp = 0.1;
 
-    for (let i = 0; i < pos.count; i++) {
-        vertex.fromBufferAttribute(pos, i);
-        
+    builder.mapVertices((v) => {
         // General noise for irregularity
-        const noise = 1.0 + (Math.random() - 0.5) * 0.2;
-        vertex.multiplyScalar(noise);
+        const noise = 1.0 + (nextRnd() - 0.5) * 0.2;
+        v.multiplyScalar(noise);
 
         // Anisotropy (Flatten slightly)
-        vertex.y *= 0.8; 
+        v.y *= 0.8; 
 
         // Strata (Sedimentary Layering)
         if (type === 'sedimentary') {
-            const layers = Math.sin(vertex.y * strataFreq) * strataAmp;
-            vertex.x += layers;
-            vertex.z += layers;
+            const layers = Math.sin(v.y * strataFreq) * strataAmp;
+            v.x += layers;
+            v.z += layers;
         }
 
-        // Surface Grain (High Frequency Noise) - Only at higher complexity
+        // Surface Grain
         if (complexity > 0.5) {
-            vertex.x += (Math.random() - 0.5) * 0.05;
-            vertex.y += (Math.random() - 0.5) * 0.05;
-            vertex.z += (Math.random() - 0.5) * 0.05;
+            v.x += (nextRnd() - 0.5) * 0.05;
+            v.y += (nextRnd() - 0.5) * 0.05;
+            v.z += (nextRnd() - 0.5) * 0.05;
         }
-
-        pos.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
-    geo.computeVertexNormals();
+    }).computeVertexNormals();
 
     // 3. Planar Chiseling (Fracture Simulation)
-    // Scale number of planes by complexity
     let numPlanes = type === 'sedimentary' ? 3 : 6;
     if (complexity < 0.5) numPlanes = Math.max(1, Math.floor(numPlanes / 2));
     
-    // Optimization: Pre-allocate projection target to avoid N*P allocations
     const projected = new THREE.Vector3();
 
     for (let p = 0; p < numPlanes; p++) {
         // Random plane definition
-        const planeNormal = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+        const planeNormal = new THREE.Vector3(nextRnd()-0.5, nextRnd()-0.5, nextRnd()-0.5).normalize();
         
-        // Bias planes to be more vertical for sedimentary to preserve layers
+        // Bias planes for sedimentary
         if (type === 'sedimentary') {
             planeNormal.y *= 0.2;
             planeNormal.normalize();
         }
 
-        const distFromCenter = 0.5 + Math.random() * 0.4;
+        const distFromCenter = 0.5 + nextRnd() * 0.4;
         const pointOnPlane = planeNormal.clone().multiplyScalar(distFromCenter);
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, pointOnPlane);
 
-        // Flatten vertices 'above' the plane onto the plane
-        for (let i = 0; i < pos.count; i++) {
-            vertex.fromBufferAttribute(pos, i);
-            if (plane.distanceToPoint(vertex) > 0) {
-                plane.projectPoint(vertex, projected);
-                pos.setXYZ(i, projected.x, projected.y, projected.z);
+        // Flatten vertices 'above' the plane
+        builder.mapVertices((v) => {
+            if (plane.distanceToPoint(v) > 0) {
+                plane.projectPoint(v, projected);
+                v.copy(projected);
             }
-        }
+        });
     }
 
     // 4. Finalize
-    // CRITICAL: Merge vertices to ensure watertight mesh for Physics Convex Hull
-    geo = BufferUtils.mergeVertices(geo, 0.001); 
-    geo.computeVertexNormals();
-    geo.scale(0.8, 0.8, 0.8); // Standardize size to approx 1.5m diameter
+    // Merge vertices to ensure watertight mesh for Physics Convex Hull
+    builder.mergeVertices(0.001)
+           .computeVertexNormals()
+           .scale(0.8, 0.8, 0.8);
     
-    return geo;
+    return builder.get();
   }
 
-  generateIceChunk(complexity: number = 1.0): THREE.BufferGeometry {
-    // Jagged shard logic - Sharp, angular, vertical bias
+  generateIceChunk(complexity: number = 1.0, seed: number = 777): THREE.BufferGeometry {
+    const nextRnd = this.mkRng(seed);
     const height = 2.5;
-    const segments = complexity > 0.5 ? 5 : 3; // Low poly for sharp edges
-    let geo: THREE.BufferGeometry = new THREE.ConeGeometry(0.7, height, segments, 1);
-    geo = geo.toNonIndexed();
-    geo.translate(0, height/2, 0); 
+    const segments = complexity > 0.5 ? 5 : 3;
     
-    const pos = geo.getAttribute('position');
-    const vertex = new THREE.Vector3();
-    
-    for (let i = 0; i < pos.count; i++) {
-        vertex.fromBufferAttribute(pos, i);
-        if (vertex.y < 0.1) continue; // Base
-        
-        // Crystalline Twist
-        const angle = vertex.y * 0.4;
-        const tx = vertex.x * Math.cos(angle) - vertex.z * Math.sin(angle);
-        const tz = vertex.x * Math.sin(angle) + vertex.z * Math.cos(angle);
-        
-        // Sharp Displacement
-        vertex.x = tx + (Math.random()-0.5)*0.4;
-        vertex.z = tz + (Math.random()-0.5)*0.4;
-        
-        // Height variation
-        if (vertex.y > height * 0.9) vertex.y += (Math.random()-0.5) * 0.5;
-
-        pos.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
-    
-    geo.translate(0, -height/2, 0); 
-    geo.computeVertexNormals();
-    return geo;
+    return Geo.cone(0.7, height, segments)
+        .toNonIndexed()
+        .translate(0, height/2, 0)
+        .mapVertices((v) => {
+            if (v.y < 0.1) return; // Skip Base
+            
+            // Crystalline Twist
+            const angle = v.y * 0.4;
+            const tx = v.x * Math.cos(angle) - v.z * Math.sin(angle);
+            const tz = v.x * Math.sin(angle) + v.z * Math.cos(angle);
+            
+            // Sharp Displacement
+            v.x = tx + (nextRnd()-0.5)*0.4;
+            v.z = tz + (nextRnd()-0.5)*0.4;
+            
+            // Height variation
+            if (v.y > height * 0.9) v.y += (nextRnd()-0.5) * 0.5;
+        })
+        .translate(0, -height/2, 0)
+        .computeVertexNormals()
+        .get();
   }
 
-  generateIceSpire(): THREE.BufferGeometry {
-      // Stacked jagged cylinders for more complex silhouette
+  generateIceSpire(seed: number = 999): THREE.BufferGeometry {
+      const nextRnd = this.mkRng(seed);
       const height = 25;
       const baseRadius = 3;
       const segments = 7;
       
-      const geo = new THREE.CylinderGeometry(0.1, baseRadius, height, segments, 8);
-      geo.translate(0, height/2, 0);
-      geo.toNonIndexed();
-      
-      const pos = geo.getAttribute('position');
-      const v = new THREE.Vector3();
-      const center = new THREE.Vector3();
-      
-      for(let i=0; i<pos.count; i++) {
-          v.fromBufferAttribute(pos, i);
-          
-          // Clamp yFactor to avoid floating point errors > 1.0 causing NaN in Math.pow with negative base
-          let yFactor = v.y / height; // 0 at bottom, 1 at top
-          yFactor = Math.max(0, Math.min(1, yFactor));
-          
-          // Taper curve - S-curve taper
-          const taper = Math.pow(1.0 - yFactor, 0.8);
-          v.x *= taper;
-          v.z *= taper;
-
-          // Glacial erosion (Step displacement)
-          if (v.y > 0.5) {
-              const noise = Math.sin(v.y * 0.8) * 1.5;
-              v.x += noise;
-              v.z += noise;
+      return Geo.cylinder(0.1, baseRadius, height, segments)
+          .translate(0, height/2, 0)
+          .toNonIndexed()
+          .mapVertices((v) => {
+              let yFactor = v.y / height;
+              yFactor = Math.max(0, Math.min(1, yFactor));
               
-              // Shear twist
-              const angle = v.y * 0.15;
-              const tx = v.x * Math.cos(angle) - v.z * Math.sin(angle);
-              const tz = v.x * Math.sin(angle) + v.z * Math.cos(angle);
-              v.x = tx; 
-              v.z = tz;
-              
-              // Spikes (Radial noise)
-              const radialAngle = Math.atan2(v.z, v.x);
-              const spike = Math.sin(radialAngle * 3 + v.y * 0.5) * (1.0 - yFactor);
-              v.x += Math.cos(radialAngle) * spike;
-              v.z += Math.sin(radialAngle) * spike;
-          }
+              // Taper curve
+              const taper = Math.pow(1.0 - yFactor, 0.8);
+              v.x *= taper;
+              v.z *= taper;
 
-          pos.setXYZ(i, v.x, v.y, v.z);
-      }
-      
-      geo.computeVertexNormals();
-      return geo;
+              // Glacial erosion
+              if (v.y > 0.5) {
+                  const noise = Math.sin(v.y * 0.8) * 1.5;
+                  v.x += noise;
+                  v.z += noise;
+                  
+                  // Shear twist
+                  const angle = v.y * 0.15;
+                  const tx = v.x * Math.cos(angle) - v.z * Math.sin(angle);
+                  const tz = v.x * Math.sin(angle) + v.z * Math.cos(angle);
+                  v.x = tx; 
+                  v.z = tz;
+                  
+                  // Spikes
+                  const radialAngle = Math.atan2(v.z, v.x);
+                  const spike = Math.sin(radialAngle * 3 + v.y * 0.5) * (1.0 - yFactor);
+                  v.x += Math.cos(radialAngle) * spike;
+                  v.z += Math.sin(radialAngle) * spike;
+              }
+          })
+          .computeVertexNormals()
+          .get();
   }
 
-  generateCinderBlock(): THREE.BufferGeometry | null {
-      // Standard CMU: 0.4m W x 0.2m H x 0.2m D
-      const w = 0.4;
-      const h = 0.2;
-      const d = 0.2;
-      const thick = 0.04; 
+  generateIceBlock(size: number, seed: number = 2045): THREE.BufferGeometry {
+      const nextRnd = this.mkRng(seed);
+      
+      // Use segmented box to allow vertex manipulation
+      const segs = 6;
+      return Geo.box(size, size, size, segs, segs, segs)
+          .toNonIndexed()
+          .mapVertices((v) => {
+              // 1. Melting/Warping
+              // Low frequency noise to make sides uneven
+              const warp = 0.05 * size;
+              v.x += (nextRnd() - 0.5) * warp;
+              v.y += (nextRnd() - 0.5) * warp;
+              v.z += (nextRnd() - 0.5) * warp;
+
+              // 2. Beveled Corners (Chipping)
+              // If point is near a corner, pull it in
+              const absX = Math.abs(v.x);
+              const absY = Math.abs(v.y);
+              const absZ = Math.abs(v.z);
+              
+              const limit = size / 2;
+              const threshold = limit * 0.8;
+              
+              // Check if near corner (high on all 3 axes)
+              if (absX > threshold && absY > threshold && absZ > threshold) {
+                  const chip = (nextRnd() * 0.1 + 0.05) * size;
+                  // Pull towards center
+                  v.multiplyScalar(1.0 - (chip / size));
+              }
+          })
+          .computeVertexNormals()
+          .get();
+  }
+
+  generateCinderBlock(seed: number = 42): THREE.BufferGeometry | null {
+      const nextRnd = this.mkRng(seed);
+      const w = 0.4; const h = 0.2; const d = 0.2; const thick = 0.04; 
 
       const parts: THREE.BufferGeometry[] = [];
 
-      // Outer Shell
-      const side1 = new THREE.BoxGeometry(w, h, thick);
-      side1.translate(0, 0, -d/2 + thick/2);
-      parts.push(side1);
-
-      const side2 = new THREE.BoxGeometry(w, h, thick);
-      side2.translate(0, 0, d/2 - thick/2);
-      parts.push(side2);
-
-      // Webs
-      const webEnd1 = new THREE.BoxGeometry(thick, h, d - thick*2);
-      webEnd1.translate(-w/2 + thick/2, 0, 0);
-      parts.push(webEnd1);
-
-      const webEnd2 = new THREE.BoxGeometry(thick, h, d - thick*2);
-      webEnd2.translate(w/2 - thick/2, 0, 0);
-      parts.push(webEnd2);
-
-      const webCenter = new THREE.BoxGeometry(thick, h, d - thick*2);
-      webCenter.translate(0, 0, 0);
-      parts.push(webCenter);
+      parts.push(
+          Geo.box(w, h, thick).toNonIndexed().translate(0, 0, -d/2 + thick/2).get(), // Back
+          Geo.box(w, h, thick).toNonIndexed().translate(0, 0, d/2 - thick/2).get(),  // Front
+          Geo.box(thick, h, d - thick*2).toNonIndexed().translate(-w/2 + thick/2, 0, 0).get(), // Left
+          Geo.box(thick, h, d - thick*2).toNonIndexed().translate(w/2 - thick/2, 0, 0).get(),  // Right
+          Geo.box(thick, h, d - thick*2).toNonIndexed().translate(0, 0, 0).get() // Center Web
+      );
 
       const merged = BufferUtils.mergeGeometries(parts, false);
       
-      // Concrete Noise pass
       if (merged) {
-          const pos = merged.getAttribute('position');
-          const v = new THREE.Vector3();
-          for(let i=0; i<pos.count; i++) {
-              v.fromBufferAttribute(pos, i);
-              v.x += (Math.random()-0.5) * 0.008;
-              v.y += (Math.random()-0.5) * 0.008;
-              v.z += (Math.random()-0.5) * 0.008;
-              pos.setXYZ(i, v.x, v.y, v.z);
-          }
-          merged.computeVertexNormals();
+          // Wrap merged in Geo to apply noise
+          new Geo(merged).mapVertices((v) => {
+              v.x += (nextRnd()-0.5) * 0.008;
+              v.y += (nextRnd()-0.5) * 0.008;
+              v.z += (nextRnd()-0.5) * 0.008;
+          }).computeVertexNormals();
       }
 
       return merged;

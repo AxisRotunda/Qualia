@@ -66,24 +66,15 @@ export class NatureTextureService {
   }
 
   createIceTexture(): THREE.Texture {
-      // Migrated to Worker (PROTO_TEXTURE_V1)
       return this.createAsyncTexture('ice', { size: 512 }, 4);
   }
 
+  createIceNormal(): THREE.Texture {
+      return this.createAsyncTexture('ice-normal', { size: 512 }, 4, true);
+  }
+
   createWaterNormal(scale = 1): THREE.Texture {
-      const { canvas, ctx } = this.ctxService.getCanvas(512);
-      const imageData = ctx.createImageData(512, 512);
-      const data = imageData.data;
-      for(let i = 0; i < data.length; i += 4) {
-          const val = Math.random() * 255;
-          data[i] = val; data[i+1] = val; data[i+2] = 255; data[i+3] = 255;
-      }
-      ctx.putImageData(imageData, 0, 0);
-      ctx.filter = 'blur(4px)';
-      ctx.drawImage(canvas, 0, 0);
-      ctx.filter = 'none';
-      const tex = this.ctxService.finishTexture(canvas, scale);
-      tex.colorSpace = THREE.LinearSRGBColorSpace;
-      return tex;
+      // RUN_TEXTURE: Generation moved to worker to prevent main-thread jank
+      return this.createAsyncTexture('water-normal', { size: 512 }, scale, true);
   }
 }

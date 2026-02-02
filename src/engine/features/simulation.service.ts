@@ -11,19 +11,19 @@ export class SimulationService {
   private physics = inject(PhysicsService);
 
   togglePause() {
-    this.state.isPaused.update(v => !v);
+    this.state.togglePaused();
   }
 
   setPaused(v: boolean) {
-    this.state.isPaused.set(v);
+    this.state.setPaused(v);
   }
 
   setTimeScale(val: number) {
-    this.state.timeScale.set(val);
+    this.state.setTimeScale(val);
   }
 
   setGravity(y: number) {
-    this.state.gravityY.set(y);
+    this.state.setGravity(y);
     this.physics.setGravity(y);
   }
 }

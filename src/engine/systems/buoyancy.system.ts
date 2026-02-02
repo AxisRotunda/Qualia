@@ -6,49 +6,45 @@ import { EntityStoreService } from '../ecs/entity-store.service';
 import { EngineStateService } from '../engine-state.service';
 import { WATER_CONFIG } from '../../config/water.config';
 
+/**
+ * BuoyancySystem: CPU-side water simulation.
+ * RUN_INDUSTRY: Replicates Shader wave math for exact pose parity.
+ * RUN_OPT: Zero-allocation vector logic.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class BuoyancySystem implements GameSystem {
-  // Run before Physics (200) to apply forces
   readonly priority = 190;
 
   private physicsService = inject(PhysicsService);
   private entityStore = inject(EntityStoreService);
   private state = inject(EngineStateService);
 
-  // Optimization: Scratch objects for Rapier impulse/torque and position/velocity
   private readonly _impulse = { x: 0, y: 0, z: 0 };
-  private readonly _torque = { x: 0, y: 0, z: 0 };
   private readonly _pos = { x: 0, y: 0, z: 0 };
   private readonly _vel = { x: 0, y: 0, z: 0 };
 
-  // CPU Wave Calculation using Shared Config
+  /**
+   * Replicates getWave GLSL logic exactly.
+   */
   getWaveHeight(x: number, z: number, time: number): number {
       const c = WATER_CONFIG;
-      let y = 0.0;
       
-      // Wave 1 (Directional Swell)
-      const phase1 = (x * c.w1.dirX + z * c.w1.dirZ) * c.w1.freq + time * c.w1.speed;
-      y += Math.sin(phase1) * c.w1.amp;
+      // Wave 1: Sine Swell (Roll)
+      const p1 = (x * c.w1.dirX + z * c.w1.dirZ) * c.w1.freq + time * c.w1.speed;
+      let h = Math.sin(p1) * c.w1.amp;
 
-      // Wave 2 (Wind Chop)
-      const phase2 = (x * c.w2.dirX + z * c.w2.dirZ) * c.w2.freq + time * c.w2.speed;
-      // Peakedness approximation for chop
-      const sin2 = Math.sin(phase2);
-      y += (sin2 * sin2 * sin2) * c.w2.amp; // Cube it to sharpen
+      // Wave 2: Surface Chop (Sharp peaks)
+      const p2 = (x * c.w2.dirX + z * c.w2.dirZ) * c.w2.freq + time * c.w2.speed;
+      const s2 = Math.sin(p2);
+      h += (s2 * s2 * s2) * c.w2.amp;
 
-      // Wave 3 (Cross Chop)
-      const phase3 = (x * c.w3.dirX + z * c.w3.dirZ) * c.w3.freq + time * c.w3.speed;
-      y += Math.cos(phase3) * c.w3.amp;
-
-      return y;
+      return h;
   }
 
   update(dt: number, totalTime: number) {
       const waterLevel = this.state.waterLevel();
-      
-      // If water is disabled, skip
       if (waterLevel === null) return;
 
       const world = this.physicsService.rWorld;
@@ -56,94 +52,63 @@ export class BuoyancySystem implements GameSystem {
       
       const timeScale = this.state.waveTimeScale();
       const time = (totalTime / 1000) * timeScale;
-      const dtSec = dt / 1000;
-
-      const fluidDensity = 1000.0; // Water density kg/m3
+      const dtSec = (dt / 1000) * this.state.timeScale();
+      
+      const fluidDensity = 1025.0; // Salt water density
       const gravity = 9.81;
-      const linearDrag = 0.05;
-      const quadraticDrag = 0.02;
 
-      // Substep config for stability
-      const substeps = 3;
-      const dtSub = dtSec / substeps;
-
-      // Optimization: Iterate ONLY entities marked as 'buoyant'
       this.entityStore.world.buoyant.forEach((isBuoyant, entity) => {
           if (!isBuoyant) return;
 
-          const rbRef = this.entityStore.world.rigidBodies.get(entity);
-          if (!rbRef) return;
+          const rbHandle = this.entityStore.world.rigidBodies.getHandle(entity);
+          if (rbHandle === undefined) return;
 
-          const body = world.getRigidBody(rbRef.handle);
+          const body = world.getRigidBody(rbHandle);
           if (!body || body.isFixed() || body.isKinematic()) return;
 
-          // Prediction Loop - Zero Alloc
-          this.physicsService.world.copyBodyPosition(rbRef.handle, this._pos);
-          this.physicsService.world.copyBodyLinVel(rbRef.handle, this._vel);
+          // RUN_REPAIR: Finite safety checks to prevent WASM panic
+          if (!this.physicsService.world.copyBodyPosition(rbHandle, this._pos)) return;
+          this.physicsService.world.copyBodyLinVel(rbHandle, this._vel);
           
-          let totalBuoyantForceY = 0;
-          
+          const density = this.entityStore.world.physicsProps.getDensity(entity);
           const mass = body.mass();
-          const props = this.entityStore.world.physicsProps.get(entity);
-          const objectDensity = props?.density || 500;
-          const volumeTotal = mass / objectDensity;
-          const characteristicLength = Math.pow(volumeTotal, 0.33); // approx height
+          
+          if (mass <= 0 || density <= 0) return;
 
-          // Integrate force over multiple predicted substeps
-          for (let i = 0; i < substeps; i++) {
-              const tOffset = i * dtSub;
-              const predY = this._pos.y + (this._vel.y * tOffset);
-              const predTime = time + tOffset;
+          const volumeTotal = mass / density;
+          const characteristicLength = Math.max(0.1, Math.cbrt(volumeTotal)); 
 
-              const waveHeight = this.getWaveHeight(this._pos.x, this._pos.z, predTime);
-              const currentWaterLevel = waterLevel + waveHeight;
+          const waveHeight = this.getWaveHeight(this._pos.x, this._pos.z, time);
+          const currentWaterLevel = waterLevel + waveHeight;
 
-              if (predY < currentWaterLevel) {
-                  const depth = currentWaterLevel - predY;
-                  // Submerged ratio 0..1
-                  const submergedRatio = Math.min(Math.max(depth / characteristicLength, 0), 1.0);
-                  const volumeDisplaced = volumeTotal * submergedRatio;
-                  
-                  // F = rho * V * g
-                  const force = fluidDensity * volumeDisplaced * gravity;
-                  totalBuoyantForceY += force;
-              }
-          }
-
-          // Apply average impulse
-          const avgForce = totalBuoyantForceY / substeps;
-          if (avgForce > 0) {
-              const impulse = avgForce * dtSec;
+          // Check if submerged
+          if (this._pos.y < currentWaterLevel) {
+              const depth = currentWaterLevel - this._pos.y;
               
-              this._impulse.x = 0;
-              this._impulse.y = impulse;
-              this._impulse.z = 0;
-              body.applyImpulse(this._impulse, true);
-
-              // Hydrodynamic Drag (Simplistic linear drag based on current velocity)
-              const vel = this._vel;
-              const speedSq = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
-              if (speedSq > 0.001) {
-                  const speed = Math.sqrt(speedSq);
-                  const area = Math.pow(volumeTotal, 0.66); 
-                  const dragFactor = (linearDrag * speed + quadraticDrag * speedSq) * area * fluidDensity * dtSec; 
-                  
-                  this._impulse.x = -vel.x / speed * dragFactor;
-                  this._impulse.y = -vel.y / speed * dragFactor;
-                  this._impulse.z = -vel.z / speed * dragFactor;
-                  
+              // 1. Buoyant Upward Force
+              // Ratio of object below surface
+              const submergedRatio = Math.min(Math.max(depth / characteristicLength, 0), 1.0);
+              const force = fluidDensity * (volumeTotal * submergedRatio) * gravity;
+              
+              const fy = force * dtSec;
+              if (Number.isFinite(fy)) {
+                  this._impulse.x = 0; this._impulse.y = fy; this._impulse.z = 0;
                   body.applyImpulse(this._impulse, true);
+
+                  // 2. Dynamic Drag Force (Resistance)
+                  const speedSq = this._vel.x*this._vel.x + this._vel.y*this._vel.y + this._vel.z*this._vel.z;
+                  if (speedSq > 0.001) {
+                      // Hydrodynamic resistance formula: -k * v^2
+                      const drag = (0.05 * Math.sqrt(speedSq) + 0.08 * speedSq) * (characteristicLength * characteristicLength) * fluidDensity * dtSec;
+                      
+                      if (Number.isFinite(drag)) {
+                          this._impulse.x = -this._vel.x * drag; 
+                          this._impulse.y = -this._vel.y * drag; 
+                          this._impulse.z = -this._vel.z * drag;
+                          body.applyImpulse(this._impulse, true);
+                      }
+                  }
               }
-              
-              // Angular Drag
-              const ang = body.angvel();
-              const factor = 0.02 * mass * (dtSec * 60);
-              
-              this._torque.x = -ang.x * factor;
-              this._torque.y = -ang.y * factor;
-              this._torque.z = -ang.z * factor;
-              
-              body.applyTorqueImpulse(this._torque, true);
           }
       });
   }

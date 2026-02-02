@@ -1,4 +1,3 @@
-
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { EngineStateService } from './engine-state.service';
@@ -42,7 +41,7 @@ export class InputManagerService {
         // Disable camera control if dragging gizmo or if menu is open
         const camActive = !dragging && !this.state.mainMenuVisible();
         this.cameraControl.setEnabled(camActive);
-        this.cameraControl.update();
+        this.cameraControl.update(dt);
     }
   }
 
@@ -51,28 +50,35 @@ export class InputManagerService {
       if (previous === mode) return;
       const canvas = this.sceneService.getDomElement();
 
-      // Teardown previous
-      if (previous === 'explore') this.flyControls.disable();
-      if (previous === 'walk') { 
-          this.charController.destroy(); 
-          this.gameInput.exitPointerLock(); 
+      // --- Teardown Logic ---
+      switch(previous) {
+          case 'explore': this.flyControls.disable(); break;
+          case 'walk': 
+              this.charController.destroy(); 
+              this.gameInput.exitPointerLock(); 
+              break;
+          case 'edit': this.cameraControl.setEnabled(false); break;
       }
-      if (previous === 'edit') this.cameraControl.setEnabled(false);
 
-      this.state.mode.set(mode);
+      this.state.setMode(mode);
       
-      // Setup new
-      if (mode === 'edit') {
-          this.cameraControl.setEnabled(true);
-          this.gameInput.exitPointerLock();
-      } else if (mode === 'explore') {
-          this.entityStore.selectedEntity.set(null); 
-          this.flyControls.enable();
-          this.gameInput.requestPointerLock(canvas);
-      } else if (mode === 'walk') {
-          this.entityStore.selectedEntity.set(null);
-          this.charController.init(this.sceneService.getCamera().position.clone());
-          this.gameInput.requestPointerLock(canvas);
+      // --- Initialization Logic ---
+      switch(mode) {
+          case 'edit':
+              this.cameraControl.setEnabled(true);
+              this.gameInput.exitPointerLock();
+              break;
+          case 'explore':
+              this.entityStore.selectedEntity.set(null); 
+              this.flyControls.enable();
+              this.gameInput.requestPointerLock(canvas);
+              break;
+          case 'walk':
+              this.entityStore.selectedEntity.set(null);
+              // Initialize at current camera position
+              this.charController.init(this.sceneService.getCamera().position.clone());
+              this.gameInput.requestPointerLock(canvas);
+              break;
       }
   }
 
@@ -82,6 +88,9 @@ export class InputManagerService {
   }
 
   // --- Delegation ---
+
+  getFire(): boolean { return this.gameInput.getFire(); }
+  getJump(): boolean { return this.gameInput.getJump(); }
 
   setCameraPreset(p: CameraViewPreset) {
       this.cameraControl.setPreset(p);

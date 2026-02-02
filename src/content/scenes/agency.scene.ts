@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 
@@ -64,7 +63,8 @@ export const AGENCY_SCENE: ScenePreset = {
       
       const serverLight = new THREE.PointLight(0x0ea5e9, 1.5, 15);
       serverLight.position.set(0, 4, serverZStart + 4);
-      engine.sceneService.getScene().add(serverLight);
+      // FIX: Access scene service through sys
+      engine.sys.scene.getScene().add(serverLight);
 
       // Command Center
       const platZ = 2;
@@ -76,25 +76,29 @@ export const AGENCY_SCENE: ScenePreset = {
           const rb = engine.world.rigidBodies.get(p1);
           const def = engine.world.bodyDefs.get(p1);
           if (rb && def) {
-              engine.physicsService.shapes.updateBodyScale(rb.handle, def, pt.scale);
-              engine.physicsService.world.updateBodyTransform(rb.handle, pt.position);
+              // FIX: Access physics service through sys
+              engine.sys.physics.shapes.updateBodyScale(rb.handle, def, pt.scale);
+              engine.sys.physics.world.updateBodyTransform(rb.handle, pt.position);
           }
       }
       
       ctx.spawn('prop-table-map', 0, 0.4, platZ, { alignToBottom: true });
       
       const holoGeo = new THREE.ConeGeometry(1.4, 1.5, 32, 1, true);
-      const holoMat = engine.materialService.getMaterial('mat-glow-blue').clone();
+      // FIX: Access material service through sys
+      const holoMat = engine.sys.materials.getMaterial('mat-glow-blue').clone() as THREE.MeshStandardMaterial;
       holoMat.opacity = 0.15; holoMat.transparent = true; holoMat.side = THREE.DoubleSide;
       const holoMesh = new THREE.Mesh(holoGeo, holoMat);
       holoMesh.position.set(0, 0.4 + 1.7, platZ);
-      engine.sceneService.getScene().add(holoMesh);
+      // FIX: Access scene service through sys
+      engine.sys.scene.getScene().add(holoMesh);
 
       const mapLight = new THREE.SpotLight(0x38bdf8, 5.0, 25, 0.5, 0.5, 1);
       mapLight.position.set(0, 5.5, platZ);
       mapLight.target.position.set(0,0,platZ);
-      engine.sceneService.getScene().add(mapLight);
-      engine.sceneService.getScene().add(mapLight.target);
+      // FIX: Access scene service through sys
+      engine.sys.scene.getScene().add(mapLight);
+      engine.sys.scene.getScene().add(mapLight.target);
 
       // Meeting Room
       const glassX = 10;
@@ -123,7 +127,8 @@ export const AGENCY_SCENE: ScenePreset = {
       createDesk(10, 6, -1.0);
 
       engine.input.setMode('walk');
-      const cam = engine.sceneService.getCamera();
+      // FIX: Access scene service through sys
+      const cam = engine.sys.scene.getCamera();
       cam.position.set(0, 1.7, 18);
       cam.lookAt(0, 1.7, 0);
   }

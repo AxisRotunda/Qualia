@@ -1,49 +1,20 @@
-
 # Refactoring State & Technical Debt
 > **Scope**: Codebase Health, Deprecation Log, Optimization Queue.
-> **Audience**: AI Agents (Pre-Modification Check).
 > **Status**: Living Document.
 
-## 1. Cleaned Up (Deleted)
-These files have been successfully removed to reduce cognitive load.
-*   `src/engine/utils/math.utils.ts` (Redundant with THREE.MathUtils)
-*   `src/services/environment.service.ts`
-*   `src/services/factories/mesh-factory.service.ts`
-*   `src/scene/scene-visuals.service.ts`
-*   `src/services/generators/structure-generator.service.ts`
-*   `src/services/scene-generator.service.ts`
-*   `src/engine/systems/core-systems.ts`
-*   `src/services/camera-control.service.ts` (Old version)
-*   `src/services/fly-controls.service.ts` (Old version)
-*   `src/services/character-controller.service.ts` (Old version)
-*   `src/engine/entity-manager.service.ts`
-*   `src/services/object-control.service.ts`
-*   `src/physics/logic/physics-scaler.ts` (Merged into ShapesFactory)
-*   `src/engine/physics/spatial-hash.service.ts` (Dead Code)
+## 4. Completed Refactors
+*   **[COMPLETED] Input Abstraction Layer (Phase 81.0)**: Migrated `GameInputService` to a semantic action-mapping system. Hardware keys are no longer hardcoded in getters.
+*   **[COMPLETED] Visuals Pipeline Decomposition (Phase 81.0)**: Split `VisualsFactoryService` into specialized Material and Geometry resolvers.
+*   **[COMPLETED] Facade Hardening (Phase 80.0)**: Tightened `EngineService` by converting manual getters to direct signal property aliases. Reduced function call overhead in Zoneless change detection.
+*   **[COMPLETED] Combat Integration (Phase 80.0)**: Promoted `WeaponService` to public `EngineService.combat` facade. Eliminated unsafe `Injector.get` workarounds in UI config.
+*   **[COMPLETED] Game Loop Interpolation (Phase 73.0)**: Decoupled simulation from render frequency. Implemented double-buffered transforms and alpha blending. Resolved "judder" artifacts on high-Hz displays.
+*   **[COMPLETED] Mobile Fill-Rate Hardening (Phase 73.0)**: Enforced strict pixel ratio and antialiasing caps for touch devices. 
 
-## 2. Monolith Watch
-Classes approaching high complexity. Refactor if adding > 3 new methods.
-*   **`EngineService`**: [STABLE] Acts as a clean facade. Complex logic delegates to `EntityAssembler` or `LevelManager`.
-*   **`SceneService`**: [STABLE] Rendering pipeline coordinator.
-*   **`EntityAssemblerService`**: [IMPROVED] Decoupled from `InstancedMeshService`. Now focuses on ECS wiring and lifecycle orchestration.
+## 5. Strategic Technical Debt (Industry Approximation)
+> **Trigger**: `RUN_INDUSTRY`
+> **Priority**: High (Engine Foundation).
 
-## 3. Optimization Queue (Bottlenecks)
-*   **[COMPLETED] `ECS ComponentStore`**: Moved hot components (Transform) to `Float32Array` (SoA) in `TransformStore`.
-
-## 4. Pending Architecture Changes
-*   **[COMPLETED] Strict Typing**: Refactored `LevelManager` and `SceneLoader` to use `import type { EngineService }` to resolve circular dependencies without using `any`.
-*   **[COMPLETED] Factory Layering**: `TemplateFactoryService` now uses `PhysicsService` facade instead of injecting low-level `ShapesFactory` directly.
-
-## 5. Completed Refactors
-*   **[GEO] Geometry Builder**: Refactored `ArchBuildingService` and `SciFiStructureService` to use fluent `Geo.box()` pattern, reducing boilerplate and ensuring consistent topology (`toNonIndexed`).
-*   **[ARCH] Building Generator**: Extracted UV mapping logic to `architecture.utils.ts` to reduce duplication in `ArchBuildingService` and `ArchRoadService`.
-*   **[SYSTEM] Buoyancy**: Promoted `BuoyancySystem` to first-class `GameSystem` managed by `EngineRuntime`. Removed manual invocations in Scenes.
-*   **[FACADE] UI Layer**: `EntityInspector` and `SpawnMenu` now use `EngineService` facade exclusively. `TransformLogicService` and `SpawnerService` are exposed via `engine.transform` and `engine.spawner`.
-*   **Physics Scaling**: Merged `PhysicsScaler` logic into `ShapesFactory` to consolidate collider generation.
-*   **Controller Input**: `CameraControlService` now autonomously polls `GameInputService`, removing plumbing code from `InputManagerService`.
-*   **ECS Transform SoA**: Implemented `TransformStore` with `Float32Array` buffers for zero-allocation position/rotation updates.
-*   **Level Management**: Extracted `SceneLoaderService` from `LevelManagerService`.
-*   **Physics Loop**: Extracted `PhysicsStepService` from `PhysicsWorldService`.
-*   **Entity Management**: Extracted `duplicateEntity` logic from `EntityAssembler` to `EntityOpsService`. Moved visual disposal to `VisualsFactoryService`.
-*   **Terrain Generation**: Modularized worker scripts.
-*   **Instancing**: Refactored `InstancedMeshService` logic.
+*   **[PENDING] Asset Streaming**:
+    *   **Current**: All assets are procedurally generated or hardcoded.
+    *   **Target**: Implement `ResourceLoader` for external GLB support.
+    *   **Cost**: Low complexity, high impact.

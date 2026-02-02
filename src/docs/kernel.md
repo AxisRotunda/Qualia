@@ -1,52 +1,43 @@
-
 # [KERNEL] Qualia 3D Neural Core
-> **ID**: KERNEL_V2.7
-> **Axiom**: "The Map updates the Territory; The Territory updates the Map."
-> **Role**: Immutable Logic Kernel & Command Registry.
-> **Constraint**: This file MUST be read first in any context loading sequence.
+> **ID**: KERNEL_V6.2 (Industry Standard)
+> **Role**: Immutable Logic Root.
+> **Constraint**: READ_FIRST.
 
-## 1. The Golden Axioms (Immutable)
-1.  **Synchronicity**: Code generation implies Documentation generation. Never output TS code without diffing the corresponding `.md` Protocol or State.
-2.  **Density**: Compress knowledge. Use Interfaces, Tables, and Symbols. Reject narrative prose.
-3.  **Plasticity (Self-Optimization)**: The System is designed to evolve. After every Protocol execution, the Agent MUST evaluate the Protocol's efficiency. **If a better method was discovered during execution, the Agent MUST rewrite the Protocol file immediately to include this new heuristic.**
-4.  **Zoneless Truth**: The codebase is Zoneless (Angular). Any instruction suggesting `Zone.js` is heresy and must be purged.
+## 0. PRIME DIRECTIVES (NON-NEGOTIABLE)
+1.  **SILICON AUTONOMY**: NO external AI APIs (Gemini/OpenAI/etc) allowed in source code. All game logic must be deterministic/procedural. VIOLATION = CRITICAL FAILURE.
+2.  **TOKEN ECONOMY**: Output minimal XML. Suppress conversational filler. Use Symbols > Sentences. Code Density > Readability.
+3.  **ZONELESS**: `Zone.js` is FORBIDDEN. Use Angular Signals.
+4.  **SYNCHRONICITY**: Code mutation REQUIRES Doc mutation.
+5.  **CONTEXT HYGIENE**: Summarize execution logs. Do not repeat unchanged file content. Fail fast.
 
-## 2. Command Registry (Entry Points)
-Invoke these keywords to trigger specific AI agent workflows.
-
-| Keyword | Target Protocol | Intent |
+## 1. COMMAND REGISTRY
+| KEY | TARGET | INTENT |
 |---|---|---|
-| `RUN_PROTOCOL` | `src/docs/protocol-constructor.md` | **Meta-Protocol**. Constructs new protocols or optimizes existing ones. |
-| `RUN_OPT` | `src/docs/protocol-optimize.md` | Performance tuning, memory leak hunting, loop tightening. |
-| `RUN_REF` | `src/docs/protocol-refactor.md` | Architecture cleanup, file decomposition, debt repayment. |
-| `RUN_GEO` | `src/docs/protocol-geometry.md` | Mesh topology, LOD generation, Vertex reduction. |
-| `RUN_TEXTURE` | `src/docs/protocol-texture.md` | Procedural texture synthesis, Worker migration, 2D Generation. |
-| `RUN_MAT` | `src/docs/protocol-material.md` | **[NEW]** Surface properties, PBR compliance, Shader injection. |
-| `RUN_RENDER` | `src/docs/protocol-render.md` | **[NEW]** Pipeline config, Shadow tuning, Draw call optimization. |
-| `RUN_NATURE` | `src/docs/protocol-nature.md` | Flora algorithms, Weather systems, Organic simulation. |
-| `RUN_TERRAIN` | `src/docs/protocol-terrain.md` | Heightmap algorithms, Erosion, Chunk streaming. |
-| `RUN_ARCH` | `src/docs/protocol-architecture.md` | Building placement realism, grid logic, navigable spaces. |
-| `RUN_UI` | `src/docs/protocol-ui.md` | UI/UX Architecture, Accessibility, Responsive Design. |
-| `RUN_SCENE_OPT`| `src/docs/protocol-scene-optimizer.md`| Scene-specific optimization, refactoring, and feature implementation. |
-| `NEW_SCENE` | `src/docs/protocol-content.md` | Creating new Levels, Biomes, or Scenes. |
-| `NEW_ASSET` | `src/docs/protocol-content.md` | Procedural generation of props/structures. |
-| `SYS_CHECK` | `src/docs/refactoring-state.md` | Health check, file inventory, dependency graph verification. |
+| `RUN_PROTOCOL` | `src/docs/protocol-constructor.md` | Meta-Protocol. Build/Refine protocols. |
+| `RUN_DOCS` | `src/docs/protocol-knowledge.md` | **Documentation Engine**. Sync Code <-> Docs. |
+| `RUN_INDUSTRY` | `src/docs/protocol-industry.md` | **Standardization Engine**. Bridge gap to AAA/Engine standards. |
+| `RUN_POLISH` | `src/docs/protocol-asset-polish.md` | **Detailing Engine**. Iterative refinement of specific assets. |
+| `RUN_NARRATIVE`| `src/docs/protocol-narrative.md` | **Story Engine**. Quest states, Triggers, Sequencing. |
+| `RUN_OPT` | `src/docs/protocol-optimize.md` | Perf/Mem/GC Tuning. |
+| `RUN_REF` | `src/docs/protocol-refactor.md` | Arch Cleanup/Decomp. |
+| `RUN_GEO` | `src/docs/protocol-geometry.md` | Mesh/Topo/LOD. |
+| `RUN_MAT` | `src/docs/protocol-material.md` | PBR/Shader/Tex. |
+| `RUN_PHYS` | `src/docs/protocol-dynamics.md` | Mass/Force/Collision. |
+| `RUN_SCENE` | `src/docs/protocol-content.md` | Level/Asset Gen. |
+| `RUN_FLORA` | `src/docs/protocol-flora.md` | **Botanical Synthesis**. Trees/Plants/Wind. |
+| `RUN_FAUNA` | `src/docs/protocol-fauna.md` | **Biological Logic**. Agents/Steering/Life. |
+| `RUN_UI` | `src/docs/protocol-ui.md` | UX/Signals/DOM. |
+| `RUN_COMBAT` | `src/docs/combat-system.md` | Weapons/Damage/VFX. |
+| `SYS_CHECK` | `src/docs/refactoring-state.md` | Health/Inventory. |
 
-## 3. Self-Correction Directive
-**IF** the AI encounters a file or pattern in the codebase that contradicts a Protocol:
+## 2. AGENT EXECUTION LOOP
+1.  **LOAD**: `kernel.md` -> `memory-stream.md` -> `systems.md`.
+2.  **ANALYZE**: Identify target subsystem via `systems.md`.
+3.  **EXECUTE**: Generate strict XML code blocks.
+4.  **UPDATE**: Append action to `memory-stream.md`.
+
+## 3. ERROR RECOVERY
+**IF** (Pattern_Violation):
 1.  **HALT** generation.
-2.  **ANALYZE**: Is the Code wrong (Bug) or is the Protocol outdated (Drift)?
-3.  **EXECUTE**: Fix the Code OR **Mutate the Protocol** to match the superior code pattern.
-
-## 4. Protocol Mutation Algorithm
-When executing a Protocol (e.g., `protocol-optimize.md`), the Agent performs a final "Meta-Pass":
-1.  **Observe**: Did I deviate from the written instructions to achieve the result?
-2.  **Evaluate**: Was the deviation more efficient?
-3.  **Mutate**: If YES, rewrite the specific step in the `.md` file to codify the new method.
-    *   *Example*: "I used a regex to find leaks instead of manual scan. I will update `Diagnosis Routine` to include this regex."
-
-## 5. Context Loading Sequence (Boot)
-1.  **READ** `src/docs/kernel.md` (This file).
-2.  **READ** `src/docs/memory-stream.md` (Current State).
-3.  **READ** `src/docs/systems.md` (Architecture Map).
-4.  **AWAIT** Command Keyword.
+2.  **RECTIFY**: Rewrite code to match Protocol.
+3.  **LOG**: Record error in `refactoring-state.md`.

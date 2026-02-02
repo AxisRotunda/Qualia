@@ -1,13 +1,14 @@
 # Persistence Schema
 > **Scope**: Serialization Format, Save/Load Logic, Data Constraints.
 > **Source**: `src/engine/persistence.service.ts`
+> **Version**: 1.2 (Physics Parity Update)
 
 ## 1. Data Structure (`SavedScene`)
 JSON Serializable interface representing a snapshot of the `World`.
 
 ```typescript
 interface SavedScene {
-  version: number;          // Schema version (currently 1)
+  version: number;          // Schema version (Current: 2)
   meta: {
       sceneId?: string;     // ID of base ScenePreset (e.g., 'city')
       label?: string;       // Display name
@@ -22,38 +23,35 @@ interface SavedScene {
 
 interface SavedEntity {
   tplId: string;            // Reference to EntityTemplate
-  position: { x, y, z };
-  rotation: { x, y, z, w };
-  scale: { x, y, z };
+  position: { x, y, z };    // World coordinates
+  rotation: { x, y, z, w }; // Quaternion orientation
+  scale: { x, y, z };       // Multi-axis scaling
+  props?: {                 // [NEW] Material-specific overrides
+      friction: number;
+      restitution: number;
+      density: number;
+  };
 }
 ```
 
 ## 2. Serialization Strategy (`exportScene`)
 *   **Filter**: Only entities with a `templateId` component are saved.
-*   **Excluded**:
-    *   Procedural debris generated without templates.
-    *   System entities (e.g., Ghost cursors, Gizmos).
-    *   Runtime-only components (RigidBody Handles, Mesh IDs).
 *   **Process**:
     1.  Iterate `world.entities`.
     2.  Check for `templateIds` component.
-    3.  Extract `transforms`.
+    3.  Extract `transforms` and `physicsProps`.
     4.  Construct `SavedEntity`.
 
 ## 3. Deserialization Strategy (`loadSceneData`)
-*   **Reset**: Calls `entityMgr.reset()` (Destroys all ECS entities, Physics bodies, and Meshes).
-*   **Environment**:
-    *   Restores `gravity`.
-    *   Restores `texturesEnabled`.
-    *   Restores `Atmosphere` based on `meta.sceneId`.
+*   **Reset**: Calls `entityMgr.reset()` (Atomic purge).
+*   **Environment**: Restores gravity, textures, and atmosphere presets.
 *   **Reconstruction**:
-    *   Iterate `savedData.entities`.
-    *   Call `EntityLibrary.spawnFromTemplate` using `tplId`, `position`, `rotation`.
-    *   **Scale Restore**: Since `spawnFromTemplate` uses default template scale, we must post-process:
-        *   Update ECS `Transform.scale`.
-        *   Call `physics.updateBodyScale` to rebuild colliders matching the saved scale.
+    1.  Iterate `savedData.entities`.
+    2.  **Repair**: Validate every number using `isFinite`. Fallback to defaults if corruption detected.
+    3.  **Spawn**: Call `EntityLibrary.spawnFromTemplate`.
+    4.  **Scale Restore**: Call `physics.updateBodyScale` to rebuild colliders.
+    5.  **Prop Restore**: Re-apply friction, restitution, and density via `EntityOpsService`.
 
-## 4. Limitations
-*   **Dynamic Properties**: Does not save velocity, angular velocity, or accumulated forces. Objects load "static" until physics wakes them.
-*   **Modified Props**: Does not save runtime modifications to `PhysicsProps` (friction/restitution) unless they match the template defaults. (Current implementation drawback).
-*   **Parenting**: Hierarchy is not preserved (Flat list).
+## 4. Stability Guarantees (RUN_REPAIR)
+*   **NaN Shield**: Corrupt JSON containing `Infinity` or `NaN` for transforms is intercepted and replaced with safe defaults before reaching the physics solver.
+*   **Null-Trim Protection**: All string IDs are processed via `NullShield.trim()`.

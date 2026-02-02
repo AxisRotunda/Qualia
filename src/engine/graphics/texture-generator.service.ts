@@ -51,9 +51,8 @@ export class TextureGeneratorService {
     return this.pattern.createCarpetTexture(colorHex, patternHex);
   }
 
-  createCityWindowTexture(density = 4): THREE.Texture {
-    // Darker colors for Frame and Glass to prevent washout
-    return this.pattern.createCityWindowTexture('#111111', '#050510', '#ffd7a0', density);
+  createCityWindowTexture(frameHex: string, glassHex: string, litHex: string, density = 4): THREE.Texture {
+    return this.pattern.createCityWindowTexture(frameHex, glassHex, litHex, density);
   }
 
   createCityWindowNormal(density = 4): THREE.Texture {

@@ -40,7 +40,7 @@ export class StatisticsSystem implements GameSystem {
     // We assume RenderSystem updated 'visibleMeshCount' directly or we access a service.
     // For now, we update the rest of the invariant stats.
     
-    this.state.debugInfo.update(info => ({
+    this.state.updateDebugInfo(info => ({
         ...info,
         paused: this.state.isPaused(),
         bodyCount: this.entityStore.world.rigidBodies.size,

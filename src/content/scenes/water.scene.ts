@@ -1,83 +1,154 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
+import { ProceduralUtils } from '../../engine/utils/procedural.utils';
+import { yieldToMain } from '../../engine/utils/thread.utils';
 
 export const WATER_SCENE: ScenePreset = {
-  id: 'water-platform', 
-  label: 'Oceanic Platform', 
-  description: 'A floating platform surrounded by infinite ocean. Demonstrates water physics.', 
-  theme: 'city', 
-  previewColor: 'from-blue-500 to-cyan-700',
-  load: (ctx, engine) => {
+  id: 'island-sanctuary', 
+  label: 'Island Sanctuary', 
+  description: 'A serene tropical atoll. Features accurate ocean physics, coastal vegetation, and rugged interior.', 
+  theme: 'desert', 
+  previewColor: 'from-cyan-400 to-blue-600',
+  
+  preloadAssets: [
+      'terrain-water-ocean',
+      'hero-palm',
+      'bush-fern',
+      'rock-sandstone',
+      'prop-crate',
+      'prop-barrel'
+  ],
+
+  load: async (ctx, engine) => {
+      const waterLevel = 0.8;
+
+      // 1. Environment: Tropical Day
+      // Warmer, brighter light than default desert
       ctx.atmosphere('clear')
          .weather('clear')
+         .time(11.0)
          .light({
-            dirIntensity: 1.5, 
-            ambientIntensity: 0.4,
-            dirColor: '#ffffff'
+            dirIntensity: 4.0,
+            ambientIntensity: 1.4,
+            dirColor: '#fffef5'
          })
-         .water(-0.5, 1.0) // Enable buoyancy
-         .time(16.5)
+         .water(waterLevel, 1.0) 
          .gravity(-9.81);
-      
+
       if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
 
-      // Water Plane
-      const waterMeshId = 'terrain-water-lg';
-      const waterMesh = engine.visualsFactory.createMesh({
-          type: 'box', handle: -1, position: {x:0, y:0, z:0}, rotation: {x:0,y:0,z:0,w:1}
-      }, { meshId: waterMeshId });
-      
-      if (waterMesh instanceof THREE.Mesh) engine.sceneGraph.addEntity(waterMesh);
-      
-      const waterEnt = engine.world.createEntity();
-      engine.world.meshes.add(waterEnt, { mesh: waterMesh as THREE.Mesh });
-      engine.world.transforms.add(waterEnt, { position: {x:0,y:-0.5,z:0}, rotation: {x:0,y:0,z:0,w:1}, scale: {x:1,y:1,z:1} });
-      engine.world.names.add(waterEnt, 'Ocean Surface');
-      
-      // Platform
-      const platId = ctx.spawn('terrain-platform', 0, 1, 0, { alignToBottom: true, scale: 1 });
-      const pt = engine.world.transforms.get(platId);
-      if (pt) {
-          pt.scale.x = 2; pt.scale.z = 2; 
-          const rb = engine.world.rigidBodies.get(platId);
-          const def = engine.world.bodyDefs.get(platId);
-          if(rb && def) engine.physicsService.shapes.updateBodyScale(rb.handle, def, pt.scale);
-      }
+      // 2. The Ocean Floor & Atoll
+      // Increased chunk size to cover the 80m radius ring
+      // Increased center resolution for smooth coastlines
+      await ctx.terrain({
+          id: 'Tropical_Atoll',
+          type: 'islands', 
+          chunkSize: 256,
+          center: { x: 0, z: 0 },
+          materialId: 'mat-sand-tropical', 
+          physicsMaterial: 'sandstone',
+          resolution: 128
+      });
 
-      // Floating Debris
-      for(let i=0; i<15; i++) {
+      // 3. The Ocean Surface
+      const oceanId = ctx.spawn('terrain-water-ocean', 0, waterLevel, 0);
+      
+      const meshRef = engine.world.meshes.get(oceanId);
+      if (meshRef) {
+          meshRef.mesh.renderOrder = 10; // Draw after terrain
+          meshRef.mesh.castShadow = false;
+          meshRef.mesh.receiveShadow = true;
+          meshRef.mesh.updateMatrixWorld(true);
+      }
+      
+      await yieldToMain();
+
+      // 4. Biota Scatter (Palms & Ferns)
+      const count = 120;
+      const ringRadius = 80;
+      const spread = 35; // Wider spread to cover the new plateau
+      
+      for(let i=0; i<count; i++) {
+          // Distribute around the ring
           const angle = Math.random() * Math.PI * 2;
-          const dist = 12 + Math.random() * 20;
+          // Bias distance to be on the ring
+          const dist = ringRadius + (Math.random() - 0.5) * spread;
           const x = Math.cos(angle) * dist;
           const z = Math.sin(angle) * dist;
-          ctx.spawn('prop-barrel', x, 5 + Math.random()*5, z);
-      }
-      
-      for(let i=0; i<10; i++) {
-          const x = (Math.random()-0.5) * 40;
-          const z = (Math.random()-0.5) * 40;
-          if (Math.abs(x) < 12 && Math.abs(z) < 12) continue;
-          ctx.spawn('prop-crate', x, 8, z);
+
+          const h = ProceduralUtils.getTerrainHeight(x, z, 'islands');
+          
+          // Vegetation Zone: Inland (Plateau)
+          // Ensure we are above water but not too high on cliffs
+          if (h > waterLevel + 0.5 && h < 12.0) {
+              const rnd = Math.random();
+              const scale = 0.8 + rnd * 0.7;
+              const rot = new THREE.Euler(
+                  (rnd-0.5)*0.2, 
+                  rnd*Math.PI*2, 
+                  (rnd-0.5)*0.2
+              );
+              
+              // Palm Trees vs Ferns
+              if (rnd > 0.3) {
+                  ctx.spawn('hero-palm', x, 0, z, { 
+                      alignToBottom: true, 
+                      snapToSurface: true, 
+                      snapOffset: -0.2,
+                      scale, 
+                      rotation: rot 
+                  });
+              } else {
+                  ctx.spawn('bush-fern', x, 0, z, {
+                      alignToBottom: true,
+                      snapToSurface: true,
+                      scale: scale * 1.2,
+                      rotation: rot
+                  });
+              }
+          }
+          // Rock Zone: Shoreline (Lower ground near reef shelf)
+          else if (h > waterLevel - 1.0 && h < waterLevel + 1.5) {
+               const rScale = 0.5 + Math.random() * 2.0;
+               const rot = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+               
+               ctx.spawn('rock-sandstone', x, 0, z, {
+                  snapToSurface: true,
+                  snapOffset: -0.4,
+                  scale: rScale,
+                  rotation: rot
+               });
+          }
+
+          if (i % 20 === 0) await yieldToMain();
       }
 
-      ctx.spawn('structure-monolith', 0, 1.5, -25, { alignToBottom: true });
-
-      engine.input.setMode('walk');
-      const cam = engine.sceneService.getCamera();
-      cam.position.set(0, 3, 15);
-      cam.lookAt(0, 3, 0);
-  },
-  
-  onUpdate: (dt, totalTime, engine) => {
-      const timeSec = totalTime / 1000;
-      const matService = engine.materialService;
-      if (matService) {
-          const waterMat = matService.getMaterial('mat-water') as THREE.MeshPhysicalMaterial;
-          if (waterMat.userData && waterMat.userData['time']) {
-              // Shader time sync (buoyancy system now handles physics sync automatically)
-              waterMat.userData['time'].value = timeSec;
+      // 5. Debris (Washed Up on the beach)
+      for(let i=0; i<3; i++) {
+          // Place on the ring
+          const angle = Math.random() * Math.PI * 2;
+          const dist = ringRadius + (Math.random() - 0.5) * 10;
+          const x = Math.cos(angle) * dist;
+          const z = Math.sin(angle) * dist;
+          
+          // Ensure it's on land
+          const h = ProceduralUtils.getTerrainHeight(x, z, 'islands');
+          if (h > waterLevel && h < 2.0) {
+              ctx.spawn('prop-crate', x, h + 0.5, z);
           }
       }
+
+      // 6. Player Start (On the ring)
+      engine.input.setMode('walk');
+      const startAngle = Math.PI / 4;
+      const startDist = ringRadius;
+      const startX = Math.cos(startAngle) * startDist;
+      const startZ = Math.sin(startAngle) * startDist;
+      const startY = ProceduralUtils.getTerrainHeight(startX, startZ, 'islands') + 2.0;
+      
+      // FIX: Access scene service through sys
+      const cam = engine.sys.scene.getCamera();
+      cam.position.set(startX, startY, startZ);
+      cam.lookAt(0, 2, 0); // Look at lagoon
   }
 };

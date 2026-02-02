@@ -14,17 +14,12 @@ import { ParticleService } from '../services/particle.service';
   providedIn: 'root'
 })
 export class SubsystemsService {
-  // Graphics & Physics Core
   public readonly physics = inject(PhysicsService);
   public readonly scene = inject(SceneService);
   public readonly graph = inject(SceneGraphService);
-  
-  // Content Pipeline
   public readonly assets = inject(AssetService);
   public readonly materials = inject(MaterialService);
   public readonly particles = inject(ParticleService);
-  
-  // Factories
   public readonly physicsFactory = inject(PhysicsFactoryService);
   public readonly visualsFactory = inject(VisualsFactoryService);
   public readonly entityFactory = inject(TemplateFactoryService);

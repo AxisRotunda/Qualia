@@ -3,7 +3,7 @@
 
 > **Scope**: Public Facade methods of `EngineService`.
 > **Audience**: UI Component Developers / AI Agents generating UI code.
-> **Version**: 0.7.0 (Facade Complete)
+> **Version**: 0.8.0 (Facade Hardened)
 
 ## 1. Feature Modules (Service Access)
 The `EngineService` exposes specific feature services as public properties.
@@ -17,12 +17,14 @@ The `EngineService` exposes specific feature services as public properties.
 | `engine.input` | `InputManagerService` | Control modes, Camera presets, Focus. |
 | `engine.ops` | `EntityOpsService` | Delete, Duplicate, Rename, Physics Props. |
 | `engine.interaction` | `InteractionService` | Raycasting events (advanced usage only). |
-| `engine.transform` | `TransformLogicService` | **[NEW]** Entity Positioning, Rotation, Scaling. |
-| `engine.spawner` | `SpawnerService` | **[NEW]** Spawning Logic, Placement Mode. |
+| `engine.transform` | `TransformLogicService` | Entity Positioning, Rotation, Scaling. |
+| `engine.spawner` | `SpawnerService` | Spawning Logic, Placement Mode. |
 | `engine.library` | `EntityLibraryService` | Access to Entity Templates. |
+| `engine.combat` | `WeaponService` | **[NEW]** Weapon state, energy, cycling. |
+| `engine.fracture` | `FractureService` | **[NEW]** Manual destruction triggering. |
 
 ## 2. State Accessors (Read-Only Signals)
-Shortcuts on `engine` for common reactive state.
+Shortcuts on `engine` for common reactive state. These are direct Signal references.
 
 | Signal | Type | Description |
 |--------|------|-------------|
@@ -54,24 +56,13 @@ Shortcuts on `engine` for common reactive state.
 *   `engine.viewport.toggleHud()`
 *   `engine.viewport.setTransformMode('rotate')`
 
-### Environment
-*   `engine.env.setTimeOfDay(14)`
-*   `engine.env.setAtmosphere('fog')`
-*   `engine.env.setWeather('rain')`
-
-### Level / Persistence
-*   `engine.level.loadScene(engine, 'city')`
-*   `engine.level.reset()`
-*   `engine.level.quickSave()`
-
-### Input & Camera
-*   `engine.input.setMode('walk')`
-*   `engine.input.setCameraPreset('top')`
-*   `engine.input.focusSelectedEntity()`
+### Combat
+*   `engine.combat.cycle()`
+*   `engine.combat.trigger()`
 
 ### Entity Management
 *   `engine.ops.deleteEntity(id)`
 *   `engine.ops.duplicateEntity(id)`
 *   `engine.ops.setEntityName(id, 'New Name')`
 *   `engine.transform.setEntityTransform(id, pos, rot, scale)`
-*   `engine.spawner.spawnFromTemplate('box')`
+*   `engine.spawner.startPlacement('box')`

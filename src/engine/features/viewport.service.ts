@@ -14,41 +14,52 @@ export class ViewportService {
   private scene = inject(SceneService);
 
   toggleWireframe() {
-    this.state.wireframe.update(v => !v);
+    this.state.toggleWireframe();
     this.materials.setWireframeForAll(this.state.wireframe());
   }
 
   toggleTextures() {
-    this.state.texturesEnabled.update(v => !v);
+    this.state.toggleTexturesEnabled();
     this.materials.setTexturesEnabled(this.state.texturesEnabled());
+  }
+
+  togglePostProcessing() {
+      this.state.togglePostProcessing();
   }
 
   setPerformanceMode(isPerformance: boolean) {
     if (isPerformance) {
         if (this.state.texturesEnabled()) this.toggleTextures();
+        if (this.state.postProcessingEnabled()) this.togglePostProcessing();
     } else {
         if (!this.state.texturesEnabled()) this.toggleTextures();
+        if (!this.state.postProcessingEnabled()) this.togglePostProcessing();
     }
   }
 
   togglePhysicsDebug() {
-    this.state.showPhysicsDebug.update(v => !v);
+    this.state.togglePhysicsDebug();
   }
 
   toggleHud() {
-    this.state.hudVisible.update(v => !v);
+    this.state.toggleHudVisible();
   }
 
   setDebugOverlayVisible(v: boolean) {
-    this.state.showDebugOverlay.set(v);
+    this.state.setDebugOverlay(v);
   }
 
   setTransformMode(m: 'translate' | 'rotate' | 'scale') {
-    this.state.transformMode.set(m);
+    this.state.setTransformMode(m);
     this.scene.setTransformMode(m);
   }
 
   setGizmoConfig(config: GizmoConfig) {
     this.scene.setGizmoConfig(config);
+  }
+
+  toggleViewMode() {
+      const current = this.state.viewMode();
+      this.state.setViewMode(current === 'fp' ? 'tp' : 'fp');
   }
 }

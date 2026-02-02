@@ -6,6 +6,8 @@ import { EnvironmentManagerService } from '../graphics/environment-manager.servi
 import { SceneService } from '../../services/scene.service';
 import { ParticleService, WeatherType } from '../../services/particle.service';
 import { ATMOSPHERE_PRESETS, AtmosphereDefinition } from '../../config/atmosphere.config';
+import { CelestialEngine } from '../logic/celestial-engine';
+import { NullShield } from '../utils/string.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -16,158 +18,151 @@ export class EnvironmentControlService {
   private sceneService = inject(SceneService);
   private particleService = inject(ParticleService);
 
-  // Cache to avoid recreating preset objects every frame
   private currentPreset: AtmosphereDefinition | null = null;
+  private isWhiteSunCached = true;
 
-  // Optimization: Scratch Colors for Zero-Alloc Loop
-  private readonly _sunColor = new THREE.Color();
-  private readonly _skyColor = new THREE.Color();
+  // Optimization: Scratch Objects
   private readonly _blendedBg = new THREE.Color();
   private readonly _hemiColor = new THREE.Color();
   private readonly _groundColor = new THREE.Color();
+  private readonly _tempSunColor = new THREE.Color();
 
-  private overrides = {
-      ambientIntensity: -1,
-      dirIntensity: -1,
-      dirColor: null as string | null
-  };
-
-  setAtmosphere(presetId: string) {
-      this.state.atmosphere.set(presetId);
+  /**
+   * Applies a complete atmosphere preset.
+   * RUN_REF Phase 42.0: Centralized logic driven by AtmosphereDefinition.
+   */
+  setAtmosphere(presetId: string | null | undefined) {
+      const safeId = NullShield.sanitize(presetId) || 'clear';
+      this.state.setAtmosphere(safeId);
       
-      const presetFn = ATMOSPHERE_PRESETS[presetId] || ATMOSPHERE_PRESETS['clear'];
-      this.currentPreset = presetFn(); // Create once and cache
+      const presetFn = ATMOSPHERE_PRESETS[safeId] || ATMOSPHERE_PRESETS['clear'];
+      this.currentPreset = presetFn();
       
       const preset = this.currentPreset;
       
-      // Initialize basic state
+      // 1. Fog & Background Synthesis
       this.envManager.setFog(preset.fog);
       this.envManager.setBackground(preset.background);
       
-      // Auto-set time context based on preset for best look
-      if (presetId === 'night') this.setTimeOfDay(22);
-      else if (presetId === 'space') this.setTimeOfDay(12); // Space usually static lighting
-      else if (presetId === 'forest' || presetId === 'fog') this.setTimeOfDay(8); // Morning light
-      else if (presetId === 'city' || presetId === 'ice' || presetId === 'desert') this.setTimeOfDay(14); // Bright afternoon
-      else this.setTimeOfDay(12);
+      // 2. Volumetric Propagation
+      this.envManager.heightFogUniforms.uFogHeight.value = preset.fogHeight ?? 0;
+      this.envManager.heightFogUniforms.uFogFalloff.value = preset.fogFalloff ?? 0.01;
+      this.envManager.heightFogUniforms.uFogScattering.value = preset.fogScattering ?? 0.0;
+
+      // 3. Baseline Lighting State
+      this.state.setAmbientIntensity(preset.ambientIntensity);
+      this.state.setSunIntensity(preset.sunIntensity);
       
-      // Handle ground visibility logic
-      if (['space', 'ice', 'desert', 'blizzard'].includes(presetId)) {
-          this.sceneService['stageService'].setVisible(false);
+      if (preset.sunColor) {
+          this.state.setSunColor(preset.sunColor);
+          this.isWhiteSunCached = preset.sunColor.toLowerCase() === '#ffffff';
       } else {
-          this.sceneService['stageService'].setVisible(true);
+          this.isWhiteSunCached = true;
       }
+
+      // 4. Biome Temporal Context
+      this.setTimeOfDay(preset.defaultTime ?? 12);
+      
+      // 5. Automatic Weather Policy
+      if (preset.defaultWeather) {
+          this.setWeather(preset.defaultWeather);
+      }
+      
+      // 6. Stage Visibility Policy
+      const isVoidBiome = ['space', 'ice', 'desert', 'blizzard'].includes(safeId);
+      this.sceneService['stageService'].setVisible(!isVoidBiome);
   }
 
   setWeather(type: WeatherType) {
-      this.state.weather.set(type);
+      this.state.setWeather(type);
       this.particleService.setWeather(type, this.sceneService.getScene());
   }
 
   setTimeOfDay(hour: number) {
-      this.state.timeOfDay.set(hour);
-      this.updateCelestialState(hour);
+      this.state.setTimeOfDay(hour);
+      this.updateEnvironment(hour);
   }
 
   toggleDayNightCycle(active: boolean) {
-      this.state.dayNightActive.set(active);
+      this.state.setDayNightActive(active);
   }
 
   setCycleSpeed(speed: number) {
-      this.state.dayNightSpeed.set(speed);
+      this.state.setDayNightSpeed(speed);
   }
 
-  setLightSettings(settings: { ambientIntensity?: number; dirIntensity?: number; dirColor?: string }) {
-      if (settings.ambientIntensity !== undefined) this.overrides.ambientIntensity = settings.ambientIntensity;
-      if (settings.dirIntensity !== undefined) this.overrides.dirIntensity = settings.dirIntensity;
-      if (settings.dirColor !== undefined) this.overrides.dirColor = settings.dirColor;
+  /**
+   * Manual light overrides usually called by individual Scene presets.
+   */
+  setLightSettings(settings: { ambientIntensity?: number; dirIntensity?: number; dirColor?: string } | null | undefined) {
+      if (!settings) return;
+
+      if (settings.ambientIntensity !== undefined) this.state.setAmbientIntensity(settings.ambientIntensity);
+      if (settings.dirIntensity !== undefined) this.state.setSunIntensity(settings.dirIntensity);
       
-      // Force update to apply overrides
-      this.updateCelestialState(this.state.timeOfDay());
-  }
-
-  private updateCelestialState(hour: number) {
-      // Use cached preset to avoid factory overhead
-      if (!this.currentPreset) {
-          const presetFn = ATMOSPHERE_PRESETS[this.state.atmosphere()] || ATMOSPHERE_PRESETS['clear'];
-          this.currentPreset = presetFn();
+      if (settings.dirColor !== undefined) {
+          const safeColor = NullShield.trim(settings.dirColor);
+          if (safeColor) {
+              this.state.setSunColor(safeColor);
+              this.isWhiteSunCached = NullShield.safeLowerCase(safeColor) === '#ffffff';
+          }
       }
-      const preset = this.currentPreset;
+      this.updateEnvironment(this.state.timeOfDay());
+  }
 
-      // 1. Calculate Orbit
-      const normTime = ((hour - 6) / 24) * Math.PI * 2;
-      const radius = 150;
-      const x = Math.cos(normTime) * radius; // East-West
-      const y = Math.sin(normTime) * radius; // Up-Down
-      const z = Math.cos(normTime * 0.5) * 40; // Slight seasonal wobble
-      
-      this.envManager.setSunPosition(x, y, z);
+  private updateEnvironment(hour: number) {
+      if (!this.currentPreset) {
+          this.setAtmosphere(this.state.atmosphere());
+      }
+      const preset = this.currentPreset!;
+      const presetId = this.state.atmosphere();
 
-      // 2. Calculate Colors
-      const elevation = y / radius; // -1 to 1
-      const isSpace = this.state.atmosphere() === 'space';
+      // 1. Resolve Celestial Body
+      // RUN_OPT: Returns reference to static singleton, no allocation.
+      const sun = CelestialEngine.calculateSun(hour);
+      this.envManager.setSunPosition(sun.position.x, sun.position.y, sun.position.z);
+      this.envManager.snapShadowCamera(this.sceneService.getCamera());
 
-      if (isSpace) {
-          const int = this.overrides.dirIntensity >= 0 ? this.overrides.dirIntensity : 2.5;
-          this._sunColor.setRGB(1, 1, 1);
-          this.envManager.setSunProperties(this._sunColor, int, true);
+      // 2. Resolve Primary Light (Sun)
+      if (presetId === 'space') {
+          // Manually parse color only when needed
+          this._tempSunColor.set(this.state.sunColor());
+          this.envManager.setSunProperties(this._tempSunColor, this.state.sunIntensity(), true);
+          this.envManager.setEnvironmentLights(new THREE.Color(0x0), new THREE.Color(0x0), this.state.ambientIntensity(), 0.05);
           return;
       }
 
-      let ambientBase = preset.hemiInt ?? 0.1;
-      const presetId = this.state.atmosphere();
-
-      if (presetId === 'desert') ambientBase = 0.3;
-      else if (presetId === 'ice' || presetId === 'blizzard') ambientBase = 0.5;
-      else if (presetId === 'night') ambientBase = 0.02;
-
-      // FIX: Lower default max intensity from 4.5 to 1.5 to prevent blowout
-      let dirInt = 1.5;
-      let castShadow = true;
-
-      // Use Scratch Colors
-      if (elevation > 0) {
-          // DAYTIME
-          if (elevation < 0.2) {
-              // Golden Hour
-              const t = elevation / 0.2; 
-              this._sunColor.setHSL(0.08, 0.9, 0.6); 
-              this._skyColor.setHSL(0.6 + (0.1 * t), 0.5, 0.2 + (0.4 * t));
-              dirInt = Math.max(0, t * 1.2);
-          } else {
-              // Mid-day
-              this._sunColor.setHSL(0.1, 0.1, 0.98); 
-              this._skyColor.setHSL(0.6, 0.6, 0.6); 
-              dirInt = 1.5;
-          }
+      const finalSunInt = this.state.sunIntensity() * sun.intensity;
+      
+      // Handle sun color mix
+      let finalSunCol: THREE.Color;
+      if (this.isWhiteSunCached) {
+          finalSunCol = sun.color;
       } else {
-          // NIGHTTIME
-          this._sunColor.setHSL(0.6, 0.4, 0.3); 
-          this._skyColor.setHSL(0.66, 0.8, 0.02); 
-          dirInt = 0.0; // No sun at night
+          this._tempSunColor.set(this.state.sunColor());
+          finalSunCol = this._tempSunColor;
       }
-
-      // Apply Overrides
-      if (this.overrides.dirIntensity >= 0) dirInt = this.overrides.dirIntensity;
-      if (this.overrides.dirColor) this._sunColor.set(this.overrides.dirColor);
-
-      // Apply Sun
-      this.envManager.setSunProperties(this._sunColor, dirInt, castShadow && preset.sunShadows);
-
-      // Apply Environment (Hemi)
-      this._blendedBg.copy(preset.background).lerp(this._skyColor, 0.5);
       
-      // Darken at night
-      if (elevation < 0) this._blendedBg.multiplyScalar(0.1); 
-      else if (elevation < 0.2) this._blendedBg.multiplyScalar(0.5 + (elevation/0.2)*0.5);
+      this.envManager.setSunProperties(finalSunCol, finalSunInt, preset.sunShadows);
 
-      this._hemiColor.copy(this._blendedBg).offsetHSL(0, 0, 0.1);
-      this._groundColor.copy(this._blendedBg).offsetHSL(0, 0, -0.1);
-      
-      const targetAmbient = (elevation > 0) ? ambientBase : ambientBase * 0.2;
-      const finalAmbient = this.overrides.ambientIntensity >= 0 ? this.overrides.ambientIntensity : targetAmbient;
+      // 3. Resolve Ambient Atmosphere (Hemisphere & Background)
+      // Top hemisphere: Blend celestial dome with biome fog
+      this._hemiColor.copy(sun.ambientSky).lerp(preset.background, 0.4);
+      if (preset.hemiColor !== undefined) this._hemiColor.setHex(preset.hemiColor);
 
-      this.envManager.setEnvironmentLights(this._hemiColor, this._groundColor, finalAmbient, 0.05); // low static ambient
+      // Bottom hemisphere: Terrain bounce motivated by celestial ground component
+      this._groundColor.copy(sun.ambientGround).lerp(preset.background, 0.2);
+      if (preset.hemiGround !== undefined) this._groundColor.setHex(preset.hemiGround);
+
+      // Intensity modulation
+      const ambientModulator = 0.4 + (0.6 * Math.max(0, sun.elevation));
+      const finalAmbient = this.state.ambientIntensity() * ambientModulator;
+
+      // 4. Background & Fog Synthesis
+      this._blendedBg.copy(preset.background).lerp(sun.ambientSky, 0.2);
+      if (sun.elevation < 0) this._blendedBg.multiplyScalar(0.2); 
+
+      this.envManager.setEnvironmentLights(this._hemiColor, this._groundColor, finalAmbient, 0.05);
       this.envManager.setBackground(this._blendedBg);
       this.envManager.updateFogColor(this._blendedBg);
   }

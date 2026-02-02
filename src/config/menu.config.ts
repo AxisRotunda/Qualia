@@ -2,6 +2,10 @@
 import { EngineService } from '../services/engine.service';
 import { MenuAction } from '../services/keyboard.service';
 
+/**
+ * createMenuConfig: Generates the system-wide menu structure.
+ * Refactored Phase 80.0: Uses hardened EngineService facade.
+ */
 export function createMenuConfig(engine: EngineService): MenuAction[] {
   return [
     {
@@ -23,6 +27,18 @@ export function createMenuConfig(engine: EngineService): MenuAction[] {
       ]
     },
     {
+      id: 'actions', label: 'Actions', execute: () => {},
+      children: [
+          { 
+              id: 'cycle-weapon', 
+              label: 'Cycle Weapon', 
+              shortcut: 'Q', 
+              isDisabled: () => engine.mode() !== 'walk', 
+              execute: () => engine.combat.cycle()
+          }
+      ]
+    },
+    {
       id: 'simulation', label: 'Simulation', execute: () => {},
       children: [
         { id: 'sim-play',  label: 'Play',  shortcut: 'Space', isDisabled: () => !engine.isPaused(), execute: () => engine.sim.setPaused(false) },
@@ -37,6 +53,7 @@ export function createMenuConfig(engine: EngineService): MenuAction[] {
       children: [
         { id: 'view-ui', label: 'Toggle UI / HUD', shortcut: 'H', execute: () => engine.viewport.toggleHud() },
         { id: 'view-textures', label: 'Toggle Textures', execute: () => engine.viewport.toggleTextures() },
+        { id: 'view-mode', label: 'FP/TP Toggle', shortcut: 'V', execute: () => engine.viewport.toggleViewMode() },
         { id: 'view-debug', label: 'Toggle Debug Overlay', execute: () => engine.viewport.setDebugOverlayVisible(!engine.showDebugOverlay()) },
         { id: 'camera-focus', label: 'Focus Selection', shortcut: 'F', execute: () => engine.input.focusSelectedEntity() },
         { id: 'camera-top', label: 'Top View', execute: () => engine.input.setCameraPreset('top') },

@@ -2,7 +2,7 @@
 # [PROTOCOL] Texture Synthesis
 > **Trigger**: `RUN_TEXTURE`
 > **Target**: `src/engine/graphics/textures/`, `src/engine/workers/textures/`
-> **Version**: 1.2 (Contrast Update)
+> **Version**: 1.3 (Ice Physics Update)
 > **Axiom**: "Pixels cost Frames. Synthesize asynchronously. Contrast creates Scale."
 
 ## 1. Analysis Routine
@@ -27,8 +27,9 @@
 
 ## 3. Self-Learning Heuristics (Dynamic)
 *   *Current Heuristic*: 512x512 is the sweet spot for mobile PBR. 1024x1024 often causes hitching during upload to GPU.
-*   *Current Heuristic*: For 'Ice' or 'Glass', use scratch layers in the Roughness map rather than Albedo for better light catch.
+*   *Current Heuristic*: For 'Ice' or 'Glass', use scratch layers in the Roughness map rather than Albedo for better light catch. Inverted Worley noise makes excellent "cracks".
 *   *Current Heuristic*: Use a vertical "Grime Gradient" (darker at bottom) on building textures to ground them visually.
+*   *Current Heuristic*: Ice Materials require `transmission` and `thickness` properties. Normals must represent deep fractures, not just surface roughness.
 
 ## 4. Meta-Update (Self-Optimization)
 **INSTRUCTION**: After optimizing textures, perform the **Mutation Check**:

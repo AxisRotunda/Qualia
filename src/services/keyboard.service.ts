@@ -2,6 +2,7 @@
 import { Injectable, DestroyRef, inject } from '@angular/core';
 import { fromEvent } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NullShield } from '../engine/utils/string.utils';
 
 export interface MenuAction {
   id: string;
@@ -26,22 +27,34 @@ export class KeyboardService {
   }
   
   register(shortcuts: MenuAction[]) {
+    if (!shortcuts || !Array.isArray(shortcuts)) return;
+    
     shortcuts.forEach(action => {
+      if (!action) return;
+
       if (action.shortcut) {
-        this.shortcuts.set(this.normalizeShortcut(action.shortcut), action);
+        // RUN_REPAIR: Shield input before normalization
+        const normalized = this.normalizeShortcut(action.shortcut);
+        if (normalized) {
+          this.shortcuts.set(normalized, action);
+        }
       }
-      if (action.children) {
+      
+      if (action.children && Array.isArray(action.children)) {
         this.register(action.children);
       }
     });
   }
   
   private onKeyDown(event: KeyboardEvent) {
-    // Ignore input fields
     const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-    }
+    if (!target) return;
+
+    const isInput = target.tagName === 'INPUT' || 
+                    target.tagName === 'TEXTAREA' || 
+                    target.isContentEditable;
+                    
+    if (isInput) return;
 
     const key = this.getKeyCombo(event);
     const action = this.shortcuts.get(key);
@@ -58,15 +71,37 @@ export class KeyboardService {
     if (event.shiftKey) parts.push('Shift');
     if (event.altKey) parts.push('Alt');
     
-    let key = event.key;
-    if (key === ' ') key = 'Space';
-    if (key.length === 1) key = key.toUpperCase();
+    const key = NullShield.safeKey(event.key);
+    if (key.length === 1) {
+        parts.push(key.toUpperCase());
+    } else {
+        // Multi-char keys like "Enter", "Space", "Delete"
+        parts.push(key);
+    }
     
-    parts.push(key);
     return parts.join('+');
   }
 
-  private normalizeShortcut(shortcut: string): string {
-      return shortcut.replace('Space', ' ').split('+').map(p => p.trim()).join('+');
+  private normalizeShortcut(shortcut: unknown): string {
+      const raw = NullShield.trim(shortcut);
+      if (!raw) return '';
+      
+      return raw
+          .split('+')
+          .map(part => {
+              const str = NullShield.trim(part);
+              if (!str) return '';
+
+              const low = NullShield.sanitize(str); // Use safe lowercase
+              if (low === 'spacebar' || low === ' ' || low === 'space') return 'Space';
+              if (low === 'ctrl' || low === 'control') return 'Ctrl';
+              if (low === 'shift') return 'Shift';
+              if (low === 'alt') return 'Alt';
+              if (low === 'del' || low === 'delete') return 'Delete';
+              
+              return str.length === 1 ? str.toUpperCase() : str;
+          })
+          .filter(part => part.length > 0)
+          .join('+');
   }
 }

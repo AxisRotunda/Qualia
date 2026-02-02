@@ -3,8 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { EntityStoreService } from '../ecs/entity-store.service';
 import { CameraManagerService } from './camera-manager.service';
-import { EntityLifecycleService, EntityCreatedEvent } from '../ecs/entity-lifecycle.service';
+import { EntityLifecycleService, EntityCreatedEvent, EntityDestroyedEvent } from '../ecs/entity-lifecycle.service';
 import { SpatialGrid } from '../utils/spatial-grid';
+import { EngineStateService } from '../engine-state.service';
 import { Entity } from '../core';
 
 @Injectable({
@@ -14,6 +15,7 @@ export class VisibilityManagerService {
   private entityStore = inject(EntityStoreService);
   private cameraManager = inject(CameraManagerService);
   private lifecycle = inject(EntityLifecycleService);
+  private state = inject(EngineStateService);
 
   // Spatial Partitioning for Static Objects
   private staticGrid = new SpatialGrid(32); // 32m chunks
@@ -25,6 +27,7 @@ export class VisibilityManagerService {
   // Config
   private readonly CULL_DIST = 150; 
   private readonly CULL_DIST_SQ = this.CULL_DIST * this.CULL_DIST;
+  private readonly SHADOW_CULL_DIST_SQ = 80 * 80; // ACTOR_OPTIM: Disable actor shadows > 80m
   private readonly UPDATE_THRESHOLD = 2.0;
 
   // State
@@ -56,7 +59,8 @@ export class VisibilityManagerService {
     }
   }
 
-  private handleDestruction(entity: Entity) {
+  private handleDestruction(event: EntityDestroyedEvent) {
+    const entity = event.entity;
     this.staticGrid.remove(entity);
     this.removeDynamic(entity);
     this.visibleSet.delete(entity);
@@ -135,10 +139,21 @@ export class VisibilityManagerService {
 
   private cullDynamic(camPos: THREE.Vector3) {
       const len = this.dynamicEntities.length;
+      const playerEntity = this.state.playerEntity();
+      const isFP = this.state.viewMode() === 'fp';
+
       for (let i = 0; i < len; i++) {
           const entity = this.dynamicEntities[i];
           
-          // Always show selected
+          // --- FIRST-PERSON HYGIENE (RUN_ACTOR) ---
+          // Hide player model completely if camera is inside them
+          if (entity === playerEntity && isFP) {
+              this.setVisible(entity, false);
+              this.visibleSet.delete(entity);
+              continue;
+          }
+
+          // Always show selected (except when player in FP)
           if (this.entityStore.selectedEntity() === entity) {
               this.setVisible(entity, true);
               this.visibleSet.add(entity);
@@ -157,12 +172,27 @@ export class VisibilityManagerService {
           const isVisible = distSq <= this.CULL_DIST_SQ;
           
           this.setVisible(entity, isVisible);
-          if (isVisible) this.visibleSet.add(entity);
-          else this.visibleSet.delete(entity);
+          
+          if (isVisible) {
+              this.visibleSet.add(entity);
+              
+              // ACTOR_OPTIM: Shadow Culling for distant actors
+              const meshRef = this.entityStore.world.meshes.get(entity);
+              if (meshRef) {
+                  meshRef.mesh.castShadow = distSq < this.SHADOW_CULL_DIST_SQ;
+              }
+          } else {
+              this.visibleSet.delete(entity);
+          }
       }
   }
 
   private setVisible(entity: Entity, visible: boolean) {
+      // RUN_INDUSTRY: User overrides priority
+      if (this.entityStore.hidden.has(entity)) {
+          visible = false;
+      }
+
       const meshRef = this.entityStore.world.meshes.get(entity);
       if (meshRef) {
           meshRef.mesh.visible = visible;

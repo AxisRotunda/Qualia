@@ -9,41 +9,57 @@ import { NatureTerrainService } from './nature/nature-terrain.service';
   providedIn: 'root'
 })
 export class NatureGeneratorService {
-  private flora = inject(NatureFloraService);
-  private geology = inject(NatureGeologyService);
+  public flora = inject(NatureFloraService);
+  public geology = inject(NatureGeologyService);
   
   // Public for access by Scenes
   public terrain = inject(NatureTerrainService);
 
-  generateTree(complexity: number = 1.0): THREE.BufferGeometry | null {
-    return this.flora.generateTree(complexity);
+  generateTree(complexity: number = 1.0, seed?: number): THREE.BufferGeometry | null {
+    return this.flora.generateTree(complexity, seed);
   }
 
-  generatePalmTree(complexity: number = 1.0): THREE.BufferGeometry | null {
-    return this.flora.generatePalmTree(complexity);
+  generatePineTree(complexity: number = 1.0, seed?: number): THREE.BufferGeometry | null {
+    return this.flora.generatePineTree(complexity, seed);
   }
 
-  generateRock(type?: 'granite' | 'sedimentary', complexity: number = 1.0): THREE.BufferGeometry {
-    return this.geology.generateRock(type, complexity);
+  generatePalmTree(complexity: number = 1.0, seed?: number): THREE.BufferGeometry | null {
+    return this.flora.generatePalmTree(complexity, seed);
   }
 
-  generateIceChunk(complexity: number = 1.0): THREE.BufferGeometry {
-    return this.geology.generateIceChunk(complexity);
+  generateTundraBush(complexity: number = 1.0, seed?: number): THREE.BufferGeometry | null {
+    return this.flora.generateTundraBush(complexity, seed);
   }
 
-  generateLog(): THREE.BufferGeometry {
-    return this.flora.generateLog();
+  generateRock(type?: 'granite' | 'sedimentary', complexity: number = 1.0, seed?: number): THREE.BufferGeometry {
+    return this.geology.generateRock(type, complexity, seed);
+  }
+
+  generateIceChunk(complexity: number = 1.0, seed?: number): THREE.BufferGeometry {
+    return this.geology.generateIceChunk(complexity, seed);
+  }
+
+  generateIceBlock(size: number, seed?: number): THREE.BufferGeometry {
+      return this.geology.generateIceBlock(size, seed);
+  }
+
+  generateIceSpikeCluster(seed?: number): THREE.BufferGeometry | null {
+    return this.flora.generateIceSpikeCluster(seed);
+  }
+
+  generateLog(seed?: number): THREE.BufferGeometry {
+    return this.flora.generateLog(seed);
   }
 
   generateIceTerrain(size = 128): THREE.BufferGeometry {
     return this.terrain.generateIceTerrain(size);
   }
 
-  generateIceSpire(): THREE.BufferGeometry {
-    return this.geology.generateIceSpire();
+  generateIceSpire(seed?: number): THREE.BufferGeometry {
+    return this.geology.generateIceSpire(seed);
   }
   
-  generateCinderBlock(): THREE.BufferGeometry | null {
-      return this.geology.generateCinderBlock();
+  generateCinderBlock(seed?: number): THREE.BufferGeometry | null {
+      return this.geology.generateCinderBlock(seed);
   }
 }

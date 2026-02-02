@@ -4,12 +4,9 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { Subject } from 'rxjs';
 import { PhysicsRegistryService } from './physics-registry.service';
 import { PhysicsStepService } from './physics-step.service';
+import { CollisionEvent } from '../engine/events/game-events';
 
-export interface CollisionEvent {
-  entityA: number;
-  entityB: number;
-  started: boolean;
-}
+export { CollisionEvent } from '../engine/events/game-events';
 
 @Injectable({ providedIn: 'root' })
 export class PhysicsWorldService {
@@ -19,8 +16,14 @@ export class PhysicsWorldService {
   world: RAPIER.World | null = null;
   eventQueue: RAPIER.EventQueue | null = null;
   private initialized = false;
+  
+  // Cache gravity to restore it after world recreation
+  private currentGravity = { x: 0.0, y: -9.81, z: 0.0 };
 
   public collision$ = new Subject<CollisionEvent>();
+  
+  // RUN_REPAIR: Buffer collisions to avoid recursive borrow of Rapier World
+  private collisionBuffer: CollisionEvent[] = [];
 
   get rWorld(): RAPIER.World | null {
     return this.world;
@@ -30,28 +33,33 @@ export class PhysicsWorldService {
     if (this.initialized) return;
     await RAPIER.init();
     
-    this.world = new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 });
-    this.eventQueue = new RAPIER.EventQueue(true);
-
-    // Ground (Physics Plane)
-    const groundBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0.0, -0.1, 0.0);
-    const groundBody = this.world.createRigidBody(groundBodyDesc);
-    
-    const groundColliderDesc = RAPIER.ColliderDesc.cuboid(250, 0.1, 250)
-        .setFriction(1.0)
-        .setRestitution(0.1);
-    this.world.createCollider(groundColliderDesc, groundBody);
-
+    this.createWorld();
     this.initialized = true;
+  }
+
+  private createWorld() {
+      // Create fresh world instance with current settings
+      this.world = new RAPIER.World(this.currentGravity);
+      this.eventQueue = new RAPIER.EventQueue(true);
   }
 
   step(dtMs: number): void {
     if (!this.world || !this.eventQueue) return;
     
+    // Clear buffer for this frame
+    this.collisionBuffer.length = 0;
+
     // Delegate the accumulator logic
     this.stepper.step(this.world, this.eventQueue, dtMs, () => {
-        this.drainEvents();
+        this.collectEvents();
     });
+
+    // Dispatch buffered events AFTER all steps are done and world is unlocked
+    if (this.collisionBuffer.length > 0) {
+        for (let i = 0; i < this.collisionBuffer.length; i++) {
+            this.collision$.next(this.collisionBuffer[i]);
+        }
+    }
   }
 
   /**
@@ -71,10 +79,8 @@ export class PhysicsWorldService {
       });
   }
 
-  private drainEvents() {
+  private collectEvents() {
       if (!this.eventQueue || !this.world) return;
-      
-      const bufferedEvents: CollisionEvent[] = [];
       
       try {
           this.eventQueue.drainCollisionEvents((h1, h2, started) => {
@@ -82,50 +88,52 @@ export class PhysicsWorldService {
               const e2 = this.registry.getEntityId(h2);
               
               if (e1 !== undefined && e2 !== undefined) {
-                  bufferedEvents.push({ entityA: e1, entityB: e2, started });
+                  this.collisionBuffer.push({ entityA: e1, entityB: e2, started });
               }
           });
       } catch (e) {
           console.warn('Failed to drain collision events', e);
       }
-
-      for (const event of bufferedEvents) {
-          this.collision$.next(event);
-      }
   }
 
   setGravity(y: number) {
-    if (!this.world) return;
-    this.world.gravity = { x: 0, y, z: 0 };
-    this.world.forEachRigidBody(body => body.wakeUp());
+    this.currentGravity.y = y;
+    if (this.world) {
+        this.world.gravity = this.currentGravity;
+        this.world.forEachRigidBody(body => body.wakeUp());
+    }
   }
 
+  /**
+   * Hard Reset of Physics Simulation.
+   * Completely destroys and recreates the Rapier World to ensure zero memory leaks
+   * and clean state for new scenes. O(1) JS overhead.
+   */
   resetWorld() {
-    if (!this.world) return;
-    
-    const bodies: RAPIER.RigidBody[] = [];
-    this.world.forEachRigidBody(body => {
-      if (!body.isFixed()) {
-        bodies.push(body);
-      }
-    });
-    
-    bodies.forEach(b => {
-        if(this.world && this.world.getRigidBody(b.handle)) {
-            this.world.removeRigidBody(b);
-        }
-    });
+    if (this.world) {
+        this.world.free();
+        this.world = null;
+    }
     
     if (this.eventQueue) {
-        this.eventQueue.clear();
+        // EventQueue doesn't always have a free(), but dropping ref is usually enough in JS-side wrappers
+        // calling clear just in case logic persists
+        this.eventQueue.clear(); 
+        this.eventQueue = null;
     }
     
     this.registry.clear();
     this.stepper.reset();
+    
+    // Recreate
+    this.createWorld();
   }
 
   getBodyPose(handle: number): { p: RAPIER.Vector, q: RAPIER.Rotation } | null {
     if (!this.world) return null;
+    // Guard against stale handles after reset
+    if (!this.world.bodies.contains(handle)) return null;
+    
     const body = this.world.getRigidBody(handle);
     if (!body) return null;
     return {
@@ -134,9 +142,14 @@ export class PhysicsWorldService {
     };
   }
 
-  // Optimized: Zero-alloc copy to target object
+  /**
+   * Optimized: Zero-alloc copy to target object.
+   * Returns false if body handle is invalid.
+   */
   copyBodyPosition(handle: number, outPos: { x: number, y: number, z: number }): boolean {
     if (!this.world) return false;
+    if (!this.world.bodies.contains(handle)) return false;
+
     const body = this.world.getRigidBody(handle);
     if (!body) return false;
     const t = body.translation();
@@ -146,6 +159,8 @@ export class PhysicsWorldService {
 
   copyBodyLinVel(handle: number, outVel: { x: number, y: number, z: number }): boolean {
     if (!this.world) return false;
+    if (!this.world.bodies.contains(handle)) return false;
+
     const body = this.world.getRigidBody(handle);
     if (!body) return false;
     const v = body.linvel();
@@ -155,6 +170,8 @@ export class PhysicsWorldService {
 
   updateBodyTransform(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
     if (!this.world) return;
+    if (!this.world.bodies.contains(handle)) return;
+
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
@@ -168,13 +185,44 @@ export class PhysicsWorldService {
     body.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
 
+  /**
+   * Updates only rotation without affecting linear velocity.
+   * Crucial for hybrid manipulation (Slide + Rotate).
+   */
+  setBodyRotation(handle: number, rotation: { x: number, y: number, z: number, w: number }) {
+      if (!this.world) return;
+      if (!this.world.bodies.contains(handle)) return;
+
+      const body = this.world.getRigidBody(handle);
+      if (!body) return;
+
+      body.setRotation(rotation, true);
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      // NOTE: Do NOT reset linear velocity here, or the object will stop sliding/lifting
+  }
+
+  setNextKinematicTranslation(handle: number, position: { x: number, y: number, z: number }, rotation?: { x: number, y: number, z: number, w: number }) {
+      if (!this.world) return;
+      if (!this.world.bodies.contains(handle)) return;
+
+      const body = this.world.getRigidBody(handle);
+      if (!body) return;
+
+      body.setNextKinematicTranslation(position);
+      if (rotation) {
+          body.setNextKinematicRotation(rotation);
+      }
+  }
+
   removeBody(handle: number) {
     if (!this.world) return;
-    const body = this.world.getRigidBody(handle);
-    if (body) {
-      this.world.removeRigidBody(body);
-      this.registry.unregister(handle);
+    if (this.world.bodies.contains(handle)) {
+        const body = this.world.getRigidBody(handle);
+        if (body) {
+            this.world.removeRigidBody(body);
+        }
     }
+    this.registry.unregister(handle);
   }
 
   getDebugBuffers(): { vertices: Float32Array, colors: Float32Array } | null {

@@ -1,13 +1,9 @@
 
 import { Injectable, signal } from '@angular/core';
 import { Subject } from 'rxjs';
+import { PointerEventData } from '../events/game-events';
 
-export interface PointerEventData {
-  x: number;
-  y: number;
-  originalEvent: PointerEvent | MouseEvent;
-  button: number;
-}
+export { PointerEventData } from '../events/game-events';
 
 @Injectable({
   providedIn: 'root'

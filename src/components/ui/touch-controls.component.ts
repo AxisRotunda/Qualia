@@ -28,11 +28,15 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
       </button>
     }
 
-    <!-- Crosshair / Reticle for Walk/Explore Modes -->
+    <!-- High-Precision Reticle (Walk/Explore Modes) -->
     @if (engine.mode() !== 'edit' && engine.hudVisible()) {
-        <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none z-0 opacity-50">
-            <div class="absolute inset-0 border-2 border-white/50 rounded-full"></div>
-            <div class="absolute top-1/2 left-1/2 w-0.5 h-0.5 bg-white -translate-x-1/2 -translate-y-1/2 rounded-full"></div>
+        <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0 opacity-60 mix-blend-difference">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-white">
+                <!-- Center Dot -->
+                <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+                <!-- Brackets -->
+                <path d="M4 12H2M22 12H20M12 4V2M12 22V20" stroke-opacity="0.5" />
+            </svg>
         </div>
     }
 
@@ -82,6 +86,7 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
         width: 100%;
         height: 100%;
         pointer-events: none; /* Critical: Host is transparent to clicks */
+        background: transparent; /* Explicit transparency */
     }
   `]
 })

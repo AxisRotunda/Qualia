@@ -1,36 +1,27 @@
-
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GameInputService } from '../../services/game-input.service';
+import { LayoutService } from '../../services/ui/layout.service';
+import { CameraManagerService } from '../graphics/camera-manager.service';
 
 export type CameraViewPreset = 'top' | 'front' | 'side';
 
-export interface CameraTweenConfig {
-    targetPos: THREE.Vector3;
-    lookAt: THREE.Vector3;
-    duration: number; // seconds
-}
-
+/**
+ * CameraControlService: Orchestrates Orbit-based camera semantics.
+ * Refactored Phase 85.0: Enhanced for Industry Standard Mobile Feel.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class CameraControlService {
   private gameInput = inject(GameInputService);
+  private layout = inject(LayoutService);
+  private cameraManager = inject(CameraManagerService);
 
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   
-  // Transition State
-  private isTransitioning = false;
-  private transitionStart = 0;
-  private transitionDuration = 0;
-  private startPos = new THREE.Vector3();
-  private startTarget = new THREE.Vector3();
-  private endPos = new THREE.Vector3();
-  private endTarget = new THREE.Vector3();
-
-  // Scratch vectors for Zero-Allocation loop
   private readonly _vRight = new THREE.Vector3();
   private readonly _vUp = new THREE.Vector3();
   private readonly _vOffset = new THREE.Vector3();
@@ -38,93 +29,79 @@ export class CameraControlService {
 
   init(camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement) {
     this.camera = camera;
-    
-    // Dispose previous if exists
-    if (this.controls) {
-        this.controls.dispose();
-    }
+    if (this.controls) this.controls.dispose();
 
     this.controls = new OrbitControls(camera, canvas);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
+    this.controls.enableDamping = true; // Forced for AAA feel
+    this.controls.dampingFactor = 0.08;
+    this.controls.rotateSpeed = 0.85;
     this.controls.screenSpacePanning = true;
-    
-    // Limits to prevent going under the floor too easily
     this.controls.maxPolarAngle = Math.PI / 1.95; 
     this.controls.minDistance = 2;
-    this.controls.maxDistance = 100;
-
+    this.controls.maxDistance = 150;
     this.reset();
   }
   
-  update() {
-    if (this.isTransitioning && this.camera && this.controls) {
-        const now = performance.now();
-        const alpha = Math.min(1, (now - this.transitionStart) / (this.transitionDuration * 1000));
-        
-        // Quadratic Ease In/Out
-        const t = alpha < 0.5 ? 2 * alpha * alpha : -1 + (4 - 2 * alpha) * alpha;
+  update(dtMs: number) {
+    if (!this.controls || !this.camera) return;
 
-        this.camera.position.lerpVectors(this.startPos, this.endPos, t);
-        this.controls.target.lerpVectors(this.startTarget, this.endTarget, t);
-        
-        if (alpha >= 1) {
-            this.isTransitioning = false;
-            this.controls.enabled = true;
-        }
-    } else if (this.controls && this.controls.enabled) {
-        // Poll Virtual Inputs autonomously
-        this.processVirtualInput();
+    if (this.cameraManager.isMoving) {
+        this.controls.target.copy(this.cameraManager.target);
+        this.controls.enabled = false;
         this.controls.update();
+        return;
     }
+
+    this.controls.enabled = true;
+    this.controls.enableDamping = !this.layout.reducedMotion();
+    
+    // Scale virtual inputs by actual delta time for frame-rate independence
+    this.processVirtualInput(dtMs / 1000);
+    this.controls.update();
+    
+    // Sync back target for culling systems
+    this.cameraManager.target.copy(this.controls.target);
   }
 
-  private processVirtualInput() {
-     if (!this.controls || !this.camera || !this.controls.enabled || this.isTransitioning) return;
+  private processVirtualInput(dt: number) {
+     if (!this.controls || !this.camera || !this.controls.enabled) return;
 
      const moveDelta = this.gameInput.virtualMove;
      const lookDelta = this.gameInput.virtualLook;
 
-     // If no input, just return (Damping continues in update)
-     if (moveDelta.x === 0 && moveDelta.y === 0 && lookDelta.x === 0 && lookDelta.y === 0) return;
+     if (Math.abs(moveDelta.x) < 0.001 && Math.abs(moveDelta.y) < 0.001 && 
+         Math.abs(lookDelta.x) < 0.001 && Math.abs(lookDelta.y) < 0.001) return;
 
-     const dt = 0.016; 
-     const panSpeed = 30.0 * dt; 
-     const rotateSpeed = 2.0 * dt;
+     // Calibration: 1.0 Stick Tilt = 35m/s pan at standard zoom
+     const panSpeed = 35.0 * dt; 
+     // Calibration: 1.0 Stick Tilt = 4.5 rad/s orbit (Smooth but fast)
+     const rotateSpeed = 4.5 * dt;
 
-     // 1. Pan (Left Joystick)
+     // 1. Dual-Axis Pan (Left Stick)
      if (Math.abs(moveDelta.x) > 0.01 || Math.abs(moveDelta.y) > 0.01) {
          this._vOffset.set(0, 0, 0);
-         
-         // Get Camera Basis
          this._vRight.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
          this._vUp.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
          
-         // Project to view plane logic for Pan
          this._vOffset.addScaledVector(this._vRight, moveDelta.x * panSpeed);
-         
-         // Normally Pan Up moves camera Up. 
-         // Joy Up (+1) -> moveDelta.y is +1.
-         // We want camera to move Up (so world goes down).
          this._vOffset.addScaledVector(this._vUp, moveDelta.y * panSpeed);
          
          this.camera.position.add(this._vOffset);
          this.controls.target.add(this._vOffset);
      }
 
-     // 2. Orbit (Right Joystick)
+     // 2. Spherical Orbit (Right Stick)
      if (Math.abs(lookDelta.x) > 0.01 || Math.abs(lookDelta.y) > 0.01) {
          this._vOffset.subVectors(this.camera.position, this.controls.target);
          this._spherical.setFromVector3(this._vOffset);
          
-         this._spherical.theta -= lookDelta.x * rotateSpeed;
+         // INDUSTRY: Cartesian standard orbit
+         this._spherical.theta += lookDelta.x * rotateSpeed;
          this._spherical.phi -= lookDelta.y * rotateSpeed;
          
          this._spherical.makeSafe();
-         
-         this._spherical.phi = Math.max(0, Math.min(Math.PI / 1.95, this._spherical.phi)); 
-         this._spherical.radius = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, this._spherical.radius));
-
+         // Prevent flipping over poles
+         this._spherical.phi = Math.max(0.01, Math.min(Math.PI / 1.95, this._spherical.phi)); 
          this._vOffset.setFromSpherical(this._spherical);
          
          this.camera.position.copy(this.controls.target).add(this._vOffset);
@@ -133,66 +110,39 @@ export class CameraControlService {
   }
 
   setEnabled(enabled: boolean) {
-      if (this.controls) {
-          this.controls.enabled = enabled && !this.isTransitioning;
-      }
+      if (this.controls) this.controls.enabled = enabled;
   }
 
-  transitionTo(config: CameraTweenConfig) {
-      if (!this.camera || !this.controls) return;
-      
-      this.isTransitioning = true;
-      this.controls.enabled = false; // Disable input during tween
-      
-      this.startPos.copy(this.camera.position);
-      this.startTarget.copy(this.controls.target);
-      
-      this.endPos.copy(config.targetPos);
-      this.endTarget.copy(config.lookAt);
-      
-      this.transitionDuration = config.duration;
-      this.transitionStart = performance.now();
+  transitionTo(config: { targetPos: THREE.Vector3, lookAt: THREE.Vector3, duration: number }) {
+      this.cameraManager.transitionTo({ position: config.targetPos, target: config.lookAt, duration: config.duration });
   }
 
   focusOn(target: THREE.Vector3, distance: number = 10) {
-    if (!this.controls || !this.camera) return;
-    
-    this.controls.target.copy(target);
-    
-    // Reuse scratch for calculation
-    this._vOffset.subVectors(this.camera.position, this.controls.target).normalize();
+    if (!this.camera) return;
+    this._vOffset.subVectors(this.camera.position, target).normalize();
     if (this._vOffset.lengthSq() < 0.1) this._vOffset.set(0, 0.5, 1).normalize();
-    
-    const offset = this._vOffset.multiplyScalar(distance);
-    this.camera.position.copy(target).add(offset);
-    this.camera.lookAt(target);
+    const finalPos = target.clone().add(this._vOffset.multiplyScalar(distance));
+    this.transitionTo({ targetPos: finalPos, lookAt: target, duration: 1.0 });
   }
 
   setPreset(preset: CameraViewPreset) {
     if (!this.controls || !this.camera) return;
-
     const dist = this.camera.position.distanceTo(this.controls.target);
-    this.controls.target.set(0, 5, 0);
-
+    const targetPos = new THREE.Vector3();
+    const lookAt = new THREE.Vector3(0, 5, 0);
     switch (preset) {
-        case 'top':
-            this.camera.position.set(0, dist, 0);
-            break;
-        case 'front':
-            this.camera.position.set(0, 5, dist);
-            break;
-        case 'side':
-            this.camera.position.set(dist, 5, 0);
-            break;
+        case 'top': targetPos.set(0, dist, 0); break;
+        case 'front': targetPos.set(0, 5, dist); break;
+        case 'side': targetPos.set(dist, 5, 0); break;
     }
-    this.camera.lookAt(this.controls.target);
+    this.transitionTo({ targetPos, lookAt, duration: 1.2 });
   }
   
   reset() {
-    if (!this.controls || !this.camera) return;
-    this.controls.target.set(0, 5, 0);
-    this.camera.position.set(15, 15, 15);
-    this.camera.lookAt(0, 5, 0);
-    this.isTransitioning = false;
+    this.cameraManager.resetPosition();
+    if (this.controls) {
+        this.controls.target.copy(this.cameraManager.target);
+        this.controls.update();
+    }
   }
 }

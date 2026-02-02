@@ -10,9 +10,16 @@ import { SceneGraphService } from '../graphics/scene-graph.service';
 import { VisualsFactoryService } from '../graphics/visuals-factory.service';
 import { EntityLifecycleService } from '../ecs/entity-lifecycle.service';
 import { SceneLoaderService } from '../level/scene-loader.service';
-import { wait } from '../utils/thread.utils';
+import { SceneLifecycleService } from '../level/scene-lifecycle.service';
+import { SceneRegistryService } from '../level/scene-registry.service';
+import { wait, yieldToMain } from '../utils/thread.utils';
 import type { EngineService } from '../../services/engine.service';
 
+/**
+ * LevelManagerService: Orchestrates scene transitions and world state lifecycle.
+ * Refactored for RUN_LIFECYCLE: Decoupled resource disposal via Event Bus.
+ * Updated for RUN_INDUSTRY: Robust Failover & Golden Path enforcement.
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -25,59 +32,111 @@ export class LevelManagerService {
   private envControl = inject(EnvironmentControlService);
   private sceneGraph = inject(SceneGraphService);
   private visualsFactory = inject(VisualsFactoryService);
-  private lifecycle = inject(EntityLifecycleService);
+  private entityLifecycle = inject(EntityLifecycleService);
+  private sceneLifecycle = inject(SceneLifecycleService);
+  private sceneRegistry = inject(SceneRegistryService);
   private loader = inject(SceneLoaderService);
 
-  async loadScene(engine: EngineService, id: string) {
-      this.state.loading.set(true);
-      this.state.loadingProgress.set(0);
-      this.state.loadingStage.set('BOOT SEQUENCE');
-      this.state.mainMenuVisible.set(false);
+  private readonly SAFE_MODE_SCENE = 'proving-grounds';
 
-      // Brief delay to allow UI to render the loading screen
+  async loadScene(engine: EngineService, id: string) {
+      // 0. Pre-Flight Validation (Fail Fast)
+      if (!this.sceneRegistry.isValidScene(id)) {
+          console.error(`[LevelManager] Invalid Scene ID: ${id}`);
+          // If the requested ID is invalid, we don't even start the transition.
+          // Unless we are already stuck, in which case we force Safe Mode.
+          if (this.state.loading()) {
+              this.triggerPanic(engine, `INVALID_TARGET: ${id}`);
+          }
+          return;
+      }
+
+      this.state.setLoading(true);
+      this.state.setLoadingProgress(0);
+      this.state.setLoadingStage('PREPARING TRANSITION');
+      this.state.setMainMenuVisible(false);
+
+      // Notify systems to begin teardown
+      this.sceneLifecycle.onLoadStart.next({ id, timestamp: Date.now() });
+
       await wait(50);
 
+      // 1. Purge current world
+      this.reset();
+      await yieldToMain();
+
+      // 2. Delegate to construction loader
       const success = await this.loader.load(engine, id);
 
       if (success) {
-          this.state.loadingProgress.set(100);
-          this.state.loadingStage.set('SYSTEM READY');
-          await wait(600); 
-          this.state.currentSceneId.set(id);
-          this.state.loading.set(false);
+          this.state.setLoadingStage('STABILIZED');
+          this.state.setCurrentSceneId(id);
+          this.sceneLifecycle.onLoadComplete.next({ id, timestamp: Date.now() });
+          await wait(100); 
+          this.state.setLoading(false);
       } else {
-          this.state.loadingStage.set('CRITICAL FAIL - RESETTING');
-          await wait(1000);
-          this.reset(); // Fallback to safe state
-          this.state.currentSceneId.set(null);
-          this.state.loading.set(false);
+          this.triggerPanic(engine, `LOAD_FAILURE: ${id}`);
       }
   }
 
-  reset() {
-      this.state.loadingStage.set('PURGING DATA');
+  private async triggerPanic(engine: EngineService, reason: string) {
+      // Protocol [REPAIR]: Emergency recovery to Safe Mode
+      this.state.setLoadingStage('KERNEL_PANIC: RECOVERY_INITIATED');
+      this.state.setLoadError(reason);
       
-      // 1. Clear State
+      // Let the user see the panic state for a moment (UX: Transparency)
+      await wait(3000);
+      
+      this.state.setLoadingStage('REVERTING_TO_SAFE_ZONE');
+      this.reset(); 
+      
+      // Load Safe Mode as fallback
+      // Guard against recursive failure if Safe Mode itself is broken
+      if (this.state.currentSceneId() !== this.SAFE_MODE_SCENE) {
+          await this.loader.load(engine, this.SAFE_MODE_SCENE);
+          this.state.setCurrentSceneId(this.SAFE_MODE_SCENE);
+      }
+      
+      this.state.setLoading(false);
+      this.state.setLoadError(null); // Clear error after successful recovery
+  }
+
+  /**
+   * Resets all engine subsystems to a clean 'void' state.
+   * RUN_LIFECYCLE: Broadcasts purge signal to specialized resource managers.
+   */
+  reset() {
+      this.state.setLoadingStage('FLUSHING REGISTRIES');
+      
+      // 1. Lifecycle Broadcast
+      this.sceneLifecycle.beforeUnload.next();
+
       this.entityStore.selectedEntity.set(null);
 
-      // 2. Bulk Physics Reset
+      // 2. Subsystem Flush
       this.physicsService.resetWorld();
-
-      // 3. Bulk Visual Reset
+      
+      // Visual Purge
       const children = [...this.sceneGraph.entityGroup.children];
       for (const child of children) {
           this.sceneGraph.removeEntity(child);
-          this.visualsFactory.disposeMesh(child);
+          this.visualsFactory.deleteVisuals(-1, child);
       }
-
-      // 4. ECS & Systems Reset
-      this.entityStore.reset();
-      this.lifecycle.onWorldReset.next();
       
-      // 5. Restore Defaults
-      this.state.isPaused.set(false);
-      this.state.gravityY.set(-9.81); 
+      this.visualsFactory.disposeRegistries();
+
+      // 3. ECS Data Purge
+      this.entityStore.reset();
+      
+      // 4. World Restoration
+      this.entityLifecycle.onWorldReset.next();
+      this.sceneLifecycle.onWorldCleared.next();
+      
+      this.state.setPaused(false);
+      this.state.setGravity(-9.81); 
       this.physicsService.setGravity(-9.81);
+      this.state.setWaterLevel(null);
+      this.state.setLoadError(null);
       
       this.inputManager.resetCamera();
       this.inputManager.setMode('edit');
@@ -102,5 +161,8 @@ export class LevelManagerService {
   }
 
   hasSavedState() { return !!this.persistence.loadFromLocal(); }
-  getQuickSaveLabel() { const d = this.persistence.loadFromLocal(); return d?.meta?.label ? `Continue: ${d.meta.label}` : 'Continue'; }
+  getQuickSaveLabel() { 
+      const d = this.persistence.loadFromLocal(); 
+      return d?.meta?.label ? `Resume: ${d.meta.label}` : 'Resume Simulation'; 
+  }
 }

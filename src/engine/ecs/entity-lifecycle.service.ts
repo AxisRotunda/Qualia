@@ -1,17 +1,13 @@
 
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
-import { Entity } from '../schema';
+import { EntityCreatedEvent, EntityDestroyedEvent } from '../events/game-events';
 
-export interface EntityCreatedEvent {
-  entity: Entity;
-  isStatic: boolean;
-  tags: string[];
-}
+export { EntityCreatedEvent, EntityDestroyedEvent } from '../events/game-events';
 
 @Injectable({ providedIn: 'root' })
 export class EntityLifecycleService {
   public readonly onEntityCreated = new Subject<EntityCreatedEvent>();
-  public readonly onEntityDestroyed = new Subject<Entity>();
+  public readonly onEntityDestroyed = new Subject<EntityDestroyedEvent>();
   public readonly onWorldReset = new Subject<void>();
 }

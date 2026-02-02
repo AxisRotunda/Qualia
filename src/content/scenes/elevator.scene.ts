@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 import { Entity } from '../../engine/core';
@@ -19,11 +18,18 @@ let statusLight: THREE.PointLight | null = null;
 export const ELEVATOR_SCENE: ScenePreset = {
   id: 'elevator-deep', 
   label: 'Deep Descent', 
-  description: 'A functional elevator descending into the crust. Glass walls reveal the geological strata.', 
+  description: 'A functional elevator descending into the crust. Kinematic platforms allow physical traversal.', 
   theme: 'city', 
   previewColor: 'from-gray-800 to-black',
   
-  load: (ctx, engine) => {
+  preloadAssets: [
+      'structure-elevator-cabin',
+      'structure-elevator-shaft',
+      'prop-elevator-button',
+      'mat-concrete'
+  ],
+
+  load: async (ctx, engine) => {
       // Reset State
       currentDepth = 0;
       targetDepth = 0;
@@ -42,19 +48,21 @@ export const ELEVATOR_SCENE: ScenePreset = {
       // Cabin Light
       const cabinLight = new THREE.PointLight(0xffffff, 0.8, 8);
       cabinLight.position.set(0, 2.8, 0);
-      engine.sceneService.getScene().add(cabinLight);
+      // FIX: Access scene service through sys
+      engine.sys.scene.getScene().add(cabinLight);
 
       // Status Light
       statusLight = new THREE.PointLight(0x22c55e, 1.0, 3);
       statusLight.position.set(1.2, 1.5, 1.3);
-      engine.sceneService.getScene().add(statusLight);
+      // FIX: Access scene service through sys
+      engine.sys.scene.getScene().add(statusLight);
 
       if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
 
-      // Spawn Cabin
+      // 1. Spawn Static Cabin (Origin)
       ctx.spawn('structure-elevator-cabin', 0, 1.5, 0);
 
-      // Spawn Controls
+      // 2. Spawn Controls
       const rot = new THREE.Euler(-Math.PI/4, 0, 0);
       btnUpEntity = ctx.spawn('prop-elevator-button', 1.1, 1.35, 1.4, { rotation: rot });
       const bUpMesh = engine.world.meshes.get(btnUpEntity);
@@ -64,25 +72,38 @@ export const ELEVATOR_SCENE: ScenePreset = {
       btnDownEntity = ctx.spawn('prop-elevator-button', 1.3, 1.35, 1.4, { rotation: rot });
       engine.ops.setEntityName(btnDownEntity, 'CALL DOWN');
 
-      // Spawn Moving Shaft
-      const shaftGeo = engine.assetService.getGeometry('gen-elevator-shaft');
-      const mesh = new THREE.Mesh(shaftGeo, engine.materialService.getMaterial('mat-concrete')); 
-      engine.sceneService.getScene().add(mesh);
+      // 3. Spawn Moving Shaft (Kinematic)
+      // We use structure-elevator-shaft which has a trimesh collider
+      shaftEntity = ctx.spawn('structure-elevator-shaft', 0, -200, 0);
       
-      shaftEntity = engine.world.createEntity();
-      engine.world.meshes.add(shaftEntity, { mesh });
-      engine.world.transforms.add(shaftEntity, { position: {x:0, y:0, z:0}, rotation: {x:0,y:0,z:0,w:1}, scale: {x:1,y:1,z:1} });
-      engine.world.names.add(shaftEntity, 'Elevator Shaft');
-      
+      // Upgrade to KinematicPositionBased to allow programmatic movement via KinematicSystem
+      const rb = engine.world.rigidBodies.get(shaftEntity);
+      if (rb) {
+          // FIX: Access physics service through sys
+          const body = engine.sys.physics.rWorld?.getRigidBody(rb.handle);
+          if (body) {
+              body.setBodyType(2, true); // 2 = KinematicPositionBased in Rapier
+          }
+      }
+
+      // Add Kinematic Controller Component
+      engine.world.kinematicControllers.add(shaftEntity, {
+          targetPosition: { x: 0, y: -200, z: 0 },
+          targetRotation: { x: 0, y: 0, z: 0, w: 1 }
+      });
+
+      // 4. Decoration
       const agencyFloor = new THREE.Mesh(
           new THREE.BoxGeometry(20, 1, 20),
           new THREE.MeshStandardMaterial({ color: 0x334155 })
       );
       agencyFloor.position.set(0, 200, 0); 
-      mesh.add(agencyFloor);
+      const shaftMesh = engine.world.meshes.get(shaftEntity);
+      if (shaftMesh) shaftMesh.mesh.add(agencyFloor);
 
       engine.input.setMode('walk');
-      const cam = engine.sceneService.getCamera();
+      // FIX: Access scene service through sys
+      const cam = engine.sys.scene.getCamera();
       cam.position.set(0, 1.6, 0);
       cam.lookAt(0, 1.6, -1);
   },
@@ -117,21 +138,17 @@ export const ELEVATOR_SCENE: ScenePreset = {
               statusLight.color.setHex(0xf59e0b); 
               statusLight.intensity = 1.0 + Math.sin(totalTime * 0.01) * 0.5;
           }
-
       } else {
           velocity = 0;
           currentDepth = targetDepth;
           if (statusLight) statusLight.color.setHex(0x22c55e); 
       }
 
-      // Update Shaft Position
+      // Update Kinematic Target
       if (shaftEntity !== null) {
-          const t = engine.world.transforms.get(shaftEntity);
-          const m = engine.world.meshes.get(shaftEntity);
-          if (t && m) {
-              const y = -200 + currentDepth;
-              t.position.y = y;
-              m.mesh.position.y = y;
+          const controller = engine.world.kinematicControllers.get(shaftEntity);
+          if (controller) {
+              controller.targetPosition.y = -200 + currentDepth;
           }
       }
   }

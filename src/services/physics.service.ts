@@ -7,9 +7,9 @@ import { ShapesFactory } from '../physics/shapes.factory';
 import { PhysicsInteractionService } from '../physics/physics-interaction.service';
 import { PhysicsRegistryService } from '../physics/physics-registry.service';
 import { PhysicsOptimizerService } from '../physics/optimization/physics-optimizer.service';
-import { PhysicsBodyDef } from '../engine/schema';
+import { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
 
-export { PhysicsBodyDef } from '../engine/schema';
+export { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
 
 @Injectable({
   providedIn: 'root'
@@ -39,9 +39,18 @@ export class PhysicsService {
     this.world.setGravity(y);
   }
 
+  /**
+   * Complete reset of the physics simulation.
+   * Delegates to subsystems in correct order to prevent memory access violations.
+   */
   resetWorld() {
+    // 1. Clear interaction constraints (Joints)
     this.interaction.reset();
+    
+    // 2. Clear world bodies
     this.world.resetWorld();
+    
+    // 3. Re-init essential kinematic actors (Hand)
     this.interaction.init(); 
   }
 }

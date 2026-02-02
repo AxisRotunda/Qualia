@@ -1,8 +1,7 @@
-
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import { scaleUVs, projectPlanarUVs } from './architecture.utils';
+import { Geo } from './architecture.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -10,295 +9,85 @@ import { scaleUVs, projectPlanarUVs } from './architecture.utils';
 export class ArchRoadService {
 
   generateRoad(w: number, length: number): THREE.BufferGeometry | null {
-      const roadW = w * 0.6; // 60% road
-      const walkW = (w - roadW) / 2;
-      const curbW = 0.25;
-      const curbH = 0.15;
+      const roadW = w * 0.6, walkW = (w-roadW)/2, curbW = 0.25, curbH = 0.15;
+      const roadGeo = Geo.box(roadW, 0.1, length, 4, 1, 1).toNonIndexed();
+      roadGeo.mapVertices(v => v.y -= 0.05 * (v.x/(roadW/2))**2).mapBox(roadW, 0.1, length, 0.2).computeVertexNormals().gradientY(0xaaaaaa, 0xdddddd, -0.1, 0.1); 
       
-      const roadGeo = new THREE.BoxGeometry(roadW, 0.1, length);
-      scaleUVs(roadGeo, roadW, 0.1, length);
-      roadGeo.translate(0, 0, 0); 
-      
-      const curbL = new THREE.BoxGeometry(curbW, curbH, length);
-      scaleUVs(curbL, curbW, curbH, length);
-      curbL.translate(-roadW/2 - curbW/2, (curbH - 0.1)/2, 0);
-      
-      const curbR = new THREE.BoxGeometry(curbW, curbH, length);
-      scaleUVs(curbR, curbW, curbH, length);
-      curbR.translate(roadW/2 + curbW/2, (curbH - 0.1)/2, 0);
-
+      const curbL = Geo.box(curbW, curbH, length).mapBox(curbW, curbH, length, 0.2).toNonIndexed().translate(-roadW/2-curbW/2, (curbH-0.1)/2, 0).get();
+      const curbR = Geo.box(curbW, curbH, length).mapBox(curbW, curbH, length, 0.2).toNonIndexed().translate(roadW/2+curbW/2, (curbH-0.1)/2, 0).get();
       const mergedCurbs = BufferUtils.mergeGeometries([curbL, curbR]);
+      if (mergedCurbs) new Geo(mergedCurbs).setColors(0xcccccc); 
 
-      const sidewalkH = 0.15;
-      const walkL = new THREE.BoxGeometry(walkW - curbW, sidewalkH, length);
-      scaleUVs(walkL, walkW - curbW, sidewalkH, length);
-      walkL.translate(-roadW/2 - curbW - (walkW - curbW)/2, (sidewalkH - 0.1)/2, 0);
-
-      const walkR = new THREE.BoxGeometry(walkW - curbW, sidewalkH, length);
-      scaleUVs(walkR, walkW - curbW, sidewalkH, length);
-      walkR.translate(roadW/2 + curbW + (walkW - curbW)/2, (sidewalkH - 0.1)/2, 0);
-
+      const walkL = Geo.box(walkW-curbW, 0.15, length).mapBox(walkW-curbW, 0.15, length, 0.2).toNonIndexed().translate(-roadW/2-curbW-(walkW-curbW)/2, 0.025, 0).get();
+      const walkR = Geo.box(walkW-curbW, 0.15, length).mapBox(walkW-curbW, 0.15, length, 0.2).toNonIndexed().translate(roadW/2+curbW+(walkW-curbW)/2, 0.025, 0).get();
       const mergedWalks = BufferUtils.mergeGeometries([walkL, walkR]);
+      if (mergedWalks) new Geo(mergedWalks).setColors(0xbbbbbb);
 
-      if (mergedCurbs && mergedWalks) {
-          const final = BufferUtils.mergeGeometries([roadGeo, mergedCurbs, mergedWalks], true);
-          return final;
-      }
-      return null;
+      const parts = [roadGeo.get(), mergedCurbs!, mergedWalks!];
+      parts.forEach(p => new Geo(p).ensureColor().ensureTangents());
+
+      return BufferUtils.mergeGeometries(parts, true);
   }
 
   generateHighway(width: number, length: number): THREE.BufferGeometry | null {
-      const partsAsphalt: THREE.BufferGeometry[] = [];
+      const bed = Geo.box(width, 0.5, length, 4, 1, 1).toNonIndexed();
+      bed.mapVertices(v => { if(v.y>0) v.y -= 0.1*(v.x/(width/2))**2; }).mapBox(width,0.5,length,0.2).computeVertexNormals().setColors(0x888888);
+      
       const partsConcrete: THREE.BufferGeometry[] = [];
-
-      // Road Bed
-      const road = new THREE.BoxGeometry(width, 0.5, length);
-      scaleUVs(road, width, 0.5, length);
-      partsAsphalt.push(road);
-
-      // Jersey Barriers
-      const barrierW = 0.4;
-      const barrierH = 1.2;
-      
-      const bLeft = new THREE.BoxGeometry(barrierW, barrierH, length);
-      scaleUVs(bLeft, barrierW, barrierH, length); // Tiling horizontal
-      bLeft.translate(-width/2 + barrierW/2, barrierH/2 - 0.25, 0);
-      partsConcrete.push(bLeft);
-
-      const bRight = new THREE.BoxGeometry(barrierW, barrierH, length);
-      scaleUVs(bRight, barrierW, barrierH, length);
-      bRight.translate(width/2 - barrierW/2, barrierH/2 - 0.25, 0);
-      partsConcrete.push(bRight);
-
-      // Underside Beams
-      const beamCount = Math.floor(length / 10) + 1;
-      for(let i=0; i<beamCount; i++) {
-          const z = -length/2 + i * 10;
-          const beam = new THREE.BoxGeometry(width - 1, 0.8, 2);
-          // Beams don't need heavy tiling, standard is fine
-          beam.translate(0, -0.6, z);
-          partsConcrete.push(beam);
+      partsConcrete.push(Geo.box(0.6, 0.8, length).mapBox(0.6, 0.8, length, 0.5).toNonIndexed().translate(0, 0.15, 0).get());
+      const section = Geo.box(0.4, 1.2, 5.95).mapBox(0.4, 1.2, 6.0, 0.5).toNonIndexed();
+      for(let i=0; i<Math.floor(length/6); i++) {
+          const z = -length/2 + i*6 + 3;
+          partsConcrete.push(section.clone().translate(-width/2+0.2, 0.35, z).get(), section.clone().translate(width/2-0.2, 0.35, z).get());
       }
+      const concrete = BufferUtils.mergeGeometries(partsConcrete);
+      if (concrete) new Geo(concrete).gradientY(0x666666, 0xffffff, -5, 2);
 
-      // Structural Piers (Pillars) - Reaching down 12 units
-      // T-Shape Pier for realism
-      const pierStem = new THREE.BoxGeometry(4, 12, 4);
-      scaleUVs(pierStem, 4, 12, 4);
-      pierStem.translate(0, -6.5, 0); 
-      partsConcrete.push(pierStem);
-      
-      // Pier Cap
-      const pierCap = new THREE.BoxGeometry(width - 2, 1.5, 5);
-      scaleUVs(pierCap, width-2, 1.5, 5);
-      pierCap.translate(0, -1.25, 0); // Directly under beams
-      // Taper the cap bottom
-      const capPos = pierCap.getAttribute('position');
-      for(let i=0; i<capPos.count; i++) {
-          if (capPos.getY(i) < -1.5) { // Bottom vertices
-              const x = capPos.getX(i);
-              capPos.setX(i, x * 0.6); // Taper in
-          }
-      }
-      pierCap.computeVertexNormals();
-      partsConcrete.push(pierCap);
-
-      const mergedAsphalt = BufferUtils.mergeGeometries(partsAsphalt);
-      const mergedConcrete = BufferUtils.mergeGeometries(partsConcrete);
-
-      if (mergedAsphalt && mergedConcrete) {
-          return BufferUtils.mergeGeometries([mergedAsphalt, mergedConcrete], true);
-      }
-      return null;
+      const combined = [bed.get(), concrete!];
+      combined.forEach(p => new Geo(p).ensureColor().ensureTangents());
+      return BufferUtils.mergeGeometries(combined, true);
   }
 
   generateIntersection(width: number): THREE.BufferGeometry | null {
-      // 4-Way Intersection with rounded sidewalk corners
-      const roadW = width * 0.6;
-      const walkW = (width - roadW) / 2;
-      
-      const partsRoad: THREE.BufferGeometry[] = [];
-      const partsCurb: THREE.BufferGeometry[] = [];
-      const partsWalk: THREE.BufferGeometry[] = [];
-
-      // Central Road Patch
-      const center = new THREE.BoxGeometry(width, 0.1, width);
-      scaleUVs(center, width, 0.1, width);
-      partsRoad.push(center);
-
-      // Corner Sidewalks
-      const cornerSize = walkW;
-      const curbThick = 0.25;
-      const curbH = 0.15;
-      const walkH = 0.15;
-
-      const addCorner = (xDir: number, zDir: number) => {
-          const x = xDir * (width/2 - cornerSize/2);
-          const z = zDir * (width/2 - cornerSize/2);
-          
-          // Sidewalk Block
-          const walk = new THREE.BoxGeometry(cornerSize, walkH, cornerSize);
-          scaleUVs(walk, cornerSize, walkH, cornerSize);
-          walk.translate(x, (walkH-0.1)/2, z);
-          partsWalk.push(walk);
-
-          // Curbs (Inner edges facing road)
-          // X-facing curb
-          const cx = new THREE.BoxGeometry(curbThick, curbH, cornerSize);
-          cx.translate(x - (xDir * (cornerSize/2 - curbThick/2)), (curbH-0.1)/2, z);
-          partsCurb.push(cx);
-
-          // Z-facing curb
-          const cz = new THREE.BoxGeometry(cornerSize, curbH, curbThick);
-          cz.translate(x, (curbH-0.1)/2, z - (zDir * (cornerSize/2 - curbThick/2)));
-          partsCurb.push(cz);
+      const center = Geo.box(width, 0.1, width).mapBox(width, 0.1, width, 0.2).toNonIndexed().setColors(0xaaaaaa).get();
+      const partsCurb: THREE.BufferGeometry[] = [], partsWalk: THREE.BufferGeometry[] = [];
+      const cw = (width * 0.4)/2;
+      const addC = (sx: number, sz: number) => {
+          const x = sx*(width/2-cw/2), z = sz*(width/2-cw/2);
+          partsWalk.push(Geo.box(cw, 0.15, cw).mapBox(cw, 0.15, cw, 0.2).toNonIndexed().translate(x, 0.025, z).get());
       };
-
-      addCorner(-1, -1);
-      addCorner(1, -1);
-      addCorner(-1, 1);
-      addCorner(1, 1);
-
-      const mergedRoad = BufferUtils.mergeGeometries(partsRoad);
-      const mergedCurb = BufferUtils.mergeGeometries(partsCurb);
-      const mergedWalk = BufferUtils.mergeGeometries(partsWalk);
-
-      if (mergedRoad && mergedCurb && mergedWalk) {
-          return BufferUtils.mergeGeometries([mergedRoad, mergedCurb, mergedWalk], true);
-      }
-      return null;
+      addC(-1,-1); addC(1,-1); addC(-1,1); addC(1,1);
+      const walk = BufferUtils.mergeGeometries(partsWalk);
+      if (walk) new Geo(walk).setColors(0xbbbbbb);
+      
+      const combined = [center, walk!];
+      combined.forEach(p => new Geo(p).ensureColor().ensureTangents());
+      return BufferUtils.mergeGeometries(combined, true);
   }
 
   generateRamp(width: number, length: number, height: number): THREE.BufferGeometry | null {
-      const partsAsphalt: THREE.BufferGeometry[] = [];
-      const partsConcrete: THREE.BufferGeometry[] = [];
-
-      // Sloped Road Bed
-      const rampGeo = new THREE.BoxGeometry(width, 0.5, length, 1, 1, 1);
-      scaleUVs(rampGeo, width, 0.5, length);
-      const pos = rampGeo.getAttribute('position');
+      const slope = (v: THREE.Vector3) => { const t = Math.max(0,Math.min(1,(v.z+length/2)/length)); v.y += (t*t*(3-2*t))*height; };
+      const ramp = Geo.box(width, 0.5, length, 1, 1, 20).toNonIndexed();
+      ramp.mapVertices(slope).mapPlanar(0.15).computeVertexNormals().translate(0, 0.25, 0).setColors(0x999999);
       
-      // Slant geometry: shear Z to Y
-      // Z goes from -length/2 (bottom) to length/2 (top)
-      for(let i=0; i<pos.count; i++) {
-          const y = pos.getY(i);
-          const z = pos.getZ(i); 
-          
-          // Normalize Z factor 0..1
-          const factor = (z + length/2) / length;
-          const shearY = factor * height;
-          
-          pos.setY(i, y + shearY);
-      }
-      rampGeo.computeVertexNormals();
-      partsAsphalt.push(rampGeo);
+      const wall = Geo.box(0.8, height+2, length, 1, 1, 20).toNonIndexed();
+      wall.mapVertices(v => { const t = Math.max(0,Math.min(1,(v.z+length/2)/length)); const ry = (t*t*(3-2*t))*height; v.y = v.y > 0 ? ry+0.25 : -2.0; }).mapBox(0.8, height, length, 0.5).computeVertexNormals().translate(0,0.25,0);
+      const walls = BufferUtils.mergeGeometries([wall.clone().translate(-width/2+0.4, 0, 0).get(), wall.clone().translate(width/2-0.4, 0, 0).get()]);
+      if (walls) new Geo(walls).gradientY(0x666666, 0xffffff, -2, height);
 
-      // Structural Walls (Left & Right) - Full length triangles
-      const wallThick = 0.8;
-      
-      const mkWall = (offsetX: number) => {
-          // A box that we collapse into a triangle
-          const w = new THREE.BoxGeometry(wallThick, height, length, 1, 1, 1);
-          scaleUVs(w, wallThick, height, length); // Map wall texture along length
-          const wPos = w.getAttribute('position');
-          for(let i=0; i<wPos.count; i++) {
-              const y = wPos.getY(i);
-              const z = wPos.getZ(i);
-              const factor = (z + length/2) / length; // 0 at bottom z, 1 at top z
-              
-              const isTop = y > 0;
-              if (isTop) {
-                  wPos.setY(i, factor * height - 0.25); // Slightly below road
-              } else {
-                  wPos.setY(i, 0); // Flat bottom
-              }
-          }
-          w.computeVertexNormals();
-          // Shift so bottom aligns with y=0 roughly (current math puts bottom at 0)
-          w.translate(offsetX, 0, 0); 
-          return w;
-      }
-
-      partsConcrete.push(mkWall(-width/2 + wallThick/2));
-      partsConcrete.push(mkWall(width/2 - wallThick/2));
-
-      // Barriers (Sloped)
-      const barrierW = 0.4;
-      const barrierH = 1.2;
-      
-      const mkBarrier = (offsetX: number) => {
-          const b = new THREE.BoxGeometry(barrierW, barrierH, length, 1, 1, 1);
-          scaleUVs(b, barrierW, barrierH, length);
-          const bPos = b.getAttribute('position');
-          for(let i=0; i<bPos.count; i++) {
-              const y = bPos.getY(i);
-              const z = bPos.getZ(i);
-              const factor = (z + length/2) / length;
-              bPos.setY(i, y + factor * height);
-          }
-          b.computeVertexNormals();
-          b.translate(offsetX, 0.35, 0); 
-          return b;
-      };
-
-      partsConcrete.push(mkBarrier(-width/2 + barrierW/2));
-      partsConcrete.push(mkBarrier(width/2 - barrierW/2));
-
-      const ma = BufferUtils.mergeGeometries(partsAsphalt);
-      const mc = BufferUtils.mergeGeometries(partsConcrete);
-      
-      if (ma && mc) return BufferUtils.mergeGeometries([ma, mc], true);
-      return null;
+      const combined = [ramp.get(), walls!];
+      combined.forEach(p => new Geo(p).ensureColor().ensureTangents());
+      return BufferUtils.mergeGeometries(combined, true);
   }
 
   generateRoundabout(radius: number, width: number): THREE.BufferGeometry | null {
-      const partsRoad: THREE.BufferGeometry[] = [];
-      const partsCurb: THREE.BufferGeometry[] = [];
-      const partsIsland: THREE.BufferGeometry[] = [];
-
-      const segments = 32;
-      const innerR = radius - width;
+      const ring = new THREE.Shape(); ring.absarc(0,0,radius,0,Math.PI*2,false);
+      const hole = new THREE.Path(); hole.absarc(0,0,radius-width,0,Math.PI*2,true); ring.holes.push(hole);
+      const road = new Geo(new THREE.ExtrudeGeometry(ring,{depth:0.1,bevelEnabled:false,curveSegments:32})).rotateX(Math.PI/2).mapPlanar(0.15).toNonIndexed().setColors(0xaaaaaa).get();
+      const island = Geo.cylinder(radius-width-0.3, radius-width-0.3, 0.5, 32).toNonIndexed().mapPlanar(0.2).translate(0, 0.25, 0).setColors(0x55aa55).get();
       
-      // Ring Road
-      const ringShape = new THREE.Shape();
-      ringShape.absarc(0, 0, radius, 0, Math.PI * 2, false);
-      const holePath = new THREE.Path();
-      holePath.absarc(0, 0, innerR, 0, Math.PI * 2, true);
-      ringShape.holes.push(holePath);
-
-      // Extrude creates Non-Indexed geometry
-      const roadGeo = new THREE.ExtrudeGeometry(ringShape, { depth: 0.1, bevelEnabled: false, curveSegments: segments });
-      roadGeo.rotateX(Math.PI / 2);
-      
-      // Basic planar UV projection for ring
-      projectPlanarUVs(roadGeo, 0.1);
-      
-      partsRoad.push(roadGeo);
-
-      // Inner Curb
-      const curbThick = 0.3;
-      const curbShape = new THREE.Shape();
-      curbShape.absarc(0, 0, innerR, 0, Math.PI * 2, false);
-      const curbHole = new THREE.Path();
-      curbHole.absarc(0, 0, innerR - curbThick, 0, Math.PI * 2, true);
-      curbShape.holes.push(curbHole);
-      
-      const curbGeo = new THREE.ExtrudeGeometry(curbShape, { depth: 0.25, bevelEnabled: false, curveSegments: segments });
-      curbGeo.rotateX(Math.PI / 2);
-      partsCurb.push(curbGeo);
-
-      // Central Island
-      const islandGeo = new THREE.CylinderGeometry(innerR - curbThick, innerR - curbThick, 0.5, segments);
-      projectPlanarUVs(islandGeo, 0.2);
-      islandGeo.translate(0, 0.25, 0);
-      partsIsland.push(islandGeo.toNonIndexed());
-
-      const mr = BufferUtils.mergeGeometries(partsRoad);
-      const mc = BufferUtils.mergeGeometries(partsCurb);
-      const mi = BufferUtils.mergeGeometries(partsIsland);
-
-      if (mr && mc && mi) {
-          return BufferUtils.mergeGeometries([mr, mc, mi], true);
-      }
-      return null;
+      const combined = [road, island];
+      combined.forEach(p => new Geo(p).ensureColor().ensureTangents());
+      return BufferUtils.mergeGeometries(combined, true);
   }
 }

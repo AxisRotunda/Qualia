@@ -14,6 +14,11 @@ export interface SurfaceHit {
   entity: Entity | null;
 }
 
+export interface TacticalHit {
+  entityId: Entity;
+  distance: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -26,64 +31,84 @@ export class RaycasterService {
 
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
-  
-  // Cache for lookup
-  private meshToEntity = new Map<number, Entity>();
-  private lastObjectCount = -1;
 
   private updateRaycaster(clientX: number, clientY: number): boolean {
       const domEl = this.sceneService.getDomElement();
-      if (!domEl) return false;
+      const camera = this.sceneService.getCamera();
+      if (!domEl || !camera) return false;
 
       if (document.pointerLockElement === domEl) {
           this.mouse.set(0, 0);
       } else {
           const rect = domEl.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
           this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
           this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
       }
       
-      this.raycaster.setFromCamera(this.mouse, this.sceneService.getCamera());
+      this.raycaster.setFromCamera(this.mouse, camera);
       return true;
   }
 
-  private updateLookupCache() {
-      const currentCount = this.entityStore.objectCount();
-      if (currentCount === this.lastObjectCount) return;
+  raycastTacticalCenter(): TacticalHit | null {
+      const camera = this.sceneService.getCamera();
+      if (!camera) return null;
 
-      this.meshToEntity.clear();
-      // Only needed for standard meshes, instanced handled via service
-      this.entityStore.world.meshes.forEach((ref, entity) => {
-          this.meshToEntity.set(ref.mesh.id, entity);
-      });
-      this.lastObjectCount = currentCount;
+      // Reset to screen center (0,0) in NDC
+      this.mouse.set(0, 0);
+      this.raycaster.setFromCamera(this.mouse, camera);
+
+      const intersects = this.raycaster.intersectObjects(this.sceneGraph.entityGroup.children, true);
+      const hit = intersects.find(h => h.object.visible);
+
+      if (hit) {
+          let entityId: number | undefined;
+          if (hit.object instanceof THREE.InstancedMesh && hit.instanceId !== undefined) {
+              entityId = this.instancedService.getEntityId(hit.object, hit.instanceId) || undefined;
+          } else {
+              entityId = hit.object.userData['entityId'];
+          }
+
+          if (entityId !== undefined && entityId !== -1) {
+              return { entityId, distance: hit.distance };
+          }
+      }
+      return null;
   }
 
   raycastFromScreen(clientX: number, clientY: number): Entity | null {
     if (!this.updateRaycaster(clientX, clientY)) return null;
 
-    // 1. Check Gizmo (Priority)
     const gizmo = this.gizmoManager.getControl();
     if (gizmo && gizmo.visible && gizmo.enabled) {
         const gizmoHits = this.raycaster.intersectObject(gizmo, true);
         if (gizmoHits.length > 0) return this.entityStore.selectedEntity();
     }
 
-    // 2. Check Entities (Optimized Group Raycast)
-    this.updateLookupCache();
-    
-    // Raycast against the Entity Group directly.
     const intersects = this.raycaster.intersectObjects(this.sceneGraph.entityGroup.children, true);
     
-    // Optimization: Use .find() instead of .filter() to avoid allocating a new array
-    // intersectObjects returns results sorted by distance, so the first visible one is the closest.
-    const hit = intersects.find(h => h.object.visible);
+    const hit = intersects.find(h => {
+        if (!h.object.visible) return false;
+        
+        let eid: number | undefined;
+        if (h.object instanceof THREE.InstancedMesh && h.instanceId !== undefined) {
+            eid = this.instancedService.getEntityId(h.object, h.instanceId) || undefined;
+        } else {
+            eid = h.object.userData['entityId'];
+        }
+
+        if (eid !== undefined && eid !== -1) {
+            return !this.entityStore.locked.has(eid);
+        }
+        return false;
+    });
 
     if (hit) {
         if (hit.object instanceof THREE.InstancedMesh && hit.instanceId !== undefined) {
             return this.instancedService.getEntityId(hit.object, hit.instanceId);
         }
-        return this.meshToEntity.get(hit.object.id) ?? null;
+        const eid = hit.object.userData['entityId'];
+        if (eid !== undefined && eid !== -1) return eid;
     }
 
     return null;
@@ -92,19 +117,16 @@ export class RaycasterService {
   raycastSurface(clientX: number, clientY: number): SurfaceHit | null {
       if (!this.updateRaycaster(clientX, clientY)) return null;
 
-      this.updateLookupCache();
-      
-      // Check entities first
       const intersects = this.raycaster.intersectObjects(this.sceneGraph.entityGroup.children, true);
       const hit = intersects.find(h => h.object.visible);
 
       if (hit) {
           let entity: Entity | null = null;
-
           if (hit.object instanceof THREE.InstancedMesh && hit.instanceId !== undefined) {
               entity = this.instancedService.getEntityId(hit.object, hit.instanceId);
           } else {
-              entity = this.meshToEntity.get(hit.object.id) ?? null;
+              const eid = hit.object.userData['entityId'];
+              if (eid !== undefined && eid !== -1) entity = eid;
           }
           
           const normal = hit.face?.normal?.clone() ?? new THREE.Vector3(0, 1, 0);
@@ -113,7 +135,6 @@ export class RaycasterService {
           return { point: hit.point, normal, entity };
       }
 
-      // Fallback: Infinite Ground Plane
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       const target = new THREE.Vector3();
       const planeHit = this.raycaster.ray.intersectPlane(plane, target);

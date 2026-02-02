@@ -2,8 +2,8 @@
 import { Injectable, inject } from '@angular/core';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { PhysicsWorldService } from './world.service';
-import { PhysicsBodyDef } from '../engine/schema'; 
-import { MassCalculator } from './logic/mass-calculator';
+import { PhysicsBodyDef, RigidBodyType } from '../engine/schema'; 
+import { MassCalculator, MassData } from './logic/mass-calculator';
 import { PhysicsOptimizerService } from './optimization/physics-optimizer.service';
 
 @Injectable({ providedIn: 'root' })
@@ -12,343 +12,330 @@ export class ShapesFactory {
   private massCalc = inject(MassCalculator);
   private optimizer = inject(PhysicsOptimizerService);
 
+  private readonly MIN_DIM = 0.001; 
+
   private get world() {
     return this.worldService.world;
   }
 
-  // --- Realism Configuration ---
-  private readonly DEFAULT_LINEAR_DAMPING = 0.08; 
-  private readonly DEFAULT_ANGULAR_DAMPING = 0.2;
-  
-  private configureDynamicBody(desc: RAPIER.RigidBodyDesc, lockRotation?: boolean) {
-      desc.setLinearDamping(this.DEFAULT_LINEAR_DAMPING)
-          .setAngularDamping(this.DEFAULT_ANGULAR_DAMPING)
-          .setCcdEnabled(true) // Prevent tunneling
-          .setCanSleep(true);  // Optimization
-          
-      if (lockRotation) {
-          desc.lockRotations();
-      }
+  // --- Primitive Factories ---
+
+  createBox(x: number, y: number, z: number, w?: number, h?: number, d?: number, mass?: number, material?: string, bodyType: RigidBodyType = 'dynamic', tags: string[] = []): PhysicsBodyDef {
+    const size = { w: this.clamp(w), h: this.clamp(h), d: this.clamp(d) };
+    const props = this.massCalc.resolve('box', size, mass, material);
+    const colDesc = RAPIER.ColliderDesc.cuboid(size.w / 2, size.h / 2, size.d / 2);
+    
+    return this.finalizeBody(x, y, z, bodyType, props, colDesc, tags, {
+        type: 'box', size
+    });
   }
 
-  createBox(x: number, y: number, z: number, w?: number, h?: number, d?: number, mass?: number, material?: string): PhysicsBodyDef {
-    if (!this.world) throw new Error('Physics not initialized');
-
-    const width = w ?? 1;
-    const height = h ?? 1;
-    const depth = d ?? 1;
-    
-    const props = this.massCalc.resolve('box', { w: width, h: height, d: depth }, mass, material);
-    const isStatic = props.mass === 0;
-
-    const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
-    rigidBodyDesc.setTranslation(x, y, z);
-    
-    if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
-
-    const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-    (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
-
-    const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, height / 2, depth / 2)
-        .setRestitution(props.restitution)
-        .setFriction(props.friction);
-    
-    if (props.mass > 0) colliderDesc.setMass(props.mass);
-    
-    // Apply Optimization
-    this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
-    
-    this.world.createCollider(colliderDesc, rigidBody);
-
-    return {
-      handle: rigidBody.handle,
-      type: 'box',
-      position: { x, y, z },
-      rotation: { x: 0, y: 0, z: 0, w: 1 },
-      size: { w: width, h: height, d: depth },
-      mass: props.mass
-    };
-  }
-
-  createSphere(x: number, y: number, z: number, r?: number, mass?: number, material?: string): PhysicsBodyDef {
-    if (!this.world) throw new Error('Physics not initialized');
-
-    const radius = r ?? 0.5;
+  createSphere(x: number, y: number, z: number, r?: number, mass?: number, material?: string, bodyType: RigidBodyType = 'dynamic', tags: string[] = []): PhysicsBodyDef {
+    const radius = this.clamp(r);
     const props = this.massCalc.resolve('sphere', { r: radius }, mass, material);
-    const isStatic = props.mass === 0;
+    const colDesc = RAPIER.ColliderDesc.ball(radius);
 
-    const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
-    rigidBodyDesc.setTranslation(x, y, z);
+    return this.finalizeBody(x, y, z, bodyType, props, colDesc, tags, {
+        type: 'sphere', radius
+    });
+  }
 
-    if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
+  createCylinder(x: number, y: number, z: number, height: number, radius: number, mass: number = 1, material?: string, bodyType: RigidBodyType = 'dynamic', tags: string[] = []): PhysicsBodyDef {
+    const r = this.clamp(radius); const h = this.clamp(height);
+    const props = this.massCalc.resolve('cylinder', { r, h }, mass, material);
+    const colDesc = RAPIER.ColliderDesc.cylinder(h / 2, r);
 
-    const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-    (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
+    return this.finalizeBody(x, y, z, bodyType, props, colDesc, tags, {
+        type: 'cylinder', height: h, radius: r
+    });
+  }
 
-    const colliderDesc = RAPIER.ColliderDesc.ball(radius)
-        .setRestitution(props.restitution)
-        .setFriction(props.friction);
+  createCone(x: number, y: number, z: number, height: number, radius: number, mass: number = 1, material?: string, bodyType: RigidBodyType = 'dynamic', tags: string[] = []): PhysicsBodyDef {
+    const r = this.clamp(radius); const h = this.clamp(height);
+    const props = this.massCalc.resolve('cone', { r, h }, mass, material);
+    const colDesc = RAPIER.ColliderDesc.cone(h / 2, r);
 
-    if (props.mass > 0) colliderDesc.setMass(props.mass);
-    this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
+    return this.finalizeBody(x, y, z, bodyType, props, colDesc, tags, {
+        type: 'cone', height: h, radius: r
+    });
+  }
 
-    this.world.createCollider(colliderDesc, rigidBody);
+  createCapsule(x: number, y: number, z: number, height: number, radius: number, mass: number = 1, material?: string, bodyType: RigidBodyType = 'dynamic', tags: string[] = []): PhysicsBodyDef {
+    const r = this.clamp(radius); const h = this.clamp(height);
+    const props = this.massCalc.resolve('cylinder', { r, h }, mass, material); // Mass calc uses cylinder approximation
+    const halfH = Math.max(0.1, (h / 2) - r);
+    const colDesc = RAPIER.ColliderDesc.capsule(halfH, r);
 
-    return {
-      handle: rigidBody.handle,
-      type: 'sphere',
-      position: { x, y, z },
-      rotation: { x: 0, y: 0, z: 0, w: 1 },
-      radius,
-      mass: props.mass
+    return this.finalizeBody(x, y, z, bodyType, props, colDesc, tags, {
+        type: 'capsule', height: h, radius: r
+    });
+  }
+
+  // --- Complex Geometry Factories ---
+
+  createTrimesh(x: number, y: number, z: number, vertices: Float32Array, indices: Uint32Array, tags: string[] = []): PhysicsBodyDef {
+    if (!this.world) throw new Error('Physics not initialized');
+    
+    // Trimeshes are strictly static/fixed in Rapier
+    const colDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
+    const rbDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
+    
+    // Default material for static geometry
+    colDesc.setRestitution(0.1).setFriction(0.8);
+    
+    this.optimizer.applyTo(colDesc, rbDesc, [...tags, 'static'], true);
+    const rigidBody = this.world.createRigidBody(rbDesc);
+    this.world.createCollider(colDesc, rigidBody);
+
+    return { 
+        handle: rigidBody.handle, 
+        type: 'trimesh', 
+        bodyType: 'fixed', 
+        position: { x, y, z }, 
+        rotation: { x: 0, y: 0, z: 0, w: 1 }, 
+        vertices, indices, mass: 0 
     };
   }
 
-  createCylinder(x: number, y: number, z: number, height: number, radius: number, mass: number = 1, material?: string): PhysicsBodyDef {
-      if (!this.world) throw new Error('Physics not initialized');
-      
-      const props = this.massCalc.resolve('cylinder', { r: radius, h: height }, mass, material);
-      const isStatic = props.mass === 0;
+  createConvexHull(x: number, y: number, z: number, vertices: Float32Array, mass: number = 1, material?: string, bodyType: RigidBodyType = 'dynamic', tags: string[] = []): PhysicsBodyDef {
+    if (!this.world) throw new Error('Physics not initialized');
+    
+    if (vertices.length < 9) throw new Error('Convex hull requires at least 3 vertices');
+    const cleanVertices = this.sanitizeBuffer(vertices);
 
-      const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
-      rigidBodyDesc.setTranslation(x, y, z);
-      
-      if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
+    const matData = this.massCalc.resolveMaterialOnly(material);
+    const colDesc = RAPIER.ColliderDesc.convexHull(cleanVertices);
+    
+    if (!colDesc) {
+        // Fallback for degenerate hulls to prevent crash
+        console.warn('Convex hull generation failed, falling back to box.');
+        return this.createBox(x, y, z, 1, 1, 1, mass, material, bodyType, tags);
+    }
 
-      const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-      (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
+    // Reuse finalize logic with manual props
+    const props: MassData = { 
+        mass, 
+        friction: matData.friction, 
+        restitution: matData.restitution, 
+        volume: 0, density: matData.density 
+    };
 
-      const colliderDesc = RAPIER.ColliderDesc.cylinder(height / 2, radius)
-        .setRestitution(props.restitution)
-        .setFriction(props.friction);
-      
-      if (props.mass > 0) colliderDesc.setMass(props.mass);
-      this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
-
-      this.world.createCollider(colliderDesc, rigidBody);
-
-      return {
-          handle: rigidBody.handle,
-          type: 'cylinder',
-          position: { x, y, z },
-          rotation: { x: 0, y: 0, z: 0, w: 1 },
-          height,
-          radius,
-          mass: props.mass
-      };
+    return this.finalizeBody(x, y, z, bodyType, props, colDesc, tags, {
+        type: 'convex-hull', vertices: cleanVertices
+    });
   }
 
-  createCone(x: number, y: number, z: number, height: number, radius: number, mass: number = 1, material?: string): PhysicsBodyDef {
+  createHeightfield(x: number, y: number, z: number, nrows: number, ncols: number, heights: Float32Array, size: {x: number, y: number, z: number}, tags: string[] = []): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
-
-      const props = this.massCalc.resolve('cone', { r: radius, h: height }, mass, material);
-      const isStatic = props.mass === 0;
-
-      const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
-      rigidBodyDesc.setTranslation(x, y, z);
       
-      if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
-
-      const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-      (rigidBody as any).userData = { baseMass: props.mass, baseVolume: props.volume };
-
-      const colliderDesc = RAPIER.ColliderDesc.cone(height / 2, radius)
-        .setRestitution(props.restitution)
-        .setFriction(props.friction);
-
-      if (props.mass > 0) colliderDesc.setMass(props.mass);
-      this.optimizer.applyTo(colliderDesc, ['primitive'], isStatic);
-
-      this.world.createCollider(colliderDesc, rigidBody);
-
-      return {
-          handle: rigidBody.handle,
-          type: 'cone', 
-          position: { x, y, z },
-          rotation: { x: 0, y: 0, z: 0, w: 1 },
-          height,
-          radius,
-          mass: props.mass
-      };
-  }
-
-  createTrimesh(x: number, y: number, z: number, vertices: Float32Array, indices: Uint32Array): PhysicsBodyDef {
-      if (!this.world) throw new Error('Physics not initialized');
-
-      if (vertices.length < 9 || indices.length < 3) {
-          return this.createBox(x, y, z, 1, 1, 1, 0);
+      // RUN_REPAIR: Enforce strict Integer dimensions for WASM parity
+      const nr = Math.floor(nrows);
+      const nc = Math.floor(ncols);
+      const expectedLength = nr * nc;
+      
+      if (heights.length !== expectedLength) {
+          throw new Error(`[WASM_SHIELD] Heightfield dimension mismatch: Expected ${expectedLength} (${nr}x${nc}), got ${heights.length}`);
       }
 
-      const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
-      const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+      const cleanHeights = this.sanitizeBuffer(heights);
 
-      const colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices)
-          .setRestitution(0.1)
-          .setFriction(0.8);
+      // WASM_GUARD: Ensure scale components are finite and > 0
+      const sx = this.clamp(size.x / Math.max(1, nc - 1));
+      const sy = this.clamp(size.y);
+      const sz = this.clamp(size.z / Math.max(1, nr - 1));
+      const scale = { x: sx, y: sy, z: sz };
+
+      // Sanitized Body Position
+      const px = Number.isFinite(x) ? x : 0;
+      const py = Number.isFinite(y) ? y : 0;
+      const pz = Number.isFinite(z) ? z : 0;
+
+      // Heightfields are always fixed (terrain)
+      const rbDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(px, py, pz);
       
-      this.optimizer.applyTo(colliderDesc, ['static', 'mesh'], true);
-      this.world.createCollider(colliderDesc, rigidBody);
+      // Sanitize Translation Components
+      const tx = Number.isFinite(size.x) ? -size.x / 2 : 0;
+      const tz = Number.isFinite(size.z) ? -size.z / 2 : 0;
 
-      return {
-          handle: rigidBody.handle,
-          type: 'trimesh',
-          position: { x, y, z },
-          rotation: { x: 0, y: 0, z: 0, w: 1 },
-          mass: 0
-      };
-  }
-
-  createConvexHull(x: number, y: number, z: number, vertices: Float32Array, mass: number = 1, material?: string): PhysicsBodyDef {
-      if (!this.world) throw new Error('Physics not initialized');
-
-      let finalMass = mass;
-      const matData = this.massCalc.resolveMaterialOnly(material);
-      const isStatic = finalMass === 0;
-      
-      const rigidBodyDesc = isStatic ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
-      rigidBodyDesc.setTranslation(x, y, z);
-      
-      if (!isStatic) this.configureDynamicBody(rigidBodyDesc);
-
-      const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-      (rigidBody as any).userData = { baseMass: finalMass };
-      
-      const colliderDesc = RAPIER.ColliderDesc.convexHull(vertices);
-      if (!colliderDesc) {
-          return this.createBox(x, y, z, 1, 1, 1, finalMass);
-      }
-
-      colliderDesc.setRestitution(matData.restitution).setFriction(matData.friction);
-      
-      if (finalMass > 0) {
-          if (material) {
-              colliderDesc.setDensity(matData.density);
-          } else {
-              colliderDesc.setMass(finalMass);
-          }
-      }
-      
-      this.optimizer.applyTo(colliderDesc, ['hull'], isStatic);
-      this.world.createCollider(colliderDesc, rigidBody);
-
-      return {
-          handle: rigidBody.handle,
-          type: 'convex-hull',
-          position: { x, y, z },
-          rotation: { x: 0, y: 0, z: 0, w: 1 },
-          mass: finalMass
-      };
-  }
-
-  createHeightfield(x: number, y: number, z: number, nrows: number, ncols: number, heights: Float32Array, size: {x: number, y: number, z: number}): PhysicsBodyDef {
-      if (!this.world) throw new Error('Physics not initialized');
-
-      const scale = { x: size.x, y: 1.0, z: size.z };
-
-      const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
-      const rigidBody = this.world.createRigidBody(rigidBodyDesc);
-
-      const colliderDesc = RAPIER.ColliderDesc.heightfield(nrows, ncols, heights, scale)
+      const colDesc = RAPIER.ColliderDesc.heightfield(nr, nc, cleanHeights, scale)
           .setFriction(0.5)
-          .setRestitution(0.1);
-      
-      this.optimizer.applyTo(colliderDesc, ['terrain'], true);
-      this.world.createCollider(colliderDesc, rigidBody);
+          .setRestitution(0.1)
+          .setTranslation(tx, 0, tz); // Center alignment fix
 
-      return {
-          handle: rigidBody.handle,
-          type: 'heightfield',
-          position: { x, y, z },
-          rotation: { x: 0, y: 0, z: 0, w: 1 },
-          heightData: heights,
-          fieldSize: { rows: nrows, cols: ncols },
-          size: { w: size.x, h: 1, d: size.z },
-          mass: 0
+      this.optimizer.applyTo(colDesc, rbDesc, [...tags, 'terrain'], true);
+      const rigidBody = this.world.createRigidBody(rbDesc);
+      this.world.createCollider(colDesc, rigidBody);
+
+      return { 
+          handle: rigidBody.handle, 
+          type: 'heightfield', 
+          bodyType: 'fixed', 
+          position: { x: px, y: py, z: pz }, 
+          rotation: { x: 0, y: 0, z: 0, w: 1 }, 
+          heightData: cleanHeights, 
+          fieldSize: { rows: nr, cols: nc }, 
+          size: { w: size.x, h: size.y, d: size.z }, 
+          mass: 0 
       };
   }
 
-  /**
-   * Resizes the colliders of an existing rigid body by removing old colliders
-   * and creating new ones with scaled dimensions. Preserves mass proportional to volume change.
-   */
+  // --- Runtime Modification ---
+
   updateBodyScale(handle: number, def: PhysicsBodyDef, scale: { x: number, y: number, z: number }) {
     if (!this.world) return;
     const body = this.world.getRigidBody(handle);
     if (!body) return;
 
-    // 1. Snapshot existing properties before removal
+    // 1. Snapshot previous state
     let oldGroups = 0xFFFF;
     let oldEvents = RAPIER.ActiveEvents.NONE;
-    
     if (body.numColliders() > 0) {
         const c = body.collider(0);
         oldGroups = c.collisionGroups();
         oldEvents = c.activeEvents();
     }
 
-    // 2. Remove existing colliders
-    const n = body.numColliders();
-    const collidersToRemove: RAPIER.Collider[] = [];
-    for(let i=0; i<n; i++) collidersToRemove.push(body.collider(i));
-    collidersToRemove.forEach(c => this.world!.removeCollider(c, false));
-
-    // 3. Create Scaled Collider Desc
-    let colliderDesc: RAPIER.ColliderDesc | null = null;
-
-    if (def.type === 'box' && def.size) {
-        const hx = (def.size.w / 2) * scale.x;
-        const hy = (def.size.h / 2) * scale.y;
-        const hz = (def.size.d / 2) * scale.z;
-        colliderDesc = RAPIER.ColliderDesc.cuboid(Math.abs(hx), Math.abs(hy), Math.abs(hz));
-    } else if (def.type === 'sphere' && def.radius) {
-        const s = Math.max(scale.x, Math.max(scale.y, scale.z));
-        colliderDesc = RAPIER.ColliderDesc.ball(def.radius * s);
-    } else if (def.type === 'cylinder' && def.height && def.radius) {
-        const h = (def.height / 2) * scale.y;
-        const r = def.radius * Math.max(scale.x, scale.z);
-        colliderDesc = RAPIER.ColliderDesc.cylinder(Math.abs(h), Math.abs(r));
-    } else if (def.type === 'cone' && def.height && def.radius) {
-        const h = (def.height / 2) * scale.y;
-        const r = def.radius * Math.max(scale.x, scale.z);
-        colliderDesc = RAPIER.ColliderDesc.cone(Math.abs(h), Math.abs(r));
-    } else if (def.type === 'heightfield' && def.heightData && def.fieldSize && def.size) {
-        const targetW = def.size.w * scale.x;
-        const targetD = def.size.d * scale.z;
-        const targetH = scale.y;
-        
-        colliderDesc = RAPIER.ColliderDesc.heightfield(
-            def.fieldSize.rows, 
-            def.fieldSize.cols, 
-            def.heightData, 
-            { x: targetW, y: targetH, z: targetD }
-        );
+    // 2. Clear old colliders
+    const count = body.numColliders();
+    for(let i = count - 1; i >= 0; i--) {
+        this.world.removeCollider(body.collider(i), false);
     }
 
-    // 4. Apply & Reattach
-    if (colliderDesc) {
-        // Retrieve base mass from userdata if available
-        const userData = (body as any).userData;
-        const baseMass = userData?.baseMass ?? def.mass;
+    // 3. Generate new ColliderDesc
+    const sx = this.clamp(scale.x);
+    const sy = this.clamp(scale.y);
+    const sz = this.clamp(scale.z);
 
-        if (baseMass && baseMass > 0) {
-            colliderDesc.setMass(baseMass * scale.x * scale.y * scale.z);
-        } else {
-            colliderDesc.setDensity(1.0);
-        }
+    const colliderDesc = this.getScaledCollider(def, sx, sy, sz);
+
+    // 4. Apply & Attach
+    if (colliderDesc) {
+        if (def.mass && def.mass > 0) colliderDesc.setMass(def.mass * (sx * sy * sz));
+        else colliderDesc.setDensity(1.0);
         
-        colliderDesc.setRestitution(0.3).setFriction(0.6); 
-        
-        // Restore Optimization Config
         colliderDesc.setCollisionGroups(oldGroups);
         colliderDesc.setActiveEvents(oldEvents);
-
         this.world.createCollider(colliderDesc, body);
     }
   }
 
   setLockRotation(handle: number, locked: boolean) {
-      if (!this.world) return;
-      const body = this.world.getRigidBody(handle);
-      if (body) body.lockRotations(locked, true);
+      this.world?.getRigidBody(handle)?.lockRotations(locked, true);
+  }
+
+  // --- Internal Helpers ---
+
+  /**
+   * Centralized pipeline for finalizing RigidBody creation.
+   * Handles Optimization, Property Assignment, and ECS Def creation.
+   */
+  private finalizeBody(
+      x: number, y: number, z: number, 
+      requestedType: RigidBodyType, 
+      props: MassData, 
+      colDesc: RAPIER.ColliderDesc, 
+      tags: string[], 
+      defPartial: Partial<PhysicsBodyDef>
+  ): PhysicsBodyDef {
+      if (!this.world) throw new Error('Physics not initialized');
+
+      // Promote dynamic bodies with 0 mass to fixed to prevent physics errors
+      const finalBodyType = (props.mass === 0 && requestedType === 'dynamic') ? 'fixed' : requestedType;
+      
+      const rbDesc = this.createDesc(finalBodyType);
+      rbDesc.setTranslation(x, y, z);
+
+      colDesc.setRestitution(props.restitution).setFriction(props.friction);
+      if (props.mass > 0) colDesc.setMass(props.mass);
+
+      this.optimizer.applyTo(colDesc, rbDesc, tags, finalBodyType === 'fixed');
+      
+      const rigidBody = this.world.createRigidBody(rbDesc);
+      this.world.createCollider(colDesc, rigidBody);
+
+      return {
+          handle: rigidBody.handle,
+          bodyType: finalBodyType,
+          position: { x, y, z },
+          rotation: { x: 0, y: 0, z: 0, w: 1 },
+          mass: props.mass,
+          ...defPartial
+      } as PhysicsBodyDef;
+  }
+
+  private getScaledCollider(def: PhysicsBodyDef, sx: number, sy: number, sz: number): RAPIER.ColliderDesc | null {
+      switch(def.type) {
+          case 'box': 
+              return RAPIER.ColliderDesc.cuboid((def.size!.w / 2) * sx, (def.size!.h / 2) * sy, (def.size!.d / 2) * sz);
+          case 'sphere':
+              return RAPIER.ColliderDesc.ball(def.radius! * Math.max(sx, sy, sz));
+          case 'cylinder':
+              return RAPIER.ColliderDesc.cylinder((def.height! * sy) / 2, def.radius! * Math.max(sx, sz));
+          case 'cone':
+              return RAPIER.ColliderDesc.cone((def.height! * sy) / 2, def.radius! * Math.max(sx, sz));
+          case 'capsule':
+              const r = def.radius! * Math.max(sx, sz);
+              const h = Math.max(0.1, (def.height! * sy) / 2 - r);
+              return RAPIER.ColliderDesc.capsule(h, r);
+          case 'convex-hull':
+              if (!def.vertices) return null;
+              const scaledHull = this.scaleVertices(def.vertices, sx, sy, sz);
+              return RAPIER.ColliderDesc.convexHull(scaledHull);
+          case 'trimesh':
+              if (!def.vertices || !def.indices) return null;
+              const scaledMesh = this.scaleVertices(def.vertices, sx, sy, sz);
+              return RAPIER.ColliderDesc.trimesh(scaledMesh, def.indices);
+          case 'heightfield':
+              if (!def.heightData || !def.fieldSize || !def.size) return null;
+              const nr = Math.floor(def.fieldSize.rows);
+              const nc = Math.floor(def.fieldSize.cols);
+              const hScale = { 
+                  x: (def.size.w * sx) / Math.max(1, nc - 1), 
+                  y: sy, 
+                  z: (def.size.d * sz) / Math.max(1, nr - 1) 
+              };
+              const hf = RAPIER.ColliderDesc.heightfield(nr, nc, def.heightData, hScale);
+              hf.setTranslation(-(def.size.w * sx) / 2, 0, -(def.size.d * sz) / 2);
+              return hf;
+          default:
+              return null;
+      }
+  }
+
+  private scaleVertices(vertices: Float32Array, sx: number, sy: number, sz: number): Float32Array {
+      const out = new Float32Array(vertices.length);
+      for(let i=0; i<vertices.length; i+=3) {
+          const vx = vertices[i] * sx;
+          const vy = vertices[i+1] * sy;
+          const vz = vertices[i+2] * sz;
+          out[i] = Number.isFinite(vx) ? vx : 0;
+          out[i+1] = Number.isFinite(vy) ? vy : 0;
+          out[i+2] = Number.isFinite(vz) ? vz : 0;
+      }
+      return out;
+  }
+
+  private sanitizeBuffer(buffer: Float32Array): Float32Array {
+      const out = new Float32Array(buffer.length);
+      for(let i=0; i<buffer.length; i++) {
+          const v = buffer[i];
+          out[i] = Number.isFinite(v) ? v : 0;
+      }
+      return out;
+  }
+
+  private createDesc(type: RigidBodyType): RAPIER.RigidBodyDesc {
+      switch(type) {
+          case 'fixed': return RAPIER.RigidBodyDesc.fixed();
+          case 'kinematicPosition': return RAPIER.RigidBodyDesc.kinematicPositionBased();
+          case 'kinematicVelocity': return RAPIER.RigidBodyDesc.kinematicVelocityBased();
+          default: return RAPIER.RigidBodyDesc.dynamic();
+      }
+  }
+
+  private clamp(val: number | undefined): number {
+      const v = val ?? 1;
+      const f = Number.isFinite(v) ? v : 1;
+      return Math.max(this.MIN_DIM, f);
   }
 }

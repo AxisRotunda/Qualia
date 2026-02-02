@@ -10,6 +10,9 @@ export const WORKER_MAIN = `
       
       if (!ctx) throw new Error('No context');
 
+      // Initialize Deterministic State
+      setSeed(params.seed || 12345);
+
       // Dispatch to domain-specific generators
       if (type.includes('concrete') || type === 'grid' || type === 'brick' || type === 'marble' || type === 'carpet' || type === 'city-window') {
           generateArch(ctx, type, params, size);

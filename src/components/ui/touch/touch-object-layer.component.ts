@@ -16,8 +16,11 @@ import { VirtualJoystickComponent } from '../virtual-joystick.component';
           <app-virtual-joystick color="cyan" (move)="onObjectMoveInput($event)" (tap)="onTap($event)" />
           
           @if (showLabels()) {
-            <div class="absolute bottom-24 left-0 w-full text-center text-[10px] text-cyan-400 font-mono tracking-widest pointer-events-none font-bold">
-                {{ leftLabel() }}
+            <div class="absolute bottom-24 left-6 pointer-events-none">
+                <div class="flex items-center gap-2 opacity-60">
+                    <span class="material-symbols-outlined text-[14px] text-cyan-400">open_with</span>
+                    <span class="text-[9px] text-cyan-400 font-mono tracking-widest uppercase font-bold">{{ leftLabel() }}</span>
+                </div>
             </div>
           }
        </div>
@@ -27,8 +30,11 @@ import { VirtualJoystickComponent } from '../virtual-joystick.component';
           <app-virtual-joystick color="amber" (move)="onObjectRotLiftInput($event)" (tap)="onTap($event)" />
           
           @if (showLabels()) {
-            <div class="absolute bottom-24 left-0 w-full text-center text-[10px] text-amber-400 font-mono tracking-widest pointer-events-none font-bold">
-                {{ rightLabel() }}
+            <div class="absolute bottom-24 right-6 pointer-events-none">
+                <div class="flex items-center gap-2 opacity-60 justify-end">
+                    <span class="text-[9px] text-amber-400 font-mono tracking-widest uppercase font-bold">{{ rightLabel() }}</span>
+                    <span class="material-symbols-outlined text-[14px] text-amber-400">height</span>
+                </div>
             </div>
           }
        </div>
@@ -71,18 +77,12 @@ export class TouchObjectLayerComponent implements OnDestroy {
   }
 
   leftLabel() {
-      switch(this.transformMode()) {
-          case 'translate': return 'SLIDE (XZ)';
-          case 'rotate': return 'ROTATE (Y)';
-          case 'scale': return 'SCALE (XZ)';
-      }
+      if (this.transformMode() === 'scale') return 'N/A';
+      return 'SLIDE'; // Movement on XZ Plane
   }
 
   rightLabel() {
-      switch(this.transformMode()) {
-          case 'translate': return 'LIFT (Y)';
-          case 'rotate': return 'TILT (X/Z)';
-          case 'scale': return 'SCALE (Y)';
-      }
+      if (this.transformMode() === 'scale') return 'RESIZE';
+      return 'LIFT / TURN'; // Movement on Y, Rotation on Y
   }
 }

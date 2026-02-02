@@ -4,6 +4,8 @@ import { NatureGeneratorService } from '../services/generators/nature-generator.
 import { ArchitectureGeneratorService } from '../services/generators/architecture-generator.service';
 import { InteriorGeneratorService } from '../services/generators/interior-generator.service';
 import { SciFiGeneratorService } from '../services/generators/scifi-generator.service';
+import { WeaponGeneratorService } from '../services/generators/weapon-generator.service';
+import { ActorGeneratorService } from '../services/generators/actor-generator.service';
 
 // Context interface to pass generators to the config functions
 export interface GeneratorContext {
@@ -11,6 +13,8 @@ export interface GeneratorContext {
     arch: ArchitectureGeneratorService;
     interior: InteriorGeneratorService;
     scifi: SciFiGeneratorService;
+    weapon: WeaponGeneratorService;
+    actor: ActorGeneratorService;
 }
 
 export interface AssetDef {

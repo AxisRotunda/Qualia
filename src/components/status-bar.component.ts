@@ -1,6 +1,7 @@
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, effect } from '@angular/core';
 import { EngineService } from '../services/engine.service';
+import { A11yService } from '../services/ui/a11y.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -8,13 +9,18 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="flex items-center justify-between px-3 py-1 bg-slate-950 text-[10px] text-slate-500 font-mono select-none shrink-0 z-20 border-t border-cyan-900/30 relative">
+    <div class="flex items-center justify-between px-3 py-1 bg-slate-950 text-[10px] text-slate-500 font-mono select-none shrink-0 z-20 border-t border-cyan-900/30 relative"
+         role="status" aria-label="Engine Telemetry">
       <!-- Glow Line -->
       <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent"></div>
 
+      <!-- ARIA Live Region for System Announcements -->
+      <div class="sr-only" aria-live="polite">{{ a11y.currentAnnouncement() }}</div>
+
       <div class="flex gap-4 items-center">
         <!-- System Status -->
-        <span class="flex items-center gap-1.5 cursor-default min-w-[80px] group">
+        <span class="flex items-center gap-1.5 cursor-default min-w-[80px] group"
+              [attr.aria-label]="'Simulation ' + (engine.isPaused() ? 'Halted' : 'Active')">
            <div class="w-1.5 h-1.5 rounded-sm transition-colors" 
                 [class.bg-emerald-500]="!engine.isPaused()" 
                 [class.bg-amber-500]="engine.isPaused()"
@@ -24,8 +30,8 @@ import { CommonModule } from '@angular/common';
            </span>
         </span>
         
-        <span class="text-cyan-600 font-bold border border-cyan-900/50 bg-cyan-950/20 px-1.5 rounded text-[9px] tracking-widest">
-            {{ engine.mode() | uppercase }}
+        <span class="text-cyan-600 font-bold border border-cyan-900/50 bg-cyan-950/20 px-1.5 rounded text-[9px] tracking-widest uppercase">
+            {{ engine.mode() }}
         </span>
 
         @if (engine.mode() === 'walk') {
@@ -64,4 +70,19 @@ import { CommonModule } from '@angular/common';
 })
 export class StatusBarComponent {
   engine = inject(EngineService);
+  a11y = inject(A11yService);
+
+  constructor() {
+      // Monitor simulation state for accessibility announcements
+      effect(() => {
+          const paused = this.engine.isPaused();
+          this.a11y.announce(`Simulation ${paused ? 'halted' : 'started'}`);
+      });
+
+      // Monitor mode changes
+      effect(() => {
+          const mode = this.engine.mode();
+          this.a11y.announce(`System mode changed to ${mode}`);
+      });
+  }
 }

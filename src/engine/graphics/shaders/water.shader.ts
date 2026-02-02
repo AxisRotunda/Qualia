@@ -14,89 +14,115 @@ export const WATER_CONSTANTS = `
     const float W2_AMP = ${float(c.w2.amp)};
     const float W2_SPEED = ${float(c.w2.speed)};
     const vec2 W2_DIR = vec2(${float(c.w2.dirX)}, ${float(c.w2.dirZ)});
-
-    const float W3_FREQ = ${float(c.w3.freq)};
-    const float W3_AMP = ${float(c.w3.amp)};
-    const float W3_SPEED = ${float(c.w3.speed)};
-    const vec2 W3_DIR = vec2(${float(c.w3.dirX)}, ${float(c.w3.dirZ)});
 `;
 
 export const WATER_VERTEX_HEAD = `
     uniform float uTime;
     varying float vWaveHeight;
+    varying vec3 vWaterWorldPos;
+    varying vec3 vWaterNormal;
     
     ${WATER_CONSTANTS}
 
-    float getWaveHeight(vec3 p) {
-        float time = uTime * 1.0;
+    // Returns Height (Y) and derivatives (d/dx, d/dz) for Analytical Normals
+    vec3 getWave(vec3 p) {
+        float time = uTime;
         float y = 0.0;
+        float ddx = 0.0;
+        float ddz = 0.0;
+
+        // Wave 1: Sine Swell
+        float phase1 = dot(p.xz, W1_DIR) * W1_FREQ + time * W1_SPEED;
+        float sin1 = sin(phase1);
+        float cos1 = cos(phase1);
         
-        // Wave 1: Rolling Swell (Sine)
-        y += sin(dot(p.xz, W1_DIR) * W1_FREQ + time * W1_SPEED) * W1_AMP;
+        y += sin1 * W1_AMP;
+        ddx += W1_DIR.x * W1_FREQ * W1_AMP * cos1;
+        ddz += W1_DIR.y * W1_FREQ * W1_AMP * cos1;
         
-        // Wave 2: Choppy Peak (Sharpened Sine)
-        float w2 = sin(dot(p.xz, W2_DIR) * W2_FREQ + time * W2_SPEED);
-        // Peak sharpening: 1 - (1-sin)^k approximation via power or multiplication
-        // Using cubic power for cheap peak sharpening
-        y += (w2 * w2 * w2) * W2_AMP;
+        // Wave 2: Sharper Chop (Cubed Sine)
+        float phase2 = dot(p.xz, W2_DIR) * W2_FREQ + time * W2_SPEED;
+        float sin2 = sin(phase2);
+        float cos2 = cos(phase2);
+        float sharp2 = sin2 * sin2 * sin2; 
         
-        // Wave 3: Surface Noise (Cosine)
-        y += cos(dot(p.xz, W3_DIR) * W3_FREQ + time * W3_SPEED) * W3_AMP;
+        y += sharp2 * W2_AMP;
+        // Derivative of sin^3: 3 * sin^2 * cos
+        float d2 = 3.0 * sin2 * sin2 * cos2 * W2_AMP * W2_FREQ;
+        ddx += W2_DIR.x * d2;
+        ddz += W2_DIR.y * d2;
         
-        return y;
+        return vec3(y, ddx, ddz);
     }
 `;
 
 export const WATER_VERTEX_MAIN = `
-    #include <begin_vertex>
+    vec3 transformed = vec3( position );
+
+    // RUN_INDUSTRY: Compute in Absolute World Space for Physics parity
+    // Renamed local variable to avoid collision with global injections or Three.js chunks
+    vec4 wPosRaw = modelMatrix * vec4(position, 1.0);
     
-    // Sample Height
-    float waveY = getWaveHeight(position);
-    transformed.y += waveY;
-    vWaveHeight = waveY;
+    // 1. Calculate Displacement & Partials
+    vec3 waveData = getWave(wPosRaw.xyz);
+    float h = waveData.x;
     
-    // Analytical Normal Recalculation (Finite Difference Approximation)
-    float offset = 0.1;
-    vec3 p1 = position + vec3(offset, 0.0, 0.0); p1.y += getWaveHeight(p1);
-    vec3 p2 = position + vec3(0.0, 0.0, offset); p2.y += getWaveHeight(p2);
+    // Displacement along Local Normal (Standard assumption for planes)
+    transformed += normal * h;
     
-    // Current Transformed Position
-    vec3 p0 = transformed;
+    // 2. Analytical Normal Synthesis
+    // N = normalize(-dh/dx, 1.0, -dh/dz)
+    vec3 worldNorm = normalize(vec3(-waveData.y, 1.0, -waveData.z));
     
-    // Tangent Vectors
-    vec3 vA = normalize(p1 - p0);
-    vec3 vB = normalize(p2 - p0);
+    // Pass to varying for lighting stage
+    vWaterNormal = worldNorm; 
+    vNormal = normalize(mat3(viewMatrix) * worldNorm);
     
-    // New Normal
-    vec3 N = normalize(cross(vB, vA));
-    objectNormal = N;
+    vWaveHeight = h;
+    vWaterWorldPos = wPosRaw.xyz;
 `;
 
 export const WATER_FRAGMENT_HEAD = `
     uniform float uTime;
+    // uSunDir provided by global HEIGHT_FOG_PARS injection
     varying float vWaveHeight;
+    varying vec3 vWaterWorldPos;
+    varying vec3 vWaterNormal;
+    
+    ${WATER_CONSTANTS}
 `;
 
 export const WATER_FRAGMENT_COLOR = `
     #include <color_fragment>
     
-    // Simple Foam at peaks (threshold based on wave height)
-    float foam = smoothstep(0.8, 1.4, vWaveHeight);
-    vec3 foamColor = vec3(0.95);
+    // 1. Multi-Octave Color Synthesis
+    // Deep water scattering logic
+    vec3 deepColor = vec3(0.005, 0.04, 0.08); // Near Black Blue
+    vec3 midColor = vec3(0.0, 0.15, 0.2);   // Teal
+    vec3 crestColor = vec3(0.2, 0.5, 0.6); // Surface Blue
     
-    // Deep water darkening in troughs
-    float depth = smoothstep(-1.0, 1.0, vWaveHeight);
-    vec3 deepColor = diffuseColor.rgb * 0.4; // Darker deeps
+    float depthT = clamp(vWaveHeight / W1_AMP, -1.0, 1.0) * 0.5 + 0.5;
+    vec3 baseWaterColor = mix(deepColor, midColor, depthT);
+    baseWaterColor = mix(baseWaterColor, crestColor, smoothstep(0.6, 1.0, depthT));
+
+    // 2. Subsurface Scatter Approximation (Fresnel)
+    vec3 viewDir = normalize(cameraPosition - vWaterWorldPos);
+    float fresnel = pow(1.0 - max(dot(vWaterNormal, viewDir), 0.0), 4.0);
     
-    vec3 waterColor = mix(deepColor, diffuseColor.rgb, depth);
-    diffuseColor.rgb = mix(waterColor, foamColor, foam * 0.6);
+    // 3. Highlight Motivation
+    float sunHighlight = pow(max(dot(vWaterNormal, uSunDir), 0.0), 32.0);
+    
+    diffuseColor.rgb = mix(baseWaterColor, vec3(1.0), fresnel * 0.4 + sunHighlight * 0.8);
+    
+    // 4. Foam Logic (Crests only)
+    float foam = smoothstep(0.8, 1.1, vWaveHeight / W1_AMP);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.95, 1.0), foam * 0.6);
 `;
 
 export const WATER_FRAGMENT_ROUGHNESS = `
     #include <roughnessmap_fragment>
     
-    float foam_r = smoothstep(0.8, 1.4, vWaveHeight);
-    
-    // Rougher foam, smoother water
-    roughnessFactor = mix(roughnessFactor, 0.6, foam_r);
+    // Industry Standard: Foam is rougher than smooth water
+    float foamMask = smoothstep(0.8, 1.1, vWaveHeight / W1_AMP);
+    roughnessFactor = mix(0.02, 0.6, foamMask);
 `;

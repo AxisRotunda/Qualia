@@ -84,7 +84,8 @@ export const FOREST_SCENE: ScenePreset = {
       }
 
       // Position camera
-      const cam = engine.sceneService.getCamera();
+      // FIX: Access scene service through sys
+      const cam = engine.sys.scene.getCamera();
       cam.position.set(0, 2, 20);
       cam.lookAt(0, 4, 0);
   }

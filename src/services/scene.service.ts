@@ -7,7 +7,8 @@ import { GizmoManagerService, GizmoConfig } from '../engine/graphics/gizmo-manag
 import { InstancedMeshService } from '../engine/graphics/instanced-mesh.service';
 import { CameraManagerService } from '../engine/graphics/camera-manager.service';
 import { StageService } from '../engine/graphics/stage.service';
-import { RenderingCoordinatorService } from '../engine/graphics/rendering-coordinator.service';
+import { RendererService } from '../engine/graphics/renderer.service';
+import { PostProcessingService } from '../engine/graphics/post-processing.service';
 
 @Injectable({
   providedIn: 'root'
@@ -21,31 +22,40 @@ export class SceneService {
   private envManager = inject(EnvironmentManagerService);
   private instancedMeshService = inject(InstancedMeshService);
   private cameraManager = inject(CameraManagerService);
-  private coordinator = inject(RenderingCoordinatorService);
+  private rendererService = inject(RendererService);
+  private postProcessing = inject(PostProcessingService);
   
   public get isDraggingGizmo() { return this.gizmoManager.isDraggingGizmo; }
 
   init(canvas: HTMLCanvasElement) {
     const scene = this.graph.scene;
+    const camera = this.cameraManager.getCamera();
     
-    // 1. Initialize Renderer & Camera
-    this.coordinator.init(canvas);
+    // 1. Initialize Renderer
+    this.rendererService.init(canvas);
     
     // 2. Setup Subsystems
     this.envManager.init(scene);
     this.stageService.init(this.graph.stageGroup);
     
-    // 3. IBL Generation
-    this.envManager.generateDefaultEnvironment(this.coordinator.pmremGenerator);
+    // 3. Post Processing initialization
+    this.postProcessing.init(this.rendererService.renderer, scene, camera);
+    
+    // 4. IBL Generation
+    this.envManager.generateDefaultEnvironment(this.rendererService.pmremGenerator);
 
-    // 4. Gizmos
-    this.gizmoManager.init(this.cameraManager.getCamera(), this.coordinator.domElement, this.graph.helperGroup);
+    // 5. Gizmos
+    this.gizmoManager.init(
+        camera, 
+        this.rendererService.domElement, 
+        this.graph.helperGroup
+    );
   }
 
   // --- Accessors ---
   getScene(): THREE.Scene { return this.graph.scene; }
   getCamera(): THREE.PerspectiveCamera { return this.cameraManager.getCamera(); }
-  getDomElement(): HTMLCanvasElement { return this.coordinator.domElement; }
+  getDomElement(): HTMLCanvasElement { return this.rendererService.domElement; }
 
   setTransformMode(mode: 'translate' | 'rotate' | 'scale') {
      this.gizmoManager.setMode(mode);
@@ -57,10 +67,9 @@ export class SceneService {
 
   // --- Rendering Lifecycle ---
   resize(width: number, height: number) {
-    this.coordinator.resize(width, height);
-  }
-
-  render() {
-    this.coordinator.render();
+    this.cameraManager.resize(width, height);
+    const camera = this.cameraManager.getCamera();
+    this.rendererService.resize(width, height, camera);
+    this.postProcessing.resize(width, height);
   }
 }

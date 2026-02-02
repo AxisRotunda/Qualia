@@ -1,12 +1,12 @@
 
 import { Injectable, inject } from '@angular/core';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { PhysicsService } from './physics.service';
+import { PhysicsService, PhysicsBodyDef } from './physics.service';
 
 export interface CharacterContext {
     controller: RAPIER.KinematicCharacterController;
-    bodyHandle: number;
-    colliderHandle: number;
+    bodyDef: PhysicsBodyDef;
+    entityId: number;
 }
 
 @Injectable({
@@ -15,63 +15,86 @@ export interface CharacterContext {
 export class CharacterPhysicsService {
   private physics = inject(PhysicsService);
 
-  // Approximate mass of the character + equipment in kg.
-  // Defines how much momentum is transferred during collisions.
   private readonly VIRTUAL_MASS = 120.0; 
+  private readonly _impulse = { x: 0, y: 0, z: 0 };
 
   private get world() {
     return this.physics.rWorld;
   }
 
-  createCharacter(x: number, y: number, z: number, radius: number, height: number): CharacterContext {
+  createCharacterDef(x: number, y: number, z: number, radius: number, height: number): PhysicsBodyDef {
       if (!this.world) throw new Error('Physics not initialized');
 
-      // 1. Create Kinematic Rigid Body (Position Based)
-      const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
-          .setTranslation(x, y, z);
-      const rigidBody = this.world.createRigidBody(bodyDesc);
-
-      // 2. Create Capsule Collider
-      const halfHeight = (height / 2) - radius;
-      const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius)
-          .setFriction(0.0) 
-          .setRestitution(0.0);
+      // RUN_REF: Using Capsule for realistic human-scale navigation
+      const def = this.physics.shapes.createCapsule(
+          x, y, z, height, radius, 1, 'plastic', 'kinematicPosition'
+      );
       
-      const collider = this.world.createCollider(colliderDesc, rigidBody);
+      return def;
+  }
 
-      // 3. Create Controller
-      const offset = 0.05; 
+  /**
+   * Updates character collision volume for stance changes (Crouch).
+   * Industry Standard: Recreates the collider on the kinematic body.
+   */
+  updateCharacterHeight(ctx: CharacterContext, radius: number, height: number) {
+      if (!this.world) return;
+      const body = this.world.getRigidBody(ctx.bodyDef.handle);
+      if (!body) return;
+
+      // 1. Remove old collider
+      const oldCollider = body.collider(0);
+      if (oldCollider) {
+          this.world.removeCollider(oldCollider, false);
+      }
+
+      // 2. Create new capsule descriptor
+      const halfH = Math.max(0.1, (height / 2) - radius);
+      const colDesc = RAPIER.ColliderDesc.capsule(halfH, radius);
+      
+      // 3. Re-apply interaction groups (PLAYER mask)
+      const membership = 0x0004; // CG.PLAYER
+      const filter = 0xFFFF;
+      colDesc.setCollisionGroups((membership << 16) | filter);
+      
+      this.world.createCollider(colDesc, body);
+      
+      // Update definition cache
+      ctx.bodyDef.height = height;
+      ctx.bodyDef.radius = radius;
+  }
+
+  createController(): RAPIER.KinematicCharacterController {
+      if (!this.world) throw new Error('Physics not initialized');
+      
+      // RUN_INDUSTRY: Precise offset for predictable floor contact
+      const offset = 0.02; 
       const controller = this.world.createCharacterController(offset);
       
-      // Default settings
       controller.setUp({ x: 0.0, y: 1.0, z: 0.0 });
-      controller.setMaxSlopeClimbAngle(50 * Math.PI / 180); // Increased to 50deg for steeper ramps
+      controller.setMaxSlopeClimbAngle(50 * Math.PI / 180);
       controller.setMinSlopeSlideAngle(30 * Math.PI / 180);
       
-      // Autostep: Increased max height to 0.5 to handle the 0.31m steps in the grand staircase
+      // RUN_INDUSTRY: Standard Autostep (Stairs, small rocks)
       controller.enableAutostep(0.5, 0.2, true);
-      controller.enableSnapToGround(0.3);
+      
+      // Increased snap distance to keep feet on ground during downhill run
+      controller.enableSnapToGround(0.5);
 
-      return {
-          controller,
-          bodyHandle: rigidBody.handle,
-          colliderHandle: collider.handle
-      };
+      return controller;
   }
 
   moveCharacter(ctx: CharacterContext, translation: {x:number, y:number, z:number}, dt: number) {
       if (!this.world) return;
       
-      const collider = this.world.getCollider(ctx.colliderHandle);
-      const body = this.world.getRigidBody(ctx.bodyHandle);
+      const body = this.world.getRigidBody(ctx.bodyDef.handle);
+      if (!body) return;
       
-      if (!collider || !body) return;
+      const collider = body.collider(0);
+      if (!collider) return;
 
       // Compute collision-aware movement
-      ctx.controller.computeColliderMovement(
-          collider, 
-          translation
-      );
+      ctx.controller.computeColliderMovement(collider, translation);
 
       // Get corrected movement
       const corrected = ctx.controller.computedMovement();
@@ -97,18 +120,15 @@ export class CharacterPhysicsService {
           const otherCollider = this.world!.getCollider(collision.collider.handle);
           if (otherCollider) {
               const otherBody = otherCollider.parent();
-              // Only push dynamic bodies
               if (otherBody && otherBody.isDynamic()) {
-                  // Hard Realism: Momentum Transfer
-                  const coupling = 50.0; // Increased coupling for better heavy object pushing
+                  const coupling = 50.0; 
                   
-                  const impulse = {
-                      x: movement.x * this.VIRTUAL_MASS * coupling,
-                      y: movement.y * this.VIRTUAL_MASS * coupling, 
-                      z: movement.z * this.VIRTUAL_MASS * coupling
-                  };
+                  // RUN_OPT: Use scratch vector to prevent loop allocation
+                  this._impulse.x = movement.x * this.VIRTUAL_MASS * coupling;
+                  this._impulse.y = movement.y * this.VIRTUAL_MASS * coupling;
+                  this._impulse.z = movement.z * this.VIRTUAL_MASS * coupling;
                   
-                  otherBody.applyImpulse(impulse, true);
+                  otherBody.applyImpulse(this._impulse, true);
                   otherBody.wakeUp();
               }
           }
@@ -121,10 +141,7 @@ export class CharacterPhysicsService {
 
   destroyCharacter(ctx: CharacterContext) {
       if (!this.world) return;
-      const body = this.world.getRigidBody(ctx.bodyHandle);
-      if (body) {
-        this.world.removeRigidBody(body);
-      }
+      this.physics.world.removeBody(ctx.bodyDef.handle);
       this.world.removeCharacterController(ctx.controller);
   }
 }

@@ -49,9 +49,12 @@ The most critical system for data consistency. It manages the bidirectional flow
     *   Updates ECS `Transform` and Physics `Body` simultaneously to ensure responsiveness.
     *   Visuals are updated immediately to prevent frame lag perception.
 
-## 4. Time Management
+## 4. Time & Viewport Management
 *   **Physics Step**: Fixed timestep `1/60`s inside `PhysicsWorldService`.
     *   Uses an accumulator to decouple Frame Rate from Physics Rate.
     *   Max Frame Time Cap: `0.1s` (Prevents "spiral of death" on lag).
 *   **Render Step**: Variable timestep (Frame `dt`).
+*   **Viewport Management**: 
+    *   The engine uses a `ResizeObserver` on the primary viewport container.
+    *   Resizing is reactive to DOM changes (sidebar toggles, CSS transitions) rather than just window events.
 *   **Scene Logic**: Receives `dt` (ms) and `totalTime` (ms) for animations/shaders.
