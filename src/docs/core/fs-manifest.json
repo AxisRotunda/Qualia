@@ -4,20 +4,12 @@
   "project_root": "./",
   "operations": [
     {
-      "id": "refactor_docs_v4",
+      "id": "finalize_bios_migration",
       "action": "move",
       "source": "src/docs/history/system-instructions.md",
       "destination": "src/docs/core/system-instructions.md",
-      "status": "pending",
+      "status": "completed",
       "priority": 1,
-      "timestamp": 1716200000000
-    },
-    {
-      "id": "cleanup_legacy_fragments",
-      "action": "delete",
-      "source": "src/docs/history/fragments/fragment-001.md",
-      "status": "pending",
-      "priority": 2,
       "timestamp": 1716200000000
     }
   ],
