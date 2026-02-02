@@ -1,5 +1,5 @@
 # Qualia 3D System Manifest
-> **VERSION**: 2.7.0 (Biological Extension)
+> **VERSION**: 3.0.0 (Facade Hardened)
 > **TYPE**: Master Topology
 > **ROOT**: `src/docs/kernel.md`
 
@@ -13,48 +13,51 @@
 
 ### 1.2 [PHYSICS] The Law
 *   **Simulation**: `PhysicsWorldService` (Rapier3D WASM).
-*   **Data**: `RigidBodyStore` (Handle Map), `PhysicsPropsStore` (SoA).
+*   **Data**: `RigidBodyStore` (SoA), `PhysicsPropsStore` (SoA).
 *   **Interaction**: `PhysicsInteractionService` ("The Hand" / Spring Joints).
-*   **Pipeline**: `PhysicsFactory` -> `ShapesFactory` -> `MassCalculator`.
+*   **Logic**: `MassCalculator`, `PhysicsStepService`.
 
 ### 1.3 [RENDER] The Eye
-*   **Scene**: `SceneGraphService` (Tree).
-*   **Camera**: `CameraManagerService` (Composition, Shake, Dynamic FOV).
-*   **Environment**: `EnvironmentControlService` (Atmosphere), `EnvironmentManager` (Lights/Fog).
+*   **Scene**: `SceneGraphService` (Group Hierarchy).
+*   **Camera**: `CameraManagerService` (Shake, Dynamic FOV, Interpolation).
+*   **Environment**: `EnvironmentControlService` (Biome Logic), `EnvironmentManager` (Lights/Fog).
+*   **Pipeline**: `RendererService`, `PostProcessingService`.
 *   **Optimization**: `VisibilityManager` (Culling), `InstancedMeshService`.
-*   **Post-Process**: `PostProcessingService` (Bloom/Grain/Vignette).
 
 ### 1.4 [COMBAT] The Conflict
-*   **Logic**: `WeaponService` (State/Trigger), `CombatSystem` (Impacts).
-*   **Data**: `ProjectileStore` (SoA), `IntegrityStore` (Health).
-*   **Visuals**: `ViewModelAnimationService` (Sway/Recoil), `VfxService` (Particles).
+*   **Logic**: `WeaponService` (Trigger), `CombatSystem` (Ballistics/Projectiles).
+*   **Visuals**: `ViewModelAnimationService` (Viewmodel), `VfxService` (Particles).
+*   **Data**: `ProjectileStore`, `IntegrityStore`.
 
 ### 1.5 [ECOSYSTEM] The Wild
-*   **Flora**: `NatureFloraService` (L-Systems), `NatureGenerator`.
-*   **Fauna**: `AgentService` (Autonomous Logic), `FaunaGenerator`.
-*   **Dynamics**: `WindSystem` (Vertex Displacement), `BuoyancySystem`.
-*   **Registry**: `SceneRegistry`, `EntityLibrary`.
+*   **Fauna**: `BehaviorSystem` (Agents), `AgentStore`.
+*   **Dynamics**: `BuoyancySystem` (Fluid Dynamics), `MaterialAnimationSystem`.
+*   **Terrain**: `TerrainManagerService` (Grid Streaming).
 
 ### 1.6 [LOGIC] The Will
-*   **Hardware**: `GameInputService` (Normalization).
-*   **Controllers**: `CameraControl`, `CharacterController`, `FlyControls`.
-*   **AI**: `SteeringService`, `BehaviorTreeEngine`.
-*   **Manipulation**: `ObjectManipulationService` (Visuals <-> Physics Bridge).
+*   **Hardware**: `GameInputService` (Action Mapping).
+*   **Controllers**: `CameraControlService`, `CharacterControllerService`, `FlyControlsService`.
+*   **Manipulation**: `ObjectManipulationService` (Mobile Grab).
 
-## 2. Critical Path (Frame Loop)
-Execution order within `EngineRuntimeService.tick(dt)`:
+## 2. Critical Path (Execution Priority)
+Order within `EngineRuntimeService.tick(dt)`:
 
-1.  **Input**: `InputSystem` (Reads hardware, updates controllers).
-2.  **Logic**: `EnvironmentSystem` -> `BehaviorSystem` (Fauna) -> `KinematicSystem`.
-3.  **Pre-Physics**: `BuoyancySystem` -> `CombatSystem` (Apply forces).
-4.  **Physics**: `PhysicsSystem` (Step World -> Sync ECS Transforms).
-5.  **Post-Physics**: `DestructionSystem` -> `RepairSystem` (Constraint enforcement).
-6.  **Animation**: `AnimationSystem` -> `WeaponSystem`.
-7.  **Visuals**: `VfxSystem` -> `MaterialAnimationSystem` (Wind/Foliage).
-8.  **Render**: `RenderSystem` (Cull -> Update Instances -> Camera -> Draw).
-9.  **Meta**: `StatisticsSystem`.
+1.  **Input (0)**: `InputSystem`.
+2.  **Environment (100)**: `EnvironmentSystem`.
+3.  **Behavior (120)**: `BehaviorSystem`.
+4.  **Logic (150)**: `SceneLogicSystem`.
+5.  **Kinematics (180)**: `KinematicSystem`.
+6.  **Buoyancy (190)**: `BuoyancySystem`.
+7.  **Combat (195)**: `CombatSystem`.
+8.  **Physics (200)**: `PhysicsSystem` (Step -> Sync).
+9.  **Post-Physics (205-210)**: `DestructionSystem`, `RepairSystem`.
+10. **Animation (350)**: `AnimationSystem`.
+11. **Visuals (800-850)**: `MaterialAnimationSystem`, `WeaponSystem`.
+12. **Culling (890)**: `TerrainManagerService`.
+13. **Render (900)**: `RenderSystem` (Interpolate -> Draw).
+14. **Post-Frame (1100)**: `TelemetrySystem`, `StatisticsSystem`.
 
 ## 3. Data Flow Axioms
-*   **Physics -> Visuals**: The Physics simulation is the source of truth for position/rotation.
-*   **ECS -> Components**: UI components read from ECS/State Signals.
-*   **Generators -> ECS**: Generators produce `PhysicsBodyDef` and `Mesh`, which `EntityAssembler` binds to an ID.
+*   **Simulation vs Frame**: Physics runs at fixed 60Hz. Render system interpolates visuals between `T` and `T-1`.
+*   **Entity Sovereignty**: UI never writes to ECS; it calls `EntityOpsService` or `TransformLogicService`.
+*   **Visual Bridge**: `SelectionHighlightService` connects `EngineState.selectedEntity` to 3D gizmos.

@@ -1,4 +1,3 @@
-
 # Control Schemes
 > **Scope**: Input Controller Mappings, Mode Switching, Gizmo Behaviors.
 > **Source**: `src/engine/controllers/`, `src/engine/input-manager.service.ts`
@@ -10,52 +9,40 @@ The `EngineState.mode` signal determines the active `ControllerService`.
 *   **Goal**: Scene composition and object manipulation.
 *   **Input**: `OrbitControls`.
     *   **Desktop**: RMB to Orbit, MMB to Pan, Wheel to Zoom.
-    *   **Mobile**: 1-finger Orbit, 2-finger Pan/Zoom.
+    *   **Mobile**: 1-finger Orbit, Virtual Joystick Pan.
 *   **UI**: `GizmoManager` is active. Selection allowed.
-*   **Cursor**: Standard pointer.
 
 ### 1.2 Walk Mode (`CharacterControllerService`)
-*   **Goal**: First-person exploration and physics interaction.
+*   **Goal**: First-person exploration and tactical interaction.
 *   **Input**: FPS Style.
-    *   **Desktop**: WASD to Move, Mouse to Look (Pointer Locked). Space to Jump.
-    *   **Mobile**: Virtual Joysticks.
-*   **UI**: Gizmo hidden. Reticle visible.
-*   **Physics**: Kinematic Capsule collider active.
+    *   **Desktop**: WASD to Move, Mouse to Look (Pointer Locked).
+    *   **Mobile**: Dual Virtual Joysticks + Action Cluster.
+*   **Physics**: Kinematic Capsule collider with Auto-Step (0.5m).
 
 ### 1.3 Explore Mode (`FlyControlsService`)
-*   **Goal**: Free-flight debugging and cinematography.
-*   **Input**: 6DOF Flight.
-    *   **Desktop**: WASD + QE (Up/Down). Mouse Look. Inertia enabled.
-    *   **Mobile**: Virtual Joysticks (Left: Move XZ, Right: Look).
-*   **UI**: Minimal.
+*   **Goal**: Free-flight 6DOF navigation.
+*   **Input**: WASD + QE (Up/Down) or Virtual Joysticks.
+*   **Visuals**: Speed-driven FOV offset.
 
 ## 2. Object Manipulation Scheme
 When an entity is selected in `Edit` mode, control logic forks.
 
-### 2.1 Gizmo Interaction (Desktop Priority)
-*   **Trigger**: Clicking `TransformControls` handles (Arrows/Rings).
-*   **Behavior**:
-    *   Blocks Camera controls.
-    *   Directly modifies Mesh Matrix.
-    *   `EntityTransformSystem` syncs Physics Body to match Mesh (Teleport).
+### 2.1 Gizmo Interaction (Desktop)
+*   **Mechanism**: Direct Mesh Matrix modification.
+*   **Sync**: `EntityTransformSystem` teleports the Physics Body to match visuals.
 
-### 2.2 Physics Grab (Mobile/Joystick Priority)
-*   **Trigger**: Activating 'Object' control layer on mobile or specific hotkey.
-*   **Behavior**:
-    *   Creates `ImpulseJoint` (Spring) between Cursor (Hand) and Object.
-    *   Object collides with world while moving.
-    *   "Weighty" feel.
+### 2.2 Physics Grab (Mobile/Joystick)
+*   **Service**: `ObjectManipulationService`.
+*   **Mechanism**: `ImpulseJoint` (Spring) between Cursor and Object.
+*   **Behavior**: High-fidelity "weighty" feel. Objects collide with the environment while being moved.
 
 ## 3. Hotkeys & Shortcuts
-Managed by `KeyboardService` and `MenuConfig`.
 
 | Action | Key | Context |
 |--------|-----|---------|
-| **Tools** | W, E, R | Translate, Rotate, Scale |
-| **Focus** | F | Camera looks at Selection |
-| **Grid** | G | Toggle Grid |
-| **HUD** | H | Toggle UI Visibility |
-| **Delete** | Del | Destroy Selection |
-| **Duplicate**| Ctrl+D | Clone Selection |
-| **Undo** | Ctrl+Z | Revert (Stubbed) |
-| **Save** | Ctrl+S | Quick Save |
+| **Translate/Rotate/Scale** | W, E, R | Edit Mode |
+| **Focus Selection** | F | All Modes |
+| **FP/TP Toggle** | V | Walk Mode |
+| **Cycle Weapon** | Q | Walk Mode |
+| **HUD Toggle** | H | All Modes |
+| **Quick Save** | Ctrl+S | All Modes |
