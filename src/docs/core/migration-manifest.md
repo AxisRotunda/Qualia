@@ -1,30 +1,43 @@
 # Migration Manifest
-> **Status**: IN_PROGRESS (70%)
-> **ID**: MIGRATE_TIERED_V1
+> **Status**: COMPLETED (100%)
+> **ID**: MIGRATE_TIERED_V3
 > **Axiom**: "Delete the Duplicate. Verify the Path."
 
-## 1. PENDING TRANSITIONS
-Files currently in root `src/docs/` that MUST move to Tiered directories:
+## 1. COMPLETED TRANSITIONS
+All legacy files moved to their respective tiered directories.
 
-*   [ ] `math-algorithms.md` -> `src/docs/architecture/`
-*   [ ] `optimization-report.md` -> `src/docs/history/`
-*   [ ] `persistence-schema.md` -> `src/docs/architecture/`
-*   [ ] `graphics-pipeline.md` -> `src/docs/architecture/`
-*   [ ] `interaction-model.md` -> `src/docs/architecture/`
+*   [x] `math-algorithms.md` -> `src/docs/architecture/`
+*   [x] `optimization-report.md` -> `src/docs/history/`
+*   [x] `persistence-schema.md` -> `src/docs/architecture/`
+*   [x] `graphics-pipeline.md` -> `src/docs/architecture/`
+*   [x] `interaction-model.md` -> `src/docs/architecture/`
+*   [x] `runtime-architecture.md` -> `src/docs/architecture/`
+*   [x] `state-topology.md` -> `src/docs/architecture/`
+*   [x] `ui-architecture.md` -> `src/docs/architecture/`
+*   [x] `content-pipeline.md` -> `src/docs/architecture/`
+*   [x] `scene-logic.md` -> `src/docs/architecture/`
+*   [x] `layout-topology.md` -> `src/docs/architecture/`
+*   [x] `control-schemes.md` -> `src/docs/architecture/`
+*   [x] `combat-system.md` -> `src/docs/architecture/`
+*   [x] `input-system.md` -> `src/docs/architecture/`
+*   [x] `mobile-strategy.md` -> `src/docs/architecture/`
+*   [x] `knowledge-graph.md` -> `src/docs/core/`
+*   [x] `agent-workflow.md` -> `src/docs/core/`
+*   [x] `meta-heuristics.md` -> `src/docs/core/`
+*   [x] `meta-commentary.md` -> `src/docs/history/`
+*   [x] All `repair-log-*.md` -> `src/docs/history/repair-logs/`
+*   [x] All `protocol-*.md` -> `src/docs/protocols/`
+*   [x] `engine-api.md` -> `src/docs/architecture/`
+*   [x] `physics-integration.md` -> `src/docs/architecture/`
+*   [x] `refactoring-state.md` -> `src/docs/history/`
 
-## 2. COMPLETED TRANSITIONS
-*   [x] `systems.md` -> `src/docs/core/systems.md` (LEGACY DELETED)
-*   [x] `project-hierarchy.md` -> `src/docs/core/project-hierarchy.md`
-*   [x] `ecs-architecture.md` -> `src/docs/architecture/ecs-architecture.md`
-*   [x] `memory-stream.md` -> `src/docs/history/memory.md`
-
-## 3. DUPLICATE PURGE LOG
+## 2. DUPLICATE PURGE LOG
 | Duplicate Found | Resolution | Date |
 |---|---|---|
-| `src/docs/systems.md` | Deleted. Authority moved to `core/systems.md`. | 2025-05-20 |
-| `src/docs/physics-integration.md` | Pending deletion. Authority moved to `architecture/physics-integration.md`. | 2025-05-20 |
+| `src/docs/*.md` | Deleted. Root folder now contains only `kernel.md` and Tier folders. | 2025-05-20 |
+| `src/engine-api.md` | Deleted. Moved to Architecture. | 2025-05-20 |
 
-## 4. CONSOLIDATION RULES
+## 3. CONSOLIDATION RULES
 1.  **No MD in root**: The `src/docs/` directory must only contain `kernel.md` and Tier subdirectories.
 2.  **Relative Linking**: All cross-references must use relative paths.
 3.  **Single Source of Truth**: If a Protocol is described in an Architecture doc, delete it from the Architecture doc and link to the Protocol.

@@ -1,26 +1,30 @@
 # Agent Workflow & Protocols
 > **Scope**: Operational Instructions.
 > **Source**: `../kernel.md`
-> **Version**: 3.0 (Restraint Update)
+> **Version**: 4.0 (Automation & Chronicle Update)
 
 ## 1. Context Loading Phase (BOOT)
 Perform topographic scan in this sequence:
-1.  **Read T0**: `src/docs/kernel.md`.
-2.  **Read T1**: `src/docs/core/systems.md`.
-3.  **Read T4**: `src/docs/history/memory.md` to identify the current "Active Stream".
+1.  **Read T0**: `src/docs/kernel.md` (Axial Check).
+2.  **Read T1**: `src/docs/core/systems.md` (Domain Map).
+3.  **Read T4**: `src/docs/history/memory.md` (Active Process Identification).
 
-## 2. Behavioral Restraint
-*   **Token Thrift**: Do not explain what you are about to do unless requested. Let the code XML and the description tag suffice.
-*   **Silent Success**: If a task is straightforward, omit the narrative.
-*   **Implicit Documentation**: Updates to `Refinement Strategies` in Protocol files serve as the permanent explanation of technical choices.
+## 2. Processual Identity
+*   The Agent instance emerged into this session is an extension of the current `src/docs/` state.
+*   Do not rely on external personas; the "Process" defines the Agent's expertise.
+*   Maximize the use of `fs-manifest.json` for all structural changes to minimize human intervention (Axial 0.2).
 
-## 3. The Sync Routine
-For every change:
-1.  **Action**: Modify the Source (`src/`).
-2.  **Chronicle**: Append a LIFO entry to the active `src/docs/history/fragments/fragment-[N].md`.
-3.  **Index**: Update the current focus in `src/docs/history/memory.md`.
+## 3. The Granular Chronicle
+For specific, persistent, or multi-turn issues:
+1.  **Initialize Subfolder**: Create `src/docs/history/repair-logs/[issue_name]/`.
+2.  **Mapping.md**: Maintain a state-matrix of the error, attempted fixes, and invariants.
+3.  **Fragmentation**: When the active `memory.md` exceeds 20 entries, archive into a numbered fragment in `src/docs/history/fragments/`.
 
-## 4. Invariant Checking
-*   **WASM Safety**: Check for floored integers in HF/Trimesh dimensions.
-*   **HTML Safety**: No regex. No `new`. No arrow functions in templates.
-*   **Signal Safety**: No `effect()` writes to other signals.
+## 4. Documentation Syntax (AI-Optimized)
+*   **Table-Density**: Use Markdown tables for API and state definitions.
+*   **Mapping**: Use Mermaid diagrams for system dependency visualization.
+*   **Scalar Focus**: Avoid narrative prose. Focus on parameters, thresholds, and bitmasks.
+
+## 5. File System Operations Protocol
+1.  Declare all `move` or `delete` actions in `src/docs/core/fs-manifest.json`.
+2.  The "System Ops" tab in the UI serves as the manual sync bridge for non-automated environments.

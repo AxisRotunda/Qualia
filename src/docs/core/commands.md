@@ -1,7 +1,7 @@
 # Command Registry
 > **Scope**: System Operational Verbs.
 > **Source**: `../kernel.md`
-> **Version**: 1.0
+> **Version**: 1.2 (Structural Sync Update)
 
 ## 1. PRIMARY ENGINES
 | COMMAND | TARGET | INTENT |
@@ -12,6 +12,7 @@
 | `RUN_REPAIR` | `src/docs/protocols/protocol-repair.md` | Stability & Error recovery. |
 | `RUN_UI` | `src/docs/protocols/protocol-ui.md` | Interface architecture audit. |
 | `RUN_SCENE_OPT` | `src/docs/protocols/protocol-scene-optimizer.md` | Level efficiency & logic delegation. |
+| `SYNC_FS` | `src/docs/core/fs-manifest.json` | Generate sync script for structural alignment. |
 
 ## 2. DOMAIN ENGINES
 | COMMAND | TARGET | INTENT |

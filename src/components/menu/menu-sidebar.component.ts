@@ -1,8 +1,8 @@
-
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FilesystemService } from '../../services/ui/filesystem.service';
 
-export type MenuTab = 'home' | 'worlds' | 'settings';
+export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
 
 @Component({
   selector: 'app-menu-sidebar',
@@ -49,6 +49,19 @@ export type MenuTab = 'home' | 'worlds' | 'settings';
                 <span class="material-symbols-outlined icon">tune</span>
                 <span class="label">Configuration</span>
             </button>
+
+            <div class="h-px w-full bg-white/5 my-2 hidden lg:block"></div>
+
+            <button (click)="switchTab.emit('system')" 
+                    [class.active-nav]="activeTab() === 'system'"
+                    class="nav-btn group relative">
+                <span class="material-symbols-outlined icon">settings_system_daydream</span>
+                <span class="label">System Ops</span>
+                
+                @if (fs.hasPending()) {
+                  <div class="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_orange] animate-pulse lg:relative lg:top-0 lg:right-0 ml-auto"></div>
+                }
+            </button>
         </div>
 
         <!-- Footer (Desktop) -->
@@ -65,16 +78,13 @@ export type MenuTab = 'home' | 'worlds' | 'settings';
     .nav-btn {
         @apply relative flex flex-col lg:flex-row items-center lg:gap-4 p-3 lg:px-4 lg:py-3.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-all border border-transparent w-full;
     }
-    /* Active State: Glow Left Border + Background */
     .active-nav {
         @apply text-cyan-400 bg-slate-900 border-white/5 shadow-inner;
     }
-    /* Left Glow Strip for Active */
     .active-nav::before {
         content: '';
         @apply absolute left-0 top-2 bottom-2 w-1 bg-cyan-500 rounded-r shadow-[0_0_8px_cyan];
     }
-    
     .nav-btn .icon {
         @apply text-2xl lg:text-xl mb-1 lg:mb-0 transition-transform group-hover:scale-110 duration-200;
     }
@@ -87,4 +97,6 @@ export type MenuTab = 'home' | 'worlds' | 'settings';
 export class MenuSidebarComponent {
   activeTab = input.required<MenuTab>();
   switchTab = output<MenuTab>();
+
+  fs = inject(FilesystemService);
 }

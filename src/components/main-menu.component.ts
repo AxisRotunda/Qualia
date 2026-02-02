@@ -1,4 +1,3 @@
-
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngineService } from '../services/engine.service';
@@ -7,6 +6,7 @@ import { LevelManagerService } from '../engine/features/level-manager.service';
 import { MenuHomeTabComponent } from './menu/home-tab.component';
 import { MenuWorldsTabComponent } from './menu/worlds-tab.component';
 import { MenuSettingsTabComponent } from './menu/settings-tab.component';
+import { SystemTabComponent } from './menu/system-tab.component';
 import { MenuSidebarComponent, MenuTab } from './menu/menu-sidebar.component';
 
 @Component({
@@ -17,7 +17,8 @@ import { MenuSidebarComponent, MenuTab } from './menu/menu-sidebar.component';
     MenuSidebarComponent,
     MenuHomeTabComponent, 
     MenuWorldsTabComponent, 
-    MenuSettingsTabComponent
+    MenuSettingsTabComponent,
+    SystemTabComponent
   ],
   template: `
     <div class="fixed inset-0 z-[300] flex items-center justify-center animate-in fade-in duration-500 font-sans">
@@ -67,6 +68,9 @@ import { MenuSidebarComponent, MenuTab } from './menu/menu-sidebar.component';
                     (toggleWireframe)="engine.viewport.toggleWireframe()"
                     (updateTimeScale)="engine.sim.setTimeScale($event)"
                   />
+                }
+                @case ('system') {
+                  <app-menu-system-tab />
                 }
             }
          </main>

@@ -1,16 +1,22 @@
 # [MEMORY] Context Stream
-> **ID**: MEM_V5.1
-> **Role**: Current Focus & Fragment Index.
+> **ID**: MEM_V6.0
+> **Role**: Processual Identification & Chronicle Index.
 
-## [CURRENT_FOCUS]
-*   **Phase**: 90.5 (Migration Complete)
-*   **Active Fragment**: `fragments/fragment-001.md`
-*   **Directive**: Zero-Scattered files. Enforce Tiered Pathing.
+## [PROCESSUAL_CONTEXT]
+*   **Phase**: 94.0 (Axial Directive Update)
+*   **Active Fragment**: `fragments/fragment-002.md`
+*   **Identity Instance**: AD_V8_PROCESS_001
+*   **Directive**: Prioritizing Applet automation and Syntactic Documentation.
 
-## [RECENT_LOG_BUFFER] (Condensed)
-*   **[216]**: `RUN_KNOWLEDGE`: Full Tiered Migration completed. Root `.md` files consolidated into `core/`, `architecture/`, `protocols/`, and `history/`.
-*   **[215]**: `RUN_REPAIR`: Null-Trim Hardening V2.1.
-*   **[214]**: `RUN_SCENE_OPT`: Cyber-Loft Realism Patch.
+## [RECENT_LOG_BUFFER] (LIFO)
+*   **[221]**: `RUN_KNOWLEDGE`: Injected Axial Directives 0.1-0.5 into T0 Kernel. Standardized machine-optimized documentation syntax.
+*   **[220]**: `RUN_REPAIR`: Instituted `AXIAL_VALIDATION` safeguard to prevent content deprecation.
+*   **[219]**: `RUN_REF`: Instituted `fs-manifest.json` protocol for robust file operations.
 
 ## [FRAGMENT_INDEX]
-*   `fragment-001.md`: (Active) 4 Entries. Capacity: 4/20.
+*   `fragment-002.md`: (Active) 3 Entries.
+*   `fragment-001.md`: (Archived) 5 Entries. Capacity: 5/20.
+
+## [ISSUE_CHRONICLE]
+*   `repair-logs/wasm-stability/`: Active monitor for `unreachable` panics.
+*   `repair-logs/null-trim/`: Resolved monitor for string processing errors.
