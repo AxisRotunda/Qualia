@@ -1,14 +1,16 @@
 # Project Hierarchy
 > **Scope**: File System Map.
 > **Audience**: AI Agents (Discovery).
-> **Version**: 3.0 (Tiered Docs Sync)
+> **Version**: 3.1 (Manifest Sync)
 
 ## 1. Documentation Tree (`src/docs/`)
 ```text
 docs/
-├── kernel.md                       # [Tier 0] Neural Core / Registry
+├── kernel.md                       # [Tier 0] Constitutional Root
 ├── core/                           # [Tier 1] Navigation & Discovery
 │   ├── systems.md                  # Logic Map & Priorities
+│   ├── commands.md                 # [NEW] Operational Registry
+│   ├── migration-manifest.md       # [NEW] Structural Integrity Tracker
 │   ├── project-hierarchy.md        # This file (Nav Map)
 │   ├── knowledge-graph.md          # Adjacency Matrix
 │   └── agent-workflow.md           # Operational Instructions
@@ -16,20 +18,16 @@ docs/
 │   ├── ecs.md                      # SoA & Component logic
 │   ├── graphics.md                 # Pipeline & Rendering
 │   ├── physics.md                  # WASM & Materials
-│   ├── engine-api.md               # Public Facade
-│   ├── combat.md                   # Weapons & Ballistics
-│   └── ...                         # Logic specifications
+│   └── ...                         # Specifications
 ├── protocols/                      # [Tier 3] Logic Engines
 │   ├── protocol-knowledge.md       # Tier Governance
 │   ├── protocol-optimize.md        # Perf & GC
 │   ├── protocol-refactor.md        # Arch cleanup
-│   ├── protocol-flora.md           # Botanical synth
 │   └── ...                         # Domain protocols
 └── history/                        # [Tier 4] Memory & Logs
     ├── memory.md                   # Context Stream
-    ├── refactoring.md              # Tech Debt State
-    ├── optimization.md             # Benchmark Report
-    └── logs/                       # Repair & Panic logs
+    ├── system-instructions.md      # [UPDATED] Operational Directives
+    └── fragments/                  # History archives
 ```
 
 ## 2. Source Tree (`src/`)

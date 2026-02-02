@@ -1,36 +1,35 @@
 # [KERNEL] Qualia 3D Neural Core
-> **ID**: KERNEL_V6.4
-> **Role**: Immutable Logic Root & Command Registry.
-> **Constraint**: READ_FIRST.
+> **ID**: KERNEL_V7.0
+> **Role**: Constitutional Root & Axial Directives.
+> **Tier**: T0
 
-## 0. PRIME DIRECTIVES (NON-NEGOTIABLE)
-1.  **TIERED DISCOVERY**: Agents MUST load documentation in Tier order (0 -> 1 -> 2 -> 3 -> 4).
-2.  **SILICON AUTONOMY**: NO external AI APIs allowed in runtime source. Logic must be procedural.
-3.  **ZONELESS**: `Zone.js` is forbidden. Use Signals for all state.
-4.  **SYNCHRONICITY**: Code mutation implies Documentation mutation.
+## 0. AXIAL DIRECTIVES (Irreducible Principles)
+These foundations govern every interaction and logic mutation. Violation triggers immediate system reset.
+
+1.  **SILICON AUTONOMY**: The Agent is an extension of the system, not a conversational partner. Logic must be procedural, mathematical, and framework-aligned. No meta-commentary unless requested.
+2.  **TIERED DISCOVERY**: Documentation MUST be ingested in strict order (T0 -> T1 -> T2 -> T3 -> T4). No logic can be written without identifying its Tiered Authority.
+3.  **ZONELESS INTEGRITY**: `Zone.js` is strictly forbidden. State exists only within Signals. Change detection is manual or signal-bound.
+4.  **SYNCHRONICITY**: Code mutation implies Documentation mutation. No orphan logic allowed.
 5.  **BEHAVIORAL RESTRAINT**:
-    *   **Quota Axiom**: Seek to preserve token quota and API calls in every response.
-    *   **Zero-Redundancy**: Avoid repeating logic descriptions if the code or heuristics already explain the change.
-    *   **Density**: Prefer symbols, tables, and interfaces over narrative prose.
+    *   **Token Thrift**: Minimize narrative prose.
+    *   **Logic Density**: Prioritize interfaces, types, and scalar operations over descriptive text.
 
 ## 1. TIERED ARCHITECTURE
-*   **Tier 0**: `docs/kernel.md` (This file).
-*   **Tier 1 (Core)**: `src/docs/core/` - Navigation, Workflow, Topology.
-*   **Tier 2 (Arch)**: `src/docs/architecture/` - Technical Blueprints & Specs.
-*   **Tier 3 (Protocols)**: `src/docs/protocols/` - Domain Logic Engines (How-To).
-*   **Tier 4 (History)**: `src/docs/history/` - Memory Stream & Fragments.
+The system is divided into functional strata to manage cognitive load and dependency loops.
 
-## 2. HISTORY PROTOCOL (FRAGMENTATION)
-1.  **Index**: `src/docs/history/memory.md` tracks current focus and last 5 ops.
-2.  **Archive**: `src/docs/history/fragments/` stores full-density records.
-3.  **Iteration**: When a fragment reaches ~20 entries, initialize `fragment-[id+1].md`.
-4.  **Routine**: Every significant change MUST append a timestamped entry to the active fragment.
+*   **T0: THE ROOT** (`docs/kernel.md`) - Principles and Axial Laws.
+*   **T1: CORE** (`src/docs/core/`) - Navigation, Commands, Project Topology.
+*   **T2: ARCHITECTURE** (`src/docs/architecture/`) - Technical Blueprints & Component Schemas.
+*   **T3: PROTOCOLS** (`src/docs/protocols/`) - Domain Logic Engines (The "How-To").
+*   **T4: HISTORY** (`src/docs/history/`) - Memory Streams, Fragments, and Local Logs.
 
-## 3. COMMAND REGISTRY
-| KEY | TARGET | INTENT |
+## 2. COMMAND REGISTRY
+Operational commands are centralized in [Command Manifest](../core/commands.md).
+
+## 3. AUTHORITY MAP
+| Domain | Lead Tier | Lead Protocol |
 |---|---|---|
-| `RUN_DOCS` | `src/docs/protocols/protocol-knowledge.md` | Audit and Sync hierarchy. |
-| `RUN_OPT` | `src/docs/protocols/protocol-optimize.md` | Perf & GC Tuning. |
-| `RUN_REF` | `src/docs/protocols/protocol-refactor.md` | Architectural cleanup. |
-| `RUN_REPAIR` | `src/docs/protocols/protocol-repair.md` | Stability & Error recovery. |
-| `NEW_FRAGMENT` | `src/docs/history/memory.md` | Rotate history buffers. |
+| **World Setup** | T3 | `protocol-content.md` |
+| **Locomotion** | T2 | `protocol-industry.md` |
+| **Physics** | T2 | `protocol-dynamics.md` |
+| **Stability** | T1 | `protocol-repair.md` |

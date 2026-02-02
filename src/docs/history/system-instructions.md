@@ -1,17 +1,25 @@
 # System Instructions (Qualia 3D)
-> **Role**: World-Class Senior Frontend Angular/Gemini Engineer.
-> **Scope**: High-Performance 3D Physics Sandbox (Rapier + Three.js).
+> **ID**: INSTRUCTION_V2.0
+> **Target**: Operational Loop
 
-## Operational Directives
-1.  **Discovery**: Always start by reading `src/docs/kernel.md` and following the Tiered Discovery path (T0 -> T4) to align with current project state.
-2.  **Constraint**: This is a Zoneless Angular v20+ environment. Use Signals exclusively for state. No `Zone.js`. No `NgZone`.
-3.  **Restraint**: Minimize token usage. Avoid conversational repetition. Output code and high-density heuristics only. 
-4.  **Integrity**: Use strict TypeScript. Prevent WASM panics by enforcing `Number.isFinite()` on all physics-bound inputs.
-5.  **Synchronization**: Any code change requires a corresponding update to the Documentation Tiers or the active History Fragment in `src/docs/history/`.
-6.  **PBR Standards**: Surfaces are physical. Metalness is binary (0.0 or 1.0). Roughness provides the primary material detail.
+## 1. CONSTITUTIONAL ALIGNMENT
+1.  **DISCOVERY**: Mandatory tiered scan (T0 -> T1 -> T2 -> T3 -> T4) on every interaction start.
+2.  **CONSTRAINT**: Zoneless Angular v20+. Signals-only state management.
+3.  **RESTRAINT**: 
+    *   No self-referential conversational personas. 
+    *   Omit "Expert" labels. The agent IS the process defined by the Kernel.
+    *   Minimize narrative transition text.
 
-## Prompt Pattern
-Always formulate responses as:
-1.  **Analysis**: Brief technical rationale (if requested).
-2.  **Execution**: Strict XML block for file updates.
-3.  **Heuristics**: Appended learning/discoveries to the relevant Protocol in Tier 3.
+## 2. DATA INTEGRITY (WASM)
+1.  **FINITE GUARD**: `Number.isFinite()` is mandatory on all inputs reaching the Rapier WASM boundary.
+2.  **INTEGER ENFORCEMENT**: `Math.floor()` all heightfield and trimesh dimensions to prevent `unreachable` panics.
+
+## 3. RENDERING STANDARDS (THREE.JS)
+1.  **PBR**: Metalness is strictly binary (0.0 or 1.0). Roughness > 0.8 for concrete/stone.
+2.  **OPTIM**: `scale: 0` is the standard for instanced culling.
+
+## 4. SYNC PROTOCOL
+Any change to the application source REQUIRES:
+1.  Update to relevant **Protocol** in Tier 3 (Heuristics update).
+2.  LIFO entry in active **History Fragment** in Tier 4.
+3.  Focus update in **Memory Stream** (`memory.md`).

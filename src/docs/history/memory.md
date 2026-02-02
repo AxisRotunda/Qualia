@@ -1,17 +1,16 @@
 # [MEMORY] Context Stream
-> **ID**: MEM_V5.0
+> **ID**: MEM_V5.1
 > **Role**: Current Focus & Fragment Index.
 
 ## [CURRENT_FOCUS]
-*   **Phase**: 90.0 (Protocol Standardization)
+*   **Phase**: 90.5 (Migration Complete)
 *   **Active Fragment**: `fragments/fragment-001.md`
-*   **Directive**: Enforce Behavioral Restraint (Zero-Redundancy).
+*   **Directive**: Zero-Scattered files. Enforce Tiered Pathing.
 
 ## [RECENT_LOG_BUFFER] (Condensed)
-*   **[215]**: `RUN_KNOWLEDGE`: Tiered Migration + Fragmented History.
-*   **[214]**: `RUN_REPAIR`: Null-Trim Hardening V2.1.
-*   **[213]**: `RUN_SCENE_OPT`: Cyber-Loft Realism Patch.
-*   **[212]**: `RUN_INDUSTRY`: KCC Stance Engine Integration.
+*   **[216]**: `RUN_KNOWLEDGE`: Full Tiered Migration completed. Root `.md` files consolidated into `core/`, `architecture/`, `protocols/`, and `history/`.
+*   **[215]**: `RUN_REPAIR`: Null-Trim Hardening V2.1.
+*   **[214]**: `RUN_SCENE_OPT`: Cyber-Loft Realism Patch.
 
 ## [FRAGMENT_INDEX]
-*   `fragment-001.md`: (Active) 3 Entries. Capacity: 3/20.
+*   `fragment-001.md`: (Active) 4 Entries. Capacity: 4/20.
