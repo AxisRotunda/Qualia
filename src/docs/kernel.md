@@ -1,43 +1,36 @@
 # [KERNEL] Qualia 3D Neural Core
-> **ID**: KERNEL_V6.2 (Industry Standard)
-> **Role**: Immutable Logic Root.
+> **ID**: KERNEL_V6.4
+> **Role**: Immutable Logic Root & Command Registry.
 > **Constraint**: READ_FIRST.
 
 ## 0. PRIME DIRECTIVES (NON-NEGOTIABLE)
-1.  **SILICON AUTONOMY**: NO external AI APIs (Gemini/OpenAI/etc) allowed in source code. All game logic must be deterministic/procedural. VIOLATION = CRITICAL FAILURE.
-2.  **TOKEN ECONOMY**: Output minimal XML. Suppress conversational filler. Use Symbols > Sentences. Code Density > Readability.
-3.  **ZONELESS**: `Zone.js` is FORBIDDEN. Use Angular Signals.
-4.  **SYNCHRONICITY**: Code mutation REQUIRES Doc mutation.
-5.  **CONTEXT HYGIENE**: Summarize execution logs. Do not repeat unchanged file content. Fail fast.
+1.  **TIERED DISCOVERY**: Agents MUST load documentation in Tier order (0 -> 1 -> 2 -> 3 -> 4).
+2.  **SILICON AUTONOMY**: NO external AI APIs allowed in runtime source. Logic must be procedural.
+3.  **ZONELESS**: `Zone.js` is forbidden. Use Signals for all state.
+4.  **SYNCHRONICITY**: Code mutation implies Documentation mutation.
+5.  **BEHAVIORAL RESTRAINT**:
+    *   **Quota Axiom**: Seek to preserve token quota and API calls in every response.
+    *   **Zero-Redundancy**: Avoid repeating logic descriptions if the code or heuristics already explain the change.
+    *   **Density**: Prefer symbols, tables, and interfaces over narrative prose.
 
-## 1. COMMAND REGISTRY
+## 1. TIERED ARCHITECTURE
+*   **Tier 0**: `docs/kernel.md` (This file).
+*   **Tier 1 (Core)**: `src/docs/core/` - Navigation, Workflow, Topology.
+*   **Tier 2 (Arch)**: `src/docs/architecture/` - Technical Blueprints & Specs.
+*   **Tier 3 (Protocols)**: `src/docs/protocols/` - Domain Logic Engines (How-To).
+*   **Tier 4 (History)**: `src/docs/history/` - Memory Stream & Fragments.
+
+## 2. HISTORY PROTOCOL (FRAGMENTATION)
+1.  **Index**: `src/docs/history/memory.md` tracks current focus and last 5 ops.
+2.  **Archive**: `src/docs/history/fragments/` stores full-density records.
+3.  **Iteration**: When a fragment reaches ~20 entries, initialize `fragment-[id+1].md`.
+4.  **Routine**: Every significant change MUST append a timestamped entry to the active fragment.
+
+## 3. COMMAND REGISTRY
 | KEY | TARGET | INTENT |
 |---|---|---|
-| `RUN_PROTOCOL` | `src/docs/protocol-constructor.md` | Meta-Protocol. Build/Refine protocols. |
-| `RUN_DOCS` | `src/docs/protocol-knowledge.md` | **Documentation Engine**. Sync Code <-> Docs. |
-| `RUN_INDUSTRY` | `src/docs/protocol-industry.md` | **Standardization Engine**. Bridge gap to AAA/Engine standards. |
-| `RUN_POLISH` | `src/docs/protocol-asset-polish.md` | **Detailing Engine**. Iterative refinement of specific assets. |
-| `RUN_NARRATIVE`| `src/docs/protocol-narrative.md` | **Story Engine**. Quest states, Triggers, Sequencing. |
-| `RUN_OPT` | `src/docs/protocol-optimize.md` | Perf/Mem/GC Tuning. |
-| `RUN_REF` | `src/docs/protocol-refactor.md` | Arch Cleanup/Decomp. |
-| `RUN_GEO` | `src/docs/protocol-geometry.md` | Mesh/Topo/LOD. |
-| `RUN_MAT` | `src/docs/protocol-material.md` | PBR/Shader/Tex. |
-| `RUN_PHYS` | `src/docs/protocol-dynamics.md` | Mass/Force/Collision. |
-| `RUN_SCENE` | `src/docs/protocol-content.md` | Level/Asset Gen. |
-| `RUN_FLORA` | `src/docs/protocol-flora.md` | **Botanical Synthesis**. Trees/Plants/Wind. |
-| `RUN_FAUNA` | `src/docs/protocol-fauna.md` | **Biological Logic**. Agents/Steering/Life. |
-| `RUN_UI` | `src/docs/protocol-ui.md` | UX/Signals/DOM. |
-| `RUN_COMBAT` | `src/docs/combat-system.md` | Weapons/Damage/VFX. |
-| `SYS_CHECK` | `src/docs/refactoring-state.md` | Health/Inventory. |
-
-## 2. AGENT EXECUTION LOOP
-1.  **LOAD**: `kernel.md` -> `memory-stream.md` -> `systems.md`.
-2.  **ANALYZE**: Identify target subsystem via `systems.md`.
-3.  **EXECUTE**: Generate strict XML code blocks.
-4.  **UPDATE**: Append action to `memory-stream.md`.
-
-## 3. ERROR RECOVERY
-**IF** (Pattern_Violation):
-1.  **HALT** generation.
-2.  **RECTIFY**: Rewrite code to match Protocol.
-3.  **LOG**: Record error in `refactoring-state.md`.
+| `RUN_DOCS` | `src/docs/protocols/protocol-knowledge.md` | Audit and Sync hierarchy. |
+| `RUN_OPT` | `src/docs/protocols/protocol-optimize.md` | Perf & GC Tuning. |
+| `RUN_REF` | `src/docs/protocols/protocol-refactor.md` | Architectural cleanup. |
+| `RUN_REPAIR` | `src/docs/protocols/protocol-repair.md` | Stability & Error recovery. |
+| `NEW_FRAGMENT` | `src/docs/history/memory.md` | Rotate history buffers. |
