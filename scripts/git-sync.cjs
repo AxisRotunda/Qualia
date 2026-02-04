@@ -202,17 +202,17 @@ function printState(state) {
   console.log('');
 }
 
-function configureTargetRemote() {
+function configureTargetRemote(silent = false) {
   // Check if target remote exists
   if (hasRemote('target')) {
     const currentUrl = getRemoteUrl('target');
-    // If URL matches, we're good
-    if (currentUrl === TARGET_REPO) {
+    // If URL matches (ignoring trailing whitespace), we're good
+    if (currentUrl && currentUrl.trim() === TARGET_REPO) {
       return true;
     }
     // Update URL if different
     const result = exec(`git remote set-url target ${TARGET_REPO}`);
-    if (result.error) {
+    if (result.error && !silent) {
       log(`Failed to update target remote: ${result.stderr}`, 'red');
       return false;
     }
@@ -221,7 +221,7 @@ function configureTargetRemote() {
   
   // Add target remote (without token for security, token only used for push)
   const result = exec(`git remote add target ${TARGET_REPO}`);
-  if (result.error) {
+  if (result.error && !silent) {
     log(`Failed to add target remote: ${result.stderr}`, 'red');
     return false;
   }
@@ -482,7 +482,7 @@ if (!fs.existsSync(envPath)) {
 }
 
 // Configure target remote (silent)
-configureTargetRemote();
+configureTargetRemote(true);
 
 // Fetch all remotes (silent)
 if (hasRemote('target')) fetchRemote('target');
