@@ -1,0 +1,12 @@
+{
+  "name": "repair",
+  "description": "Resolve errors and stability issues with proper logging",
+  "steps": [
+    "Error Capture: Log error message and stack trace, identify error domain",
+    "Chronicle Check: Search `repair-logs/` for similar issues, check `memory.md`",
+    "Root Cause Analysis: Trace error to source file, identify triggering condition",
+    "Safeguard Verification: Check WASM, PBR, and Zoneless compliance",
+    "Fix Implementation: Apply minimal fix, verify with test/reproduction",
+    "Heuristic Extraction: If novel issue, document in T3 protocol and update `knowledge-graph.md`"
+  ]
+}

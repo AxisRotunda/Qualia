@@ -1,0 +1,6 @@
+{
+  "name": "repair-stability",
+  "description": "Resolve errors and stability issues in the codebase",
+  "triggers": ["RUN_REPAIR", "repair", "fix error", "stability", "error handling"],
+  "content": "# Skill: Repair Stability\n\nResolve errors and stability issues.\n\n## Trigger\n`RUN_REPAIR` or mention \"repair\" or \"fix error\"\n\n## Error Domain Mapping\n\n| Error Pattern | Domain | Entry Point |\n|--------------|--------|-------------|\n| `unreachable` | WASM | `src/physics/world.service.ts` |\n| `NaN` propagation | Physics | Input validation |\n| `zone.run` | Architecture | Search & eliminate |\n\n## Execution Steps\n\n1. **Error Capture**: Log message and stack trace\n2. **Chronicle Check**: Search repair-logs for similar issues\n3. **Root Cause Analysis**: Trace to source file\n4. **Safeguard Verification**: Check invariant compliance\n5. **Fix Implementation**: Apply minimal fix\n6. **Logging**: Document in repair-logs/\n\n## Safeguards\n\n- WASM Finite Guard: All numeric inputs must pass `Number.isFinite()`\n- Zoneless Integrity: No Zone.js\n- Signal-State Only: Maintain signal-based state"
+}

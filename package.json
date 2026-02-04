@@ -1,29 +1,72 @@
 {
   "name": "qualia-3d",
+  "version": "0.1.0",
+  "description": "A high-performance 3D physics sandbox and game engine using Rapier WASM and Three.js",
+  "author": "Qualia Team",
+  "license": "MIT",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "keywords": [
+    "3d",
+    "physics",
+    "game-engine",
+    "threejs",
+    "rapier",
+    "angular",
+    "typescript",
+    "webgl",
+    "wasm"
+  ],
+  "homepage": "https://github.com/AxisRotunda/Qualia#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AxisRotunda/Qualia.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AxisRotunda/Qualia/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "ng serve",
     "build": "ng build",
-    "preview": "ng serve --configuration=production"
+    "build:prod": "ng build --configuration=production",
+    "preview": "ng serve --configuration=production",
+    "lint": "ng lint",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist node_modules/.cache",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss,html}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss,html}\"",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
-    "rxjs": "^7.8.2",
-    "@angular/compiler": "^21.1.0",
-    "@angular/platform-browser": "^21.1.0",
-    "@angular/core": "^21.1.0",
-    "@angular/common": "^21.1.0",
-    "three": "0.173.0",
-    "@dimforge/rapier3d-compat": "^0.19.3",
     "@angular/build": "^21.1.0",
     "@angular/cli": "^21.1.0",
+    "@angular/common": "^21.1.0",
+    "@angular/compiler": "^21.1.0",
     "@angular/compiler-cli": "^21.1.0",
-    "tailwindcss": "latest"
+    "@angular/core": "^21.1.0",
+    "@angular/platform-browser": "^21.1.0",
+    "@dimforge/rapier3d-compat": "^0.19.3",
+    "rxjs": "^7.8.2",
+    "tailwindcss": "^4.0.0",
+    "three": "^0.173.0",
+    "tslib": "^2.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@types/three": "^0.173.0",
+    "prettier": "^3.4.0",
+    "rimraf": "^6.0.0",
     "typescript": "~5.9.0",
     "vite": "^6.2.0"
-  }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
 }

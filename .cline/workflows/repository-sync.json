@@ -1,0 +1,73 @@
+{
+  "name": "repository-sync",
+  "description": "Synchronize repository with AxisRotunda/Qualia dev branch",
+  "steps": [
+    {
+      "step": 1,
+      "name": "Token Validation",
+      "action": "verify_file",
+      "target": ".env",
+      "content_check": "GITHUB_TOKEN",
+      "error": "NO_TOKEN: Create .env file with GITHUB_TOKEN"
+    },
+    {
+      "step": 2,
+      "name": "Working Tree Check",
+      "action": "execute_command",
+      "command": "git status --porcelain",
+      "validation": "Output must be empty for clean tree"
+    },
+    {
+      "step": 3,
+      "name": "Configure Target Remote",
+      "action": "execute_command",
+      "command": "git remote add target https://github.com/AxisRotunda/Qualia.git || git remote set-url target https://github.com/AxisRotunda/Qualia.git"
+    },
+    {
+      "step": 4,
+      "name": "Fetch Target",
+      "action": "execute_command",
+      "command": "git fetch target"
+    },
+    {
+      "step": 5,
+      "name": "Calculate Sync State",
+      "action": "execute_command",
+      "command": "git rev-list --left-right --count HEAD...target/dev",
+      "output_parsing": "Parse ahead/behind counts"
+    },
+    {
+      "step": 6,
+      "name": "Sync Decision",
+      "action": "branch",
+      "conditions": [
+        {
+          "if": "ahead > 0 && behind == 0",
+          "then": "Push to target"
+        },
+        {
+          "if": "behind > 0",
+          "then": "Report: Manual merge required"
+        },
+        {
+          "if": "ahead == 0 && behind == 0",
+          "then": "Report: Already synced"
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Push to Target",
+      "action": "execute_command",
+      "command": "node scripts/git-sync.cjs --push",
+      "condition": "If state is AHEAD"
+    },
+    {
+      "step": 8,
+      "name": "Log Result",
+      "action": "append_file",
+      "target": "src/docs/history/memory.md",
+      "content": "* [SYNC]: Repository synced to AxisRotunda/Qualia dev"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ecs-architecture",
+  "description": "Design and implement Entity Component System patterns for game objects",
+  "trigger": "Entity management or system architecture tasks",
+  "protocol": "src/docs/ecs-architecture.md",
+  "entry_points": [
+    "src/engine/entity-manager.service.ts",
+    "src/engine/ecs/",
+    "src/data/entity-templates.ts"
+  ],
+  "capabilities": [
+    "Entity creation and destruction",
+    "Component definition (data containers)",
+    "System implementation (logic processors)",
+    "Entity templates and prefabs",
+    "Component queries and filtering",
+    "System ordering and dependencies",
+    "Event-driven ECS communication"
+  ],
+  "patterns": [
+    "Composition over inheritance",
+    "Data-oriented design for cache efficiency",
+    "System update ordering (PreUpdate, Update, PostUpdate)",
+    "Entity tagging for quick filtering"
+  ],
+  "constraints": [
+    "Components must be plain data objects (no methods)",
+    "Systems must not hold entity references (use entity IDs)",
+    "Prefer SoA (Structure of Arrays) for bulk operations",
+    "Keep systems focused on single responsibility"
+  ],
+  "related_skills": ["state-management", "event-system"],
+  "example_usage": "Use this skill when designing game object architecture or implementing new entity types"
+}

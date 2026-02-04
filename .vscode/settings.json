@@ -1,0 +1,19 @@
+{
+  "roo.code": {
+    "skills": {
+      "globalPath": ".cline/skills",
+      "workspacePath": ".cline/skills"
+    },
+    "workflows": {
+      "globalPath": ".cline/workflows", 
+      "workspacePath": ".cline/workflows"
+    }
+  },
+  "cline": {
+    "skillsPath": ".cline/skills",
+    "workflowsPath": ".cline/workflows"
+  },
+  "roo-cline.multiplierSettings": {
+    "customInstructions": "See .clinerules for project-specific constitutional constraints"
+  }
+}

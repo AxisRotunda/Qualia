@@ -1,0 +1,45 @@
+{
+  "name": "pbr-materials",
+  "description": "Create and validate Three.js PBR materials with strict metalness/roughness rules",
+  "trigger": "RUN_MAT or material creation tasks",
+  "protocol": "src/docs/protocols/protocol-material.md",
+  "entry_points": [
+    "src/services/material.service.ts",
+    "src/config/material.config.ts"
+  ],
+  "capabilities": [
+    "PBR material creation (MeshStandardMaterial, MeshPhysicalMaterial)",
+    "Texture mapping (diffuse, normal, roughness, metalness, AO)",
+    "Material property validation",
+    "Shader material authoring",
+    "Material instancing for performance"
+  ],
+  "validation_rules": [
+    "Metalness MUST be strictly 0.0 OR 1.0 - NO mid-range values allowed",
+    "Concrete/Stone materials MUST have roughness > 0.8",
+    "Metals SHOULD have roughness < 0.4",
+    "Always use metalness/roughness workflow, not specular/glossiness"
+  ],
+  "material_templates": [
+    {
+      "name": "Concrete",
+      "metalness": 0.0,
+      "roughness": 0.9,
+      "color": "#808080"
+    },
+    {
+      "name": "Steel",
+      "metalness": 1.0,
+      "roughness": 0.3,
+      "color": "#71797E"
+    },
+    {
+      "name": "Gold",
+      "metalness": 1.0,
+      "roughness": 0.15,
+      "color": "#FFD700"
+    }
+  ],
+  "related_skills": ["shader-authoring", "render-pipeline"],
+  "example_usage": "Use this skill when creating or modifying materials for 3D objects"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "discovery",
+  "description": "Analyze new feature requests and map the affected codebase areas",
+  "steps": [
+    "Parse Request: Extract domain keywords and identify affected subsystems",
+    "Tiered Scan: Read T2 Architecture, T3 Protocol, T4 History for relevant context",
+    "Dependency Map: Query `knowledge-graph.md` and build adjacency matrix",
+    "Entry Point Identification: Locate primary service/component and public API facade",
+    "Constraint Extraction: List safeguards that apply and note Critical Invariant Markers"
+  ]
+}

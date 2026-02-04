@@ -1,0 +1,12 @@
+{
+  "name": "refactor",
+  "description": "Clean architectural debt and improve code structure safely",
+  "steps": [
+    "Scope Definition: Identify files/targets for refactoring, define success criteria",
+    "Deprecation Shield Check: Query `knowledge-graph.md` for file dependencies",
+    "Impact Analysis: Map all consumers of target code, plan migration path",
+    "Refactor Execution: Create backup, execute changes, update consumers, verify no regressions",
+    "Documentation Update: Update architecture docs if patterns changed",
+    "FS-Manifest Sync: Log all moves/deletes in `fs-manifest.json`"
+  ]
+}

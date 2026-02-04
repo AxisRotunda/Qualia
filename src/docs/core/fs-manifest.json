@@ -1,16 +1,115 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "mcp_hint": "Use @modelcontextprotocol/server-filesystem to execute these pending transactions.",
   "project_root": "./",
   "operations": [
     {
-      "id": "finalize_bios_migration",
-      "action": "move",
-      "source": "src/docs/history/system-instructions.md",
-      "destination": "src/docs/core/system-instructions.md",
+      "id": "create_clinerules",
+      "action": "create",
+      "path": ".clinerules",
       "status": "completed",
       "priority": 1,
-      "timestamp": 1716200000000
+      "timestamp": 1738692600000,
+      "description": "CLINE constitutional constraints - Project root rules file"
+    },
+    {
+      "id": "create_cline_workflows",
+      "action": "create",
+      "path": "src/docs/core/cline-workflows.md",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738692600000,
+      "description": "CLINE workflow definitions (WF_BOOT, WF_IMPLEMENT, etc.)"
+    },
+    {
+      "id": "create_cline_skills",
+      "action": "create",
+      "path": "src/docs/core/cline-skills.md",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738692600000,
+      "description": "CLINE skills registry mapping protocols to capabilities"
+    },
+    {
+      "id": "update_memory_cline",
+      "action": "modify",
+      "path": "src/docs/history/memory.md",
+      "status": "completed",
+      "priority": 2,
+      "timestamp": 1738692600000,
+      "description": "Added CLINE integration log and process context"
+    },
+    {
+      "id": "update_knowledge_graph_cline",
+      "action": "modify",
+      "path": "src/docs/core/knowledge-graph.md",
+      "status": "completed",
+      "priority": 2,
+      "timestamp": 1738692600000,
+      "description": "Added CLINE integration section and skill mappings"
+    },
+    {
+      "id": "create_vscode_settings",
+      "action": "create",
+      "path": ".vscode/settings.json",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738695070000,
+      "description": "Cline/Roo Code VS Code settings for skills/workflows discovery"
+    },
+    {
+      "id": "create_cline_config_doc",
+      "action": "create",
+      "path": "src/docs/CLINE_CONFIGURATION.md",
+      "status": "completed",
+      "priority": 2,
+      "timestamp": 1738695070000,
+      "description": "Documentation for Cline configuration and troubleshooting"
+    },
+    {
+      "id": "create_dev_environment_doc",
+      "action": "create",
+      "path": "src/docs/core/development-environment.md",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738697000000,
+      "description": "Development environment setup guide for Windows 11 + VS Code + CLINE"
+    },
+    {
+      "id": "create_mcp_registry_doc",
+      "action": "create",
+      "path": "src/docs/core/mcp-registry.md",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738697100000,
+      "description": "MCP server catalog with free/uncapped server recommendations"
+    },
+    {
+      "id": "create_vscode_extensions_manifest",
+      "action": "create",
+      "path": ".vscode/extensions.json",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738697200000,
+      "description": "VS Code recommended extensions for Qualia3D development"
+    },
+    {
+      "id": "create_mcp_setup_script",
+      "action": "create",
+      "path": "scripts/mcp-setup.cjs",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738697300000,
+      "description": "Automated MCP server configuration script for Windows 11"
+    },
+    {
+      "id": "create_mcp_setup_universal",
+      "action": "create",
+      "path": "scripts/mcp-setup-universal.js",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738701600000,
+      "description": "Universal MCP setup script auto-detecting Cline vs Roo Code"
     }
   ],
   "history": [
@@ -20,6 +119,90 @@
       "path": "src/docs/core",
       "status": "completed",
       "timestamp": 1716100000000
+    },
+    {
+      "id": "finalize_bios_migration",
+      "action": "move",
+      "source": "src/docs/history/system-instructions.md",
+      "destination": "src/docs/core/system-instructions.md",
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1716200000000
+    },
+    {
+      "id": "cline_integration_complete",
+      "action": "batch_create",
+      "paths": [".clinerules", "src/docs/core/cline-workflows.md", "src/docs/core/cline-skills.md"],
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738692600000,
+      "description": "CLINE integration: Rules, Workflows, and Skills registry"
+    },
+    {
+      "id": "dev_environment_docs_complete",
+      "action": "batch_create",
+      "paths": [
+        "src/docs/core/development-environment.md",
+        "src/docs/core/mcp-registry.md",
+        ".vscode/extensions.json",
+        "scripts/mcp-setup.cjs"
+      ],
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738697300000,
+      "description": "Development environment documentation suite with MCP automation"
+    },
+    {
+      "id": "structure_cleanup_p0",
+      "action": "batch_delete",
+      "paths": [
+        "src/docs/knowledge-graph.md",
+        "src/docs/refactoring-state.md"
+      ],
+      "status": "completed",
+      "priority": 0,
+      "timestamp": 1738699000000,
+      "description": "P0 Cleanup: Remove orphaned docs superseded by T1/T4 versions"
+    },
+    {
+      "id": "repair_log_consolidation",
+      "action": "batch_move",
+      "moves": [
+        {"from": "src/docs/REPAIR_LOG_WASM_STABILITY.md", "to": "src/docs/history/repair-logs/wasm-stability-root.md"},
+        {"from": "src/docs/repair-log-inverted-inputs.md", "to": "src/docs/history/repair-logs/inverted-inputs-root.md"},
+        {"from": "src/docs/repair-log-null-trim.md", "to": "src/docs/history/repair-logs/null-trim-root.md"},
+        {"from": "src/docs/repair-log-static-noise.md", "to": "src/docs/history/repair-logs/static-noise-root.md"},
+        {"from": "src/docs/repair-log-water-systems.md", "to": "src/docs/history/repair-logs/water-systems-root.md"}
+      ],
+      "status": "completed",
+      "priority": 0,
+      "timestamp": 1738699100000,
+      "description": "P0 Cleanup: Consolidate repair logs to T4 history/repair-logs/"
+    },
+    {
+      "id": "barrel_exports_p1",
+      "action": "batch_create",
+      "paths": [
+        "src/config/index.ts",
+        "src/data/index.ts",
+        "src/physics/index.ts"
+      ],
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738699200000,
+      "description": "P1 Improvement: Add barrel exports for clean imports"
+    },
+    {
+      "id": "readme_documentation_p1",
+      "action": "batch_create",
+      "paths": [
+        "src/engine/README.md",
+        "src/services/README.md"
+      ],
+      "status": "completed",
+      "priority": 1,
+      "timestamp": 1738699300000,
+      "description": "P1 Improvement: Add AI-optimized README files for major directories"
     }
   ]
 }

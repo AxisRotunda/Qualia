@@ -1,7 +1,20 @@
 # Command Registry
 > **Scope**: System Operational Verbs.
 > **Source**: `../kernel.md`
-> **Version**: 1.2 (Structural Sync Update)
+> **Version**: 1.3 (CLINE Integration Update)
+
+## 0. CLINE WORKFLOW COMMANDS
+Direct workflow invocations for CLINE integration:
+
+| COMMAND | Workflow | Target | INTENT |
+|---------|----------|--------|--------|
+| `WF_BOOT` | `cline-workflows.md` | Session init | Initialize agent state from T0’T4 |
+| `WF_DISCOVERY` | `cline-workflows.md` | Feature req | Discover and map implementation path |
+| `WF_IMPLEMENT` | `cline-workflows.md` | Development | Execute feature with safeguards |
+| `WF_REPAIR` | `cline-workflows.md` | Bug fix | Repair with root cause analysis |
+| `WF_REFACTOR` | `cline-workflows.md` | Cleanup | Refactor with dependency shield |
+| `WF_OPTIMIZE` | `cline-workflows.md` | Performance | Optimize with metric tracking |
+| `WF_SYNC` | `cline-workflows.md` | Repository | Sync to AxisRotunda/Qualia |
 
 ## 1. PRIMARY ENGINES
 | COMMAND | TARGET | INTENT |

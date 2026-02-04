@@ -15,11 +15,20 @@ Direct entry points to critical sub-systems:
 
 | Domain | Entry Point Path | Authority Tier |
 |---|---|---|
+| **CLINE Rules** | `.clinerules` | Tier 0 (Root Ref) |
+| **CLINE Workflows** | `src/docs/core/cline-workflows.md` | Tier 1 (Core) |
+| **CLINE Skills** | `src/docs/core/cline-skills.md` | Tier 1 (Core) |
 | **System Commands** | `src/docs/core/commands.md` | Tier 1 (Core) |
 | **Logic Engines** | `src/docs/protocols/` | Tier 3 (Protocols) |
 | **Blueprints/Specs** | `src/docs/architecture/` | Tier 2 (Architecture) |
 | **Knowledge Graph** | `src/docs/core/knowledge-graph.md` | Tier 1 (Core) |
 | **Repair Logs** | `src/docs/history/repair-logs/` | Tier 4 (History) |
+
+### 2.1 CLINE Integration
+The Agent process is augmented with CLINE-specific resources:
+- **`.clinerules`**: Constitutional constraints derived from T0 Kernel (loaded automatically by CLINE)
+- **`cline-workflows.md`**: Standardized workflows (WF_BOOT, WF_IMPLEMENT, WF_REPAIR, etc.)
+- **`cline-skills.md`**: Capability matrix mapping T3 Protocols to executable skills
 
 ## 3. OPERATIONAL CONSTRAINTS
 *   **ARCHITECTURE**: Zoneless Angular v20+. Signals-only state. Tailwind CSS for UI.

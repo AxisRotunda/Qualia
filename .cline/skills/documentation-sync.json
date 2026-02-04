@@ -1,0 +1,43 @@
+{
+  "name": "documentation-sync",
+  "description": "Maintain tiered documentation hierarchy and verify link integrity across T0-T4",
+  "trigger": "RUN_KNOWLEDGE or documentation maintenance tasks",
+  "protocol": "src/docs/protocols/protocol-knowledge.md",
+  "entry_points": [
+    "src/docs/kernel.md",
+    "src/docs/core/project-hierarchy.md",
+    "src/docs/core/knowledge-graph.md"
+  ],
+  "capabilities": [
+    "Tiered documentation audit (T0 Kernel → T4 History)",
+    "Link integrity verification",
+    "Orphaned file detection",
+    "Drift detection (code vs docs)",
+    "Version ID management",
+    "Memory stream pruning",
+    "Repair log summarization"
+  ],
+  "tier_structure": {
+    "T0": "src/docs/kernel/ - Constitutional laws and core principles",
+    "T1": "src/docs/core/ - Navigation, commands, knowledge graph",
+    "T2": "src/docs/architecture/ - Technical blueprints and specs",
+    "T3": "src/docs/protocols/ - Domain logic engines",
+    "T4": "src/docs/history/ - Memory, logs, repair history"
+  },
+  "audit_steps": [
+    "Verify all cross-references resolve correctly",
+    "Check for stale or deprecated documentation",
+    "Ensure protocol files match implementation",
+    "Prune memory.md to last 10 entries",
+    "Archive old fragments when exceeding 20 entries"
+  ],
+  "documentation_standards": [
+    "Header must contain Scope, Source, Audience, Version",
+    "Use relative paths for internal links",
+    "High code-density with matrices and tables",
+    "Mermaid diagrams for dependencies",
+    "Keep files under 300 lines"
+  ],
+  "related_workflows": ["documentation-audit", "boot-sequence"],
+  "example_usage": "Use this skill to audit documentation, fix broken links, or sync docs with code changes"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "sync",
+  "description": "Automate repository synchronization with proper state checking",
+  "steps": [
+    "Token Validation: Verify `.env` contains GITHUB_TOKEN, check permissions",
+    "State Check: `git status`, `git log`, calculate sync state matrix",
+    "Target Configuration: Verify 'target' remote points to AxisRotunda/Qualia",
+    "Sync Execution: Push if AHEAD, report if BEHIND, confirm if SYNCED",
+    "Logging: Record sync result in `memory.md`"
+  ]
+}

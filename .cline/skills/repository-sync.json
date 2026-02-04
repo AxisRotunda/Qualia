@@ -1,0 +1,6 @@
+{
+  "name": "repository-sync",
+  "description": "Automate repository synchronization with AxisRotunda/Qualia",
+  "triggers": ["SYNC_REPO", "sync repository", "git sync", "push to target"],
+  "content": "# Skill: Repository Sync\n\nAutomate repository synchronization with AxisRotunda/Qualia.\n\n## Trigger\n`SYNC_REPO` or mention \"sync repository\"\n\n## Prerequisites\n\n- `.env` file with `GITHUB_TOKEN`\n- Token has push access to https://github.com/AxisRotunda/Qualia\n\n## Execution Steps\n\n1. **Token Validation**: Verify GITHUB_TOKEN is set\n2. **State Check**:\n   - Check `git status`\n   - Check `git log` for commits to push\n   - Calculate sync state matrix\n3. **Target Verification**: Confirm 'target' remote points to AxisRotunda/Qualia\n4. **Sync Execution**:\n   - If AHEAD: Push to target\n   - If BEHIND: Report for manual merge\n   - If SYNCED: Confirm alignment\n5. **Logging**: Record result in `memory.md`\n\n## Script Entry Point\n\n`scripts/git-sync.cjs`"
+}

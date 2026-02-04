@@ -1,0 +1,51 @@
+{
+  "name": "repository-management",
+  "description": "Manage Git operations with automated sync to AxisRotunda/Qualia repository",
+  "trigger": "SYNC_REPO or git-related tasks",
+  "protocol": "src/docs/protocols/protocol-git-sync.md",
+  "script": "scripts/git-sync.cjs",
+  "capabilities": [
+    "Repository state checking",
+    "Automated push to target remote (AxisRotunda/Qualia)",
+    "Sync state calculation (ahead/behind/diverged)",
+    "Working tree validation",
+    "Token-based authentication",
+    "Conflict detection and reporting"
+  ],
+  "sync_states": [
+    {
+      "state": "SYNCED",
+      "description": "Local and target aligned",
+      "action": "None required"
+    },
+    {
+      "state": "AHEAD",
+      "description": "Local ahead of target",
+      "action": "Push to target"
+    },
+    {
+      "state": "BEHIND_TARGET",
+      "description": "Target has new commits",
+      "action": "Manual merge required"
+    },
+    {
+      "state": "DIVERGED",
+      "description": "Local and target diverged",
+      "action": "Manual resolution required"
+    }
+  ],
+  "configuration": {
+    "target_remote": "https://github.com/AxisRotunda/Qualia.git",
+    "target_branch": "dev",
+    "env_file": ".env",
+    "token_key": "GITHUB_TOKEN"
+  },
+  "safety_guards": [
+    "Verify GITHUB_TOKEN in .env before push",
+    "Check working tree is clean before sync",
+    "Never push to protected branches directly",
+    "Validate token has repo scope permissions"
+  ],
+  "related_skills": [],
+  "example_usage": "Use this skill to sync repository state or automate git operations"
+}
