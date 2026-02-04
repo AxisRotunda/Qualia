@@ -310,8 +310,8 @@ function pushToTarget(state) {
     return false;
   }
   
-  // Configure target remote
-  if (!configureTargetRemote()) {
+  // Configure target remote (silent)
+  if (!configureTargetRemote(true)) {
     return false;
   }
   
