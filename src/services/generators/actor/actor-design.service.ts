@@ -66,6 +66,36 @@ export class ActorDesignService {
       return this.safeMergeGroups([partsBlack, partsWhite, partsOrange, partsEyes], -0.4);
   }
 
+  generateIceGolem(): THREE.BufferGeometry | null {
+      const parts: THREE.BufferGeometry[] = [];
+      
+      // Main body - irregular ice block
+      parts.push(Geo.box(1.2, 1.8, 0.9).mapBox(1.2, 1.8, 0.9).translate(0, 0.9, 0).get());
+      
+      // Head
+      parts.push(Geo.box(0.8, 0.7, 0.8).mapBox(0.8, 0.7, 0.8).translate(0, 2.0, 0).get());
+      
+      // Arms
+      parts.push(Geo.box(0.4, 1.2, 0.4).mapBox(0.4, 1.2, 0.4).translate(-0.9, 1.0, 0).get());
+      parts.push(Geo.box(0.4, 1.2, 0.4).mapBox(0.4, 1.2, 0.4).translate(0.9, 1.0, 0).get());
+      
+      // Legs
+      parts.push(Geo.box(0.5, 0.8, 0.5).mapBox(0.5, 0.8, 0.5).translate(-0.35, 0.4, 0).get());
+      parts.push(Geo.box(0.5, 0.8, 0.5).mapBox(0.5, 0.8, 0.5).translate(0.35, 0.4, 0).get());
+      
+      // Crystal spikes on back
+      parts.push(Geo.cone(0.15, 0.6, 6).toNonIndexed().rotateX(-0.3).translate(0, 1.6, -0.5).get());
+      parts.push(Geo.cone(0.12, 0.5, 6).toNonIndexed().rotateX(-0.4).translate(-0.3, 1.4, -0.45).get());
+      parts.push(Geo.cone(0.12, 0.5, 6).toNonIndexed().rotateX(-0.4).translate(0.3, 1.4, -0.45).get());
+      
+      const merged = BufferUtils.mergeGeometries(parts.filter(p => p.getAttribute('position').count > 0));
+      if (merged) {
+          merged.computeVertexNormals();
+          merged.translate(0, -0.9, 0);
+      }
+      return merged;
+  }
+
   private safeMergeGroups(groups: THREE.BufferGeometry[][], pivotY: number = -0.9): THREE.BufferGeometry | null {
       const mergedParts = groups.map(g => {
           const filtered = g.filter(item => item && item.getAttribute('position').count > 0);

@@ -8,7 +8,7 @@ import { EngineStateService } from './engine-state.service';
 import { GameInputService } from '../services/game-input.service';
 import { Entity } from './core';
 
-export { SurfaceHit };
+export type { SurfaceHit };
 
 /**
  * InteractionService: Top-level coordinator for input semantics.

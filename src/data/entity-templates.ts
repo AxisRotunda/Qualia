@@ -4,7 +4,7 @@ import { NATURE_TEMPLATES } from './templates/nature';
 import { SHAPE_TEMPLATES } from './templates/shapes';
 import { EntityTemplate } from './entity-types';
 
-export { EntityTemplate, EntityCategory } from './entity-types';
+export type { EntityTemplate, EntityCategory } from './entity-types';
 
 export const ENTITY_TEMPLATES: EntityTemplate[] = [
     ...BUILDING_TEMPLATES,

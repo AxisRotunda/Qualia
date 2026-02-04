@@ -30,7 +30,7 @@ export const ARCHITECTURE_ASSETS: Record<string, AssetDef> = {
 
     // Medieval Fortifications
     'gen-castle-tower': simple(ctx => ctx.arch.medieval.generateTower(4.5, 18), 'mat-rock'),
-    'gen-castle-wall': simple(ctx => ctx.arch.medieval.generateWall(15, 12, 4), 'mat-rock'),
+    'gen-castle-wall': simple(ctx => ctx.arch.medieval.generateCurtainWall(15, 12, 4), 'mat-rock'),
 
     // Ruin Assets (RUN_SCENE_OPT Phase 56.0)
     'gen-ruin-slab': simple(() => Geo.box(10, 1, 10).mapBox(10, 1, 10).get(), 'mat-sandstone'),

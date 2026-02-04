@@ -78,7 +78,7 @@ export class AbyssalAlgorithm {
           if (meshRef) {
               const materials = engine.sys.materials;
               const bodyMat = materials.getMaterial('mat-obsidian');
-              const glowMat = materials.getMaterial('mat-glow-orange').clone() as THREE.MeshStandardMaterial;
+              const glowMat = (materials.getMaterial('mat-glow-orange') as THREE.Material).clone() as THREE.MeshStandardMaterial;
               glowMat.emissiveIntensity = 5.0;
 
               // Apply alternating segments for "Internal Core Glow" look

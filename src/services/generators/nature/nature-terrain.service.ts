@@ -133,6 +133,27 @@ export class NatureTerrainService implements OnDestroy {
       return geo;
   }
 
+  /**
+   * Generates a flat ice terrain geometry for ice/snow scenes.
+   */
+  generateIceTerrain(size = 128): THREE.BufferGeometry {
+      const geo = new THREE.PlaneGeometry(size, size, 64, 64);
+      geo.rotateX(-Math.PI / 2);
+      
+      // Add subtle ice surface variation
+      const pos = geo.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const z = pos.getZ(i);
+          // Subtle wave pattern for ice surface
+          const y = Math.sin(x * 0.1) * 0.1 + Math.cos(z * 0.1) * 0.1;
+          pos.setY(i, y);
+      }
+      
+      geo.computeVertexNormals();
+      return geo;
+  }
+
   ngOnDestroy() {
       this.workers.forEach(w => w.terminate());
       this.workers = [];

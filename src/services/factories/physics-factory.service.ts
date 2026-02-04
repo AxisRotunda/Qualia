@@ -120,7 +120,9 @@ export class PhysicsFactoryService {
   // RUN_OPT: Zero-copy access to underlying buffer
   private getVertexArray(geometry: THREE.BufferGeometry): Float32Array {
       const posAttr = geometry.getAttribute('position');
-      if (posAttr.isInterleavedBufferAttribute || posAttr.itemSize !== 3) {
+      // Check for interleaved buffer by checking constructor name or array property
+      const isInterleaved = !(posAttr.array instanceof Float32Array) && 'data' in posAttr;
+      if (isInterleaved || posAttr.itemSize !== 3) {
           // Fallback for interleaved data (must copy)
           const vertices = new Float32Array(posAttr.count * 3);
           for (let i = 0; i < posAttr.count; i++) {

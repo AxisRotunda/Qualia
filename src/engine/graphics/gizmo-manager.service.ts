@@ -1,4 +1,3 @@
-
 import { Injectable, signal } from '@angular/core';
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
@@ -70,7 +69,7 @@ export class GizmoManagerService {
       }
       
       if (config.scaleSnap !== undefined) {
-          this.transformControl.scaleSnap = config.scaleSnap;
+          this.transformControl.setScaleSnap(config.scaleSnap);
       }
   }
 

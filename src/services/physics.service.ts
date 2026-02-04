@@ -9,7 +9,7 @@ import { PhysicsRegistryService } from '../physics/physics-registry.service';
 import { PhysicsOptimizerService } from '../physics/optimization/physics-optimizer.service';
 import { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
 
-export { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
+export type { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
 
 @Injectable({
   providedIn: 'root'

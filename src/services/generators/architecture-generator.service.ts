@@ -76,6 +76,6 @@ export class ArchitectureGeneratorService {
   }
 
   generateWall(length: number, height: number, thickness: number): THREE.BufferGeometry | null {
-      return this.medieval.generateWall(length, height, thickness);
+      return this.medieval.generateCurtainWall(length, height, thickness);
   }
 }

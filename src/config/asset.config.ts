@@ -7,7 +7,7 @@ import { SCIFI_ASSETS } from './assets/scifi.assets';
 import { WEAPON_ASSETS } from './assets/weapon.assets';
 import { ACTOR_ASSETS } from './assets/actor.assets';
 
-export { AssetDef, GeneratorContext };
+export type { AssetDef, GeneratorContext };
 
 export const ASSET_CONFIG: Record<string, AssetDef> = {
     ...NATURE_ASSETS,

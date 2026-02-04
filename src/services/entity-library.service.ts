@@ -5,7 +5,7 @@ import { ENTITY_TEMPLATES } from '../data/entity-templates';
 import { EntityTemplate, EntityCategory } from '../data/entity-types';
 
 // Export options for consumers
-export { SpawnOptions } from './factories/template-factory.service';
+export type { SpawnOptions } from './factories/template-factory.service';
 
 @Injectable({
   providedIn: 'root'

@@ -1,5 +1,6 @@
 
 import * as THREE from 'three';
+import { Ray } from '@dimforge/rapier3d-compat';
 import { EngineService } from '../../services/engine.service';
 import { SpawnOptions } from '../../services/factories/template-factory.service';
 import { Entity } from '../core';
@@ -144,9 +145,9 @@ export class SceneContext {
   private raycastGround(x: number, z: number, startY: number): number | null {
       const world = this.engine.sys.physics.rWorld;
       if (!world) return null;
-      const ray = { origin: { x, y: startY, z }, dir: { x: 0, y: -1, z: 0 } };
+      const ray = new Ray({ x, y: startY, z }, { x: 0, y: -1, z: 0 });
       const hit = world.castRay(ray, 1000, true); 
-      if (hit) return ray.origin.y - hit.toi;
+      if (hit) return startY - hit.timeOfImpact;
       return null;
   }
 }

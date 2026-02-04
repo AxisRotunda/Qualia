@@ -1,4 +1,3 @@
-
 import { Injectable, inject } from '@angular/core';
 import * as THREE from 'three';
 import { SceneGraphService } from '../engine/graphics/scene-graph.service';
@@ -36,7 +35,7 @@ export class SceneService {
     
     // 2. Setup Subsystems
     this.envManager.init(scene);
-    this.stageService.init(this.graph.stageGroup);
+    this.stageService.init(scene);
     
     // 3. Post Processing initialization
     this.postProcessing.init(this.rendererService.renderer, scene, camera);
@@ -48,7 +47,7 @@ export class SceneService {
     this.gizmoManager.init(
         camera, 
         this.rendererService.domElement, 
-        this.graph.helperGroup
+        scene
     );
   }
 

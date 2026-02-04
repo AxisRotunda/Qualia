@@ -86,7 +86,7 @@ export const AGENCY_SCENE: ScenePreset = {
       
       const holoGeo = new THREE.ConeGeometry(1.4, 1.5, 32, 1, true);
       // FIX: Access material service through sys
-      const holoMat = engine.sys.materials.getMaterial('mat-glow-blue').clone() as THREE.MeshStandardMaterial;
+      const holoMat = (engine.sys.materials.getMaterial('mat-glow-blue') as THREE.Material).clone() as THREE.MeshStandardMaterial;
       holoMat.opacity = 0.15; holoMat.transparent = true; holoMat.side = THREE.DoubleSide;
       const holoMesh = new THREE.Mesh(holoGeo, holoMat);
       holoMesh.position.set(0, 0.4 + 1.7, platZ);

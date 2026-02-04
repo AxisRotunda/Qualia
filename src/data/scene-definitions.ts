@@ -22,7 +22,7 @@ import { FALLOUT_SCENE } from '../content/scenes/fallout.scene';
 import { MEDIEVAL_CITADEL_SCENE } from '../content/scenes/medieval-citadel.scene';
 import { BEDROOM_SCENE } from '../content/scenes/bedroom.scene';
 
-export { ScenePreset };
+export type { ScenePreset };
 
 export const SCENE_DEFINITIONS: ScenePreset[] = [
     DEBUG_SCENE,

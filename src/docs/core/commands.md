@@ -13,6 +13,7 @@
 | `RUN_UI` | `src/docs/protocols/protocol-ui.md` | Interface architecture audit. |
 | `RUN_SCENE_OPT` | `src/docs/protocols/protocol-scene-optimizer.md` | Level efficiency & logic delegation. |
 | `SYNC_FS` | `src/docs/core/fs-manifest.json` | Generate sync script for structural alignment. |
+| `SYNC_REPO` | `src/docs/protocols/protocol-git-sync.md` | Repository synchronization automation. |
 
 ## 2. DOMAIN ENGINES
 | COMMAND | TARGET | INTENT |

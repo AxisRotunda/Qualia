@@ -91,7 +91,7 @@ export class CharacterControllerService {
 
   init(position: THREE.Vector3) {
     if (this.character) return;
-    const bodyDef = this.charPhysics.createCharacterDef(position.x, position.y + (this.STAND_HEIGHT / 2), this.RADIUS, this.STAND_HEIGHT);
+    const bodyDef = this.charPhysics.createCharacterDef(position.x, position.y + (this.STAND_HEIGHT / 2), position.z, this.RADIUS, this.STAND_HEIGHT);
     const entityId = this.assembler.createEntityFromDef(bodyDef, { meshId: 'robot-actor' }, { name: 'SYSTEM_ACTOR', tags: ['player', 'hero'], isStatic: false });
     this.state.setPlayerEntity(entityId);
     this.character = { controller: this.charPhysics.createController(), bodyDef, entityId };

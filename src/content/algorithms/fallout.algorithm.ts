@@ -124,7 +124,7 @@ export class FalloutAlgorithm {
                 const bid = ctx.spawn('prop-barrel', x, 0.5, z, { snapToSurface: true });
                 const bm = ctx.engine.world.meshes.get(bid);
                 if (bm) {
-                    const mat = ctx.engine.sys.materials.getMaterial('mat-rust').clone() as THREE.MeshStandardMaterial;
+                    const mat = (ctx.engine.sys.materials.getMaterial('mat-rust') as THREE.Material).clone() as THREE.MeshStandardMaterial;
                     mat.emissive.setHex(0x22c55e); // Radioactive leak
                     mat.emissiveIntensity = 2.0;
                     bm.mesh.material = mat;

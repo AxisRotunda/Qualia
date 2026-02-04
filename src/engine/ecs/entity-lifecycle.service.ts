@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { EntityCreatedEvent, EntityDestroyedEvent } from '../events/game-events';
 
-export { EntityCreatedEvent, EntityDestroyedEvent } from '../events/game-events';
+export type { EntityCreatedEvent, EntityDestroyedEvent } from '../events/game-events';
 
 @Injectable({ providedIn: 'root' })
 export class EntityLifecycleService {

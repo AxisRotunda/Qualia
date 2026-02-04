@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { PhysicsWorldService } from './world.service';
 import { PHYSICS_MATERIALS, PhysicsMaterialType, MaterialData } from '../config/physics-material.config';
 
-export { PhysicsMaterialType, MaterialData } from '../config/physics-material.config';
+export type { PhysicsMaterialType, MaterialData } from '../config/physics-material.config';
 
 @Injectable({ providedIn: 'root' })
 export class PhysicsMaterialsService {

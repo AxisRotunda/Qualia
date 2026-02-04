@@ -6,7 +6,7 @@ import { PhysicsRegistryService } from './physics-registry.service';
 import { PhysicsStepService } from './physics-step.service';
 import { CollisionEvent } from '../engine/events/game-events';
 
-export { CollisionEvent } from '../engine/events/game-events';
+export type { CollisionEvent } from '../engine/events/game-events';
 
 @Injectable({ providedIn: 'root' })
 export class PhysicsWorldService {

@@ -37,7 +37,7 @@ export const SPACESHIP_SCENE: ScenePreset = {
           
           // FIX: Access visuals factory through sys
           const mesh = engine.sys.visualsFactory.createMesh({
-             type: 'box', handle: -1, position: pos, rotation: {x: rot.x, y: rot.y, z: rot.z, w: rot.w}
+             type: 'box', bodyType: 'dynamic', handle: -1, position: pos, rotation: {x: rot.x, y: rot.y, z: rot.z, w: rot.w}
           }, { meshId: id });
           
           // FIX: Access scene graph through sys

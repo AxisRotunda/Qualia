@@ -98,6 +98,10 @@ export class IntegrityStore {
       return idx !== -1 ? this.health[idx] : 0;
   }
 
+  has(e: Entity): boolean {
+      return e >= 0 && e < this.sparse.length && this.sparse[e] !== -1;
+  }
+
   remove(e: Entity) {
     if (e < 0 || e >= this.sparse.length) return;
     const idx = this.sparse[e];

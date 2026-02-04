@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { PointerEventData } from '../events/game-events';
 
-export { PointerEventData } from '../events/game-events';
+export type { PointerEventData } from '../events/game-events';
 
 @Injectable({
   providedIn: 'root'

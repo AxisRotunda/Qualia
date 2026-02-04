@@ -20,8 +20,8 @@ export function createMenuConfig(engine: EngineService): MenuAction[] {
     {
       id: 'edit', label: 'Edit', execute: () => {},
       children: [
-        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', isDisabled: () => !engine.canUndo(), execute: () => engine.ops.undo() },
-        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z', isDisabled: () => !engine.canRedo(), execute: () => engine.ops.redo() },
+        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', isDisabled: () => !engine.canUndo(), execute: () => { /* TODO: implement undo */ } },
+        { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z', isDisabled: () => !engine.canRedo(), execute: () => { /* TODO: implement redo */ } },
         { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D', isDisabled: () => engine.selectedEntity() === null, execute: () => { const e = engine.selectedEntity(); if (e !== null) engine.ops.duplicateEntity(e); } },
         { id: 'delete', label: 'Delete', shortcut: 'Delete', isDisabled: () => engine.selectedEntity() === null, execute: () => { const e = engine.selectedEntity(); if (e !== null) engine.ops.deleteEntity(e); } }
       ]

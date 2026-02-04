@@ -16,6 +16,8 @@ export const COMBAT_CONFIG = {
             energyCost: 0,
             shake: 0.08,
             haptic: 15,
+            kickBack: 0.02,
+            kickUp: 0.01,
             viewOffset: { x: 0.2, y: -0.25, z: -0.4 },
             viewScale: 0.4,
             swingTime: 300,

@@ -1,6 +1,7 @@
 
 import { Injectable, inject, signal, effect } from '@angular/core';
 import * as THREE from 'three';
+import { Ray } from '@dimforge/rapier3d-compat';
 import { EngineStateService } from '../../engine-state.service';
 import { PhysicsService } from '../../../services/physics.service';
 import { TemplateFactoryService } from '../../../services/factories/template-factory.service';
@@ -229,11 +230,12 @@ export class WeaponService {
       this.resolveMuzzleGeometry(cam);
       const def = COMBAT_CONFIG.WEAPONS[this.equipped()];
       
-      const hit = this.physics.world.rWorld?.castRayAndGetNormal({ origin: this._origin, dir: this._dir }, def.range || 3.0, true);
+      const ray = new Ray(this._origin, this._dir);
+      const hit = this.physics.world.rWorld?.castRayAndGetNormal(ray, def.range || 3.0, true);
       
       if (hit && hit.collider) {
           const body = hit.collider.parent();
-          this._target.copy(this._origin).addScaledVector(this._dir, hit.toi);
+          this._target.copy(this._origin).addScaledVector(this._dir, hit.timeOfImpact);
           this._right.set(hit.normal.x, hit.normal.y, hit.normal.z);
           
           const entityId = this.physics.registry.getEntityId(body?.handle || -1);

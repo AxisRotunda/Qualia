@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { createWaterMaterial } from './water-material.factory';
 import { BUILDING_WINDOW_HEADER, BUILDING_WINDOW_VERTEX, BUILDING_WINDOW_FRAGMENT } from '../shaders/building.shader';
@@ -24,7 +23,7 @@ import { NATURE_WIND_HEADER, NATURE_WIND_VERTEX } from '../shaders/nature.shader
  * Global Shader Injection Wrapper
  * Implements centralized volumetric fog and detail normal logic.
  */
-function applyGlobalInjections(shader: THREE.Shader, heightFogUniforms: Record<string, THREE.IUniform>, detailNormal: THREE.Texture | null, isAnisotropic = false) {
+function applyGlobalInjections(shader: any, heightFogUniforms: Record<string, THREE.IUniform>, detailNormal: THREE.Texture | null, isAnisotropic = false) {
     Object.assign(shader.uniforms, heightFogUniforms);
     
     if (detailNormal) {
@@ -62,7 +61,7 @@ export function registerCustomMaterials(
             // foliage is usually double sided
             mat.side = THREE.DoubleSide; 
             
-            mat.onBeforeCompile = (shader) => {
+            mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTime = { value: 0 };
                 mat.userData['time'] = shader.uniforms.uTime;
                 
@@ -90,7 +89,7 @@ export function registerCustomMaterials(
     terrainIds.forEach(id => {
         const mat = registry.get(id) as THREE.MeshStandardMaterial;
         if (mat) {
-            mat.onBeforeCompile = (shader) => {
+            mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTerrainScale = { value: 0.15 };
                 shader.uniforms.tSlopeMap = { value: rockTexture };
                 
@@ -112,7 +111,7 @@ export function registerCustomMaterials(
     simpleTriplanarIds.forEach(id => {
         const mat = registry.get(id) as THREE.MeshStandardMaterial;
         if (mat) {
-            mat.onBeforeCompile = (shader) => {
+            mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTriplanarScale = { value: 0.2 };
                 applyGlobalInjections(shader, heightFogUniforms, microNormal);
                 shader.vertexShader = TRIPLANAR_VERTEX_HEAD + shader.vertexShader;
@@ -126,7 +125,7 @@ export function registerCustomMaterials(
     // 4. Robot Composite Material
     const robotMat = registry.get('mat-robot') as THREE.MeshPhysicalMaterial;
     if (robotMat) {
-        robotMat.onBeforeCompile = (shader) => {
+        robotMat.onBeforeCompile = (shader, renderer) => {
             shader.uniforms.uRobotTime = { value: 0 };
             shader.uniforms.uRobotMode = { value: 0 };
             shader.uniforms.uRobotSpeed = { value: 0 };
@@ -144,7 +143,7 @@ export function registerCustomMaterials(
     penguinIds.forEach(id => {
         const mat = registry.get(id) as THREE.MeshStandardMaterial;
         if (mat) {
-            mat.onBeforeCompile = (shader) => {
+            mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTime = { value: 0 };
                 mat.userData['time'] = shader.uniforms.uTime; // Hook for MaterialAnimationSystem
                 applyGlobalInjections(shader, heightFogUniforms, microNormal);
@@ -163,7 +162,7 @@ export function registerCustomMaterials(
     // 6. Urban Window Group
     const cityWindowMat = registry.get('mat-city-window') as THREE.MeshStandardMaterial;
     if (cityWindowMat) {
-        cityWindowMat.onBeforeCompile = (shader) => {
+        cityWindowMat.onBeforeCompile = (shader, renderer) => {
             shader.uniforms.uTime = { value: 0 };
             shader.uniforms.uSunElevation = { value: 1.0 };
             cityWindowMat.userData['time'] = cityWindowMat.userData['time'] || shader.uniforms.uTime;
@@ -186,8 +185,8 @@ export function registerCustomMaterials(
         
         // Finalize onBeforeCompile to include global fog logic
         const baseOnBeforeCompile = waterMat.onBeforeCompile;
-        waterMat.onBeforeCompile = (shader) => {
-            baseOnBeforeCompile(shader);
+        waterMat.onBeforeCompile = (shader, renderer) => {
+            baseOnBeforeCompile(shader, renderer);
             applyGlobalInjections(shader, heightFogUniforms, null);
         };
 
@@ -196,7 +195,7 @@ export function registerCustomMaterials(
         const acidMat = waterMat.clone();
         acidMat.color.setHex(0x1a2c0f);
         // Ensure clone also utilizes the injected atmospheric logic
-        acidMat.onBeforeCompile = (shader) => {
+        acidMat.onBeforeCompile = (shader, renderer) => {
             shader.uniforms.uTime = waterMat.userData['time'];
             applyGlobalInjections(shader, heightFogUniforms, null); 
         };
