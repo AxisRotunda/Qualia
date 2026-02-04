@@ -1,112 +1,162 @@
 # Protocol: Git Repository Synchronization
 > **Scope**: Agent automation of repository sync handling.
 > **Source**: `../kernel.md`
-> **Version**: 1.0 (Initial Implementation)
+> **Version**: 2.0 (Updated for AxisRotunda/Qualia target)
 
 ## 1. INTRODUCTION
 
-This protocol defines the automated synchronization workflow between the local repository, origin (fork), and upstream (source) remotes. Ensures consistent state across all repository nodes and prevents drift.
+This protocol defines the automated synchronization workflow for pushing all project commits to the **AxisRotunda/Qualia** repository on the `dev` branch. The system uses a Personal Access Token (PAT) stored in a local `.env` file for authentication.
 
 ## 2. REMOTE CONFIGURATION
 
 | Remote | URL | Purpose |
 |--------|-----|---------|
-| `origin` | `https://github.com/Seterak/Qualia.git` | Personal fork - push target |
-| `upstream` | `https://github.com/AxisRotunda/Qualia.git` | Source repository - pull source |
+| `target` | `https://github.com/AxisRotunda/Qualia.git` | **Primary push target** - all commits go here |
+| `upstream` | `https://github.com/AxisRotunda/Qualia.git` | Pull source (same repo, main branch) |
+| `origin` | `https://github.com/Seterak/Qualia.git` | Legacy fork (no longer used for pushes) |
 
-## 3. SYNC STATES
+### Target Configuration
+- **Repository**: `https://github.com/AxisRotunda/Qualia.git`
+- **Branch**: `dev`
+- **Authentication**: GitHub Personal Access Token (stored in `.env`)
+
+## 3. ENVIRONMENT CONFIGURATION
+
+Create a `.env` file in the project root:
+
+```bash
+# GitHub Personal Access Token
+# Must have 'repo' scope for private repositories
+GITHUB_TOKEN=github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Target repository (default: AxisRotunda/Qualia)
+TARGET_REPO_URL=https://github.com/AxisRotunda/Qualia.git
+TARGET_BRANCH=dev
+```
+
+**Security Notes**:
+- `.env` file is listed in `.gitignore` and should NEVER be committed
+- Token should have minimal required permissions (`repo` scope)
+- Rotate tokens periodically for security
+
+## 4. SYNC STATES
 
 | State | Description | Action Required |
 |-------|-------------|-----------------|
-| `SYNCED` | All remotes aligned | None |
-| `AHEAD` | Local ahead of origin | Push to origin |
-| `BEHIND_UPSTREAM` | Upstream has new commits | Pull from upstream |
-| `DIVERGED` | Local and upstream diverged | Manual resolution required |
-| `UNTRACKED` | New files not in `.gitignore` | Review and commit or ignore |
+| `SYNCED` | Local and target aligned | None |
+| `AHEAD` | Local ahead of target | Push to target |
+| `BEHIND_TARGET` | Target has new commits | Pull/merge required |
+| `DIVERGED` | Local and target diverged | Manual resolution required |
+| `DIRTY` | Working tree has uncommitted changes | Commit or stash first |
+| `NO_TOKEN` | GITHUB_TOKEN not found in .env | Configure .env file |
 
-## 4. AUTOMATION WORKFLOW
+## 5. AUTOMATION WORKFLOW
 
-### 4.1 Pre-Sync Validation
+### 5.1 Pre-Sync Validation
 ```
-1. Check working tree is clean
-2. Verify remote connectivity
-3. Fetch all remotes (no-merge)
-4. Calculate sync state matrix
+1. Check .env file exists and contains GITHUB_TOKEN
+2. Verify working tree is clean
+3. Configure 'target' remote to AxisRotunda/Qualia
+4. Fetch from target repository
+5. Calculate sync state matrix
 ```
 
-### 4.2 Sync Matrix Calculation
+### 5.2 Sync Matrix Calculation
 ```typescript
 interface SyncState {
-  local: string;      // HEAD commit hash
-  origin: string;     // origin/main hash
-  upstream: string;   // upstream/main hash
-  state: 'SYNCED' | 'AHEAD' | 'BEHIND_UPSTREAM' | 'DIVERGED';
-  aheadCount: number; // Commits ahead of upstream
-  behindCount: number;// Commits behind upstream
+  branch: string;           // Current local branch
+  targetBranch: string;     // Target branch (dev)
+  localHash: string;        // HEAD commit hash
+  targetHash: string;       // target/dev hash
+  upstreamHash: string;     // upstream/main hash
+  state: 'SYNCED' | 'AHEAD' | 'BEHIND_TARGET' | 'DIVERGED' | 'NO_TOKEN';
+  aheadCount: number;       // Commits ahead of target
+  behindCount: number;      // Commits behind target
 }
 ```
 
-### 4.3 Automated Actions
+### 5.3 Automated Actions
 | Condition | Action | Command |
 |-----------|--------|---------|
+| NO_TOKEN | Abort with error message | - |
 | Working tree dirty | Abort with warning | - |
-| Behind upstream | Fast-forward merge | `git merge --ff-only upstream/main` |
-| Ahead of origin | Push to origin | `git push origin main` |
-| Diverged | Create merge branch | `git checkout -b sync/YYYY-MM-DD` |
+| Behind target | Report divergence | Manual merge required |
+| Ahead of target | Push to target | `git push <auth-url> HEAD:dev` |
 
-## 5. AGENT COMMANDS
+## 6. AGENT COMMANDS
 
-### 5.1 `SYNC_REPO --check`
+### 6.1 `SYNC_REPO --check`
 Performs read-only sync state assessment.
 **Output**: SyncState report
+**Exit Code**: 0 if SYNCED, 1 otherwise
 
-### 5.2 `SYNC_REPO --pull`
+### 6.2 `SYNC_REPO --pull`
 Syncs from upstream to local.
-**Prerequisite**: Working tree clean, no divergence
+**Prerequisite**: Working tree clean
 **Steps**:
 1. `git fetch upstream`
 2. `git merge --ff-only upstream/main`
 
-### 5.3 `SYNC_REPO --push`
-Pushes local to origin.
-**Prerequisite**: Working tree clean
+### 6.3 `SYNC_REPO --push`
+Pushes local to target (AxisRotunda/Qualia dev branch).
+**Prerequisite**: 
+- Working tree clean
+- GITHUB_TOKEN configured in .env
 **Steps**:
-1. `git push origin main`
+1. Configure target remote
+2. `git push https://TOKEN@github.com/AxisRotunda/Qualia.git HEAD:dev`
 
-### 5.4 `SYNC_REPO --full`
+### 6.4 `SYNC_REPO --full`
 Complete synchronization cycle.
 **Steps**:
-1. `--check` - Validate state
-2. `--pull` - Update from upstream
-3. `--push` - Publish to origin
+1. `--check` - Validate state and token
+2. `--push` - Push to AxisRotunda/Qualia dev branch
 
-## 6. SAFETY GUARDRAILS
+## 7. SAFETY GUARDRAILS
 
 | Guard | Implementation |
 |-------|----------------|
+| Token validation | Pre-push check for GITHUB_TOKEN |
 | Dirty tree prevention | Pre-sync `git status` check |
-| Force push protection | `--force-with-lease` only |
-| Divergence detection | Three-way compare before merge |
-| Backup branch | Auto-create `backup/pre-sync-[timestamp]` |
+| Protected branch | Always pushes to `dev` branch |
+| Credential exposure | Token only used in URL during push, not stored in remote config |
+| .env protection | `.env` listed in `.gitignore` |
 
-## 7. ERROR HANDLING
+## 8. ERROR HANDLING
 
 | Error | Recovery |
 |-------|----------|
+| NO_TOKEN | Create `.env` file with valid GITHUB_TOKEN |
+| 403/Unauthorized | Check token validity and permissions |
 | Network failure | Retry with exponential backoff |
-| Merge conflict | Abort, create conflict report |
-| Permission denied | Report to user for auth refresh |
-| Upstream deleted | Alert user, preserve local state |
+| Diverged history | Manual merge required |
+| Permission denied | Verify write access to AxisRotunda/Qualia |
 
-## 8. INTEGRATION WITH KERNEL
+## 9. MIGRATION FROM LEGACY SETUP
+
+### Previous Configuration
+- Pushes went to: `Seterak/Qualia` (origin)
+- Pulls came from: `AxisRotunda/Qualia` (upstream)
+
+### New Configuration
+- All pushes go to: `AxisRotunda/Qualia` (target remote, dev branch)
+- Legacy origin remote is ignored by automation
+
+### Migration Steps
+1. Create `.env` file with GITHUB_TOKEN
+2. Run `node scripts/git-sync.cjs --check` to verify
+3. Run `node scripts/git-sync.cjs --full` to push to new target
+
+## 10. INTEGRATION WITH KERNEL
 
 This protocol extends the Agent Workflow (Axial 0.2):
 - Trigger: Pre-session `BOOT` phase
 - Log: `src/docs/history/memory.md`
 - Manifest: Update `fs-manifest.json` for structural changes
 
-## 9. CHANGELOG
+## 11. CHANGELOG
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0 | 2026-02-04 | Initial protocol definition |
+| 2.0 | 2026-02-04 | Updated to push all commits to AxisRotunda/Qualia dev branch |
+| 1.0 | 2026-02-04 | Initial protocol definition (origin/seterak target) |
