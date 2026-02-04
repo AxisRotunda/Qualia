@@ -203,14 +203,20 @@ function printState(state) {
 }
 
 function configureTargetRemote() {
-  // Check if target remote exists with correct URL
+  // Check if target remote exists
   if (hasRemote('target')) {
     const currentUrl = getRemoteUrl('target');
-    if (currentUrl === TARGET_REPO || currentUrl === getAuthenticatedUrl()) {
-      return true; // Already configured correctly
+    // If URL matches, we're good
+    if (currentUrl === TARGET_REPO) {
+      return true;
     }
-    // Remove existing target remote if URL doesn't match
-    exec('git remote remove target');
+    // Update URL if different
+    const result = exec(`git remote set-url target ${TARGET_REPO}`);
+    if (result.error) {
+      log(`Failed to update target remote: ${result.stderr}`, 'red');
+      return false;
+    }
+    return true;
   }
   
   // Add target remote (without token for security, token only used for push)
@@ -220,7 +226,6 @@ function configureTargetRemote() {
     return false;
   }
   
-  log('Target remote configured successfully.', 'green');
   return true;
 }
 
