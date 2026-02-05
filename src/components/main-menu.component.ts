@@ -78,10 +78,10 @@ import { MenuSidebarComponent, MenuTab } from './menu/menu-sidebar.component';
     </div>
   `,
   styles: [`
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
   `]
 })
 export class MainMenuComponent {
