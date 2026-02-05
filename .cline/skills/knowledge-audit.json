@@ -1,6 +1,0 @@
-{
-  "name": "knowledge-audit",
-  "description": "Audit documentation hierarchy and sync cross-tier information",
-  "triggers": ["RUN_KNOWLEDGE", "knowledge audit", "documentation sync", "audit docs"],
-  "content": "# Skill: Knowledge Audit\n\nAudit documentation hierarchy and sync cross-tier information.\n\n## Trigger\n`RUN_KNOWLEDGE` or mention \"knowledge audit\"\n\n## Execution Steps\n\n1. **Tiered Traversal**: Read T0→T4 documentation hierarchy\n   - T0: `src/docs/kernel.md`\n   - T1: `src/docs/core/*.md`\n   - T2: `src/docs/architecture/*.md`\n   - T3: `src/docs/protocols/*.md`\n   - T4: `src/docs/history/*.md`\n\n2. **Verify Links**: Check all linked files exist\n3. **Orphan Detection**: Identify orphaned protocols\n4. **Version Check**: Update version IDs on major shifts\n5. **Memory Prune**: Prune memory.md to last 10 entries\n\n## Output\n\nAudit report with drift detection between tiers."
-}

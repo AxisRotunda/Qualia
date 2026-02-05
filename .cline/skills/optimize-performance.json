@@ -1,6 +1,0 @@
-{
-  "name": "optimize-performance",
-  "description": "Identify and resolve performance bottlenecks in physics, rendering, and state management",
-  "triggers": ["RUN_OPT", "optimize performance", "performance tuning", "bottleneck"],
-  "content": "# Skill: Optimize Performance\n\nIdentify and resolve performance bottlenecks.\n\n## Trigger\n`RUN_OPT` or mention \"optimize performance\"\n\n## Parameters\n\n| Param | Type | Description |\n|-------|------|-------------|\n| `target` | string | Subsystem (physics/render/state) |\n| `metric` | string | Target metric (fps/memory/gc) |\n| `threshold` | number | Improvement target % |\n\n## Execution Steps\n\n1. **Baseline Capture**: Measure current metrics\n2. **Hot Path Analysis**: Identify bottlenecks\n3. **Strategy Selection**: Choose optimization approach\n4. **Implementation**: Apply changes incrementally\n5. **Verification**: Confirm improvement\n6. **Documentation**: Update optimization-report.md\n\n## Entry Points\n\n- `src/engine/game-loop.service.ts` - Frame timing\n- `src/physics/world.service.ts` - Physics step\n- `src/services/scene.service.ts` - Render pipeline"
-}
