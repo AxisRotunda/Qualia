@@ -12,45 +12,45 @@ import { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
 export type { PhysicsBodyDef, RigidBodyType } from '../engine/schema';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class PhysicsService {
-  // Public Aggregation
-  public readonly world = inject(PhysicsWorldService);
-  public readonly registry = inject(PhysicsRegistryService);
-  public readonly materials = inject(PhysicsMaterialsService);
-  public readonly shapes = inject(ShapesFactory);
-  public readonly interaction = inject(PhysicsInteractionService);
-  public readonly optimizer = inject(PhysicsOptimizerService);
+    // Public Aggregation
+    public readonly world = inject(PhysicsWorldService);
+    public readonly registry = inject(PhysicsRegistryService);
+    public readonly materials = inject(PhysicsMaterialsService);
+    public readonly shapes = inject(ShapesFactory);
+    public readonly interaction = inject(PhysicsInteractionService);
+    public readonly optimizer = inject(PhysicsOptimizerService);
 
-  // Events
-  public collision$ = this.world.collision$;
+    // Events
+    public collision$ = this.world.collision$;
 
-  get rWorld(): RAPIER.World | null {
-      return this.world.rWorld;
-  }
+    get rWorld(): RAPIER.World | null {
+        return this.world.rWorld;
+    }
 
-  async init(): Promise<void> {
-    await this.world.init();
-    this.interaction.init();
-  }
-  
-  setGravity(y: number) {
-    this.world.setGravity(y);
-  }
+    async init(): Promise<void> {
+        await this.world.init();
+        this.interaction.init();
+    }
 
-  /**
+    setGravity(y: number) {
+        this.world.setGravity(y);
+    }
+
+    /**
    * Complete reset of the physics simulation.
    * Delegates to subsystems in correct order to prevent memory access violations.
    */
-  resetWorld() {
+    resetWorld() {
     // 1. Clear interaction constraints (Joints)
-    this.interaction.reset();
-    
-    // 2. Clear world bodies
-    this.world.resetWorld();
-    
-    // 3. Re-init essential kinematic actors (Hand)
-    this.interaction.init(); 
-  }
+        this.interaction.reset();
+
+        // 2. Clear world bodies
+        this.world.resetWorld();
+
+        // 3. Re-init essential kinematic actors (Hand)
+        this.interaction.init();
+    }
 }

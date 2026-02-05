@@ -1,21 +1,21 @@
 
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngineService } from '../../services/engine.service';
 
 @Component({
-  selector: 'app-loading-screen',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-loading-screen',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <div class="fixed inset-0 z-[200] flex flex-col items-center justify-center font-mono select-none cursor-wait overflow-hidden transition-colors duration-700"
          [class.bg-slate-950]="!isPanic()"
          [class.bg-rose-950]="isPanic()">
-        
+
         <!-- Background Tech Layer -->
         <div class="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] bg-repeat opacity-20 pointer-events-none"></div>
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_#020617_95%)] pointer-events-none"></div>
-        
+
         <!-- Panic Glitch Overlay -->
         @if (isPanic()) {
             <div class="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
@@ -120,7 +120,7 @@ import { EngineService } from '../../services/engine.service';
                     </div>
                 </div>
             </div>
-            
+
             <!-- Bottom Legal/Version -->
             <div class="mt-12 flex justify-between items-center opacity-30 text-[8px] tracking-widest text-slate-500 uppercase">
                 <span>Kernel v6.1 // {{ isPanic() ? 'UNSTABLE' : 'STABILIZED' }}</span>
@@ -129,7 +129,7 @@ import { EngineService } from '../../services/engine.service';
         </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     @keyframes shimmer { 0% { left: -100%; } 100% { left: 200%; } }
     @keyframes glitch { 0% { transform: translateX(0); } 50% { transform: translateX(-5px); } 100% { transform: translateX(5px); } }
     .border-white_5 { border-color: rgba(255, 255, 255, 0.05); }
@@ -138,8 +138,8 @@ import { EngineService } from '../../services/engine.service';
   `]
 })
 export class LoadingScreenComponent {
-  engine = inject(EngineService);
-  tel = this.engine.state.loadingTelemetry;
-  isPanic = this.engine.state.isCriticalFailure;
-  sessionId = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase();
+    engine = inject(EngineService);
+    tel = this.engine.state.loadingTelemetry;
+    isPanic = this.engine.state.isCriticalFailure;
+    sessionId = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase();
 }

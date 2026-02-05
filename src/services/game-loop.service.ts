@@ -4,67 +4,67 @@ import { Injectable, signal, inject, OnDestroy } from '@angular/core';
 export type LoopCallback = (dt: number) => void;
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class GameLoopService implements OnDestroy {
-  fps = signal(0);
-  
-  private isRunning = false;
-  private lastTime = 0;
-  private frameCount = 0;
-  private lastFpsTime = 0;
-  private loopId: number | null = null;
-  
-  private callbacks: LoopCallback[] = [];
+    fps = signal(0);
 
-  start(loopCallback: LoopCallback) {
-    if (this.isRunning) return;
-    
-    this.callbacks.push(loopCallback);
-    this.isRunning = true;
-    this.lastTime = performance.now();
-    this.lastFpsTime = this.lastTime;
-    
-    const tick = (time: number) => {
-      if (!this.isRunning) return;
-      this.loopId = requestAnimationFrame(tick);
+    private isRunning = false;
+    private lastTime = 0;
+    private frameCount = 0;
+    private lastFpsTime = 0;
+    private loopId: number | null = null;
 
-      // Prevent negative or zero DT which can cause NaNs in physics integration
-      let dt = time - this.lastTime;
-      if (dt <= 0) dt = 0.001; 
-      
-      this.lastTime = time;
+    private callbacks: LoopCallback[] = [];
 
-      this.updateStats(time);
+    start(loopCallback: LoopCallback) {
+        if (this.isRunning) return;
 
-      // Execute registered callbacks
-      for (const cb of this.callbacks) {
-        cb(dt);
-      }
-    };
-    
-    this.loopId = requestAnimationFrame(tick);
-  }
+        this.callbacks.push(loopCallback);
+        this.isRunning = true;
+        this.lastTime = performance.now();
+        this.lastFpsTime = this.lastTime;
 
-  stop() {
-    this.isRunning = false;
-    if (this.loopId !== null) {
-      cancelAnimationFrame(this.loopId);
-      this.loopId = null;
+        const tick = (time: number) => {
+            if (!this.isRunning) return;
+            this.loopId = requestAnimationFrame(tick);
+
+            // Prevent negative or zero DT which can cause NaNs in physics integration
+            let dt = time - this.lastTime;
+            if (dt <= 0) dt = 0.001;
+
+            this.lastTime = time;
+
+            this.updateStats(time);
+
+            // Execute registered callbacks
+            for (const cb of this.callbacks) {
+                cb(dt);
+            }
+        };
+
+        this.loopId = requestAnimationFrame(tick);
     }
-    this.callbacks = [];
-  }
 
-  private updateStats(time: number) {
-    this.frameCount++;
-    if (time - this.lastFpsTime >= 1000) {
-      this.fps.set(this.frameCount);
-      this.frameCount = 0;
-      this.lastFpsTime = time;
+    stop() {
+        this.isRunning = false;
+        if (this.loopId !== null) {
+            cancelAnimationFrame(this.loopId);
+            this.loopId = null;
+        }
+        this.callbacks = [];
     }
-  }
 
-  ngOnDestroy() {
-    this.stop();
-  }
+    private updateStats(time: number) {
+        this.frameCount++;
+        if (time - this.lastFpsTime >= 1000) {
+            this.fps.set(this.frameCount);
+            this.frameCount = 0;
+            this.lastFpsTime = time;
+        }
+    }
+
+    ngOnDestroy() {
+        this.stop();
+    }
 }

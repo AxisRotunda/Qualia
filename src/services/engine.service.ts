@@ -23,71 +23,71 @@ import { WeaponService } from '../engine/features/combat/weapon.service';
 import { FractureService } from '../engine/features/fracture.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class EngineService {
-  public readonly injector = inject(Injector); 
-  public readonly state = inject(EngineStateService);
-  public readonly entityMgr = inject(EntityStoreService);
-  public readonly sys = inject(SubsystemsService); 
-  public readonly library = inject(EntityLibraryService); 
-  private readonly bootstrap = inject(BootstrapService);
-  private readonly cameraControl = inject(CameraControlService);
+    public readonly injector = inject(Injector);
+    public readonly state = inject(EngineStateService);
+    public readonly entityMgr = inject(EntityStoreService);
+    public readonly sys = inject(SubsystemsService);
+    public readonly library = inject(EntityLibraryService);
+    private readonly bootstrap = inject(BootstrapService);
+    private readonly cameraControl = inject(CameraControlService);
 
-  public readonly ops = inject(EntityOpsService);
-  public readonly sim = inject(SimulationService);
-  public readonly viewport = inject(ViewportService);
-  public readonly env = inject(EnvironmentControlService);
-  public readonly level = inject(LevelManagerService);
-  public readonly input = inject(InputManagerService);
-  public readonly interaction = inject(InteractionService);
-  public readonly terrain = inject(TerrainManagerService);
-  public readonly transform = inject(TransformLogicService);
-  public readonly spawner = inject(SpawnerService);
-  public readonly anim = inject(AnimationControlService);
-  public readonly combat = inject(WeaponService);
-  public readonly fracture = inject(FractureService);
-  
-  readonly mode = this.state.mode;
-  readonly loading = this.state.loading;
-  readonly isPaused = this.state.isPaused;
-  readonly fps = this.state.fps;
-  readonly physicsTime = this.state.physicsTime;
-  readonly renderTime = this.state.renderTime;
-  readonly objectCount = this.entityMgr.objectCount;
-  readonly debugInfo = this.state.debugInfo;
-  readonly timeScale = this.state.timeScale;
-  readonly gravityY = this.state.gravityY;
-  readonly wireframe = this.state.wireframe;
-  readonly texturesEnabled = this.state.texturesEnabled;
-  readonly transformMode = this.state.transformMode;
-  readonly currentSceneId = this.state.currentSceneId;
-  readonly selectedEntity = this.entityMgr.selectedEntity;
-  readonly mainMenuVisible = this.state.mainMenuVisible;
-  readonly hudVisible = this.state.hudVisible;
-  readonly showDebugOverlay = this.state.showDebugOverlay;
-  readonly showPhysicsDebug = this.state.showPhysicsDebug;
-  readonly canUndo = this.state.canUndo;
-  readonly canRedo = this.state.canRedo;
-  readonly weather = this.state.weather;
-  readonly timeOfDay = this.state.timeOfDay;
-  readonly atmosphere = this.state.atmosphere;
-  readonly world = this.entityMgr.world;
+    public readonly ops = inject(EntityOpsService);
+    public readonly sim = inject(SimulationService);
+    public readonly viewport = inject(ViewportService);
+    public readonly env = inject(EnvironmentControlService);
+    public readonly level = inject(LevelManagerService);
+    public readonly input = inject(InputManagerService);
+    public readonly interaction = inject(InteractionService);
+    public readonly terrain = inject(TerrainManagerService);
+    public readonly transform = inject(TransformLogicService);
+    public readonly spawner = inject(SpawnerService);
+    public readonly anim = inject(AnimationControlService);
+    public readonly combat = inject(WeaponService);
+    public readonly fracture = inject(FractureService);
 
-  async init(canvas: HTMLCanvasElement) {
-    await this.bootstrap.init(canvas, this);
-  }
-  
-  getEntityName(e: number) { return this.ops.getEntityName(e); }
-  resize(w: number, h: number) { this.sys.scene.resize(w, h); }
+    readonly mode = this.state.mode;
+    readonly loading = this.state.loading;
+    readonly isPaused = this.state.isPaused;
+    readonly fps = this.state.fps;
+    readonly physicsTime = this.state.physicsTime;
+    readonly renderTime = this.state.renderTime;
+    readonly objectCount = this.entityMgr.objectCount;
+    readonly debugInfo = this.state.debugInfo;
+    readonly timeScale = this.state.timeScale;
+    readonly gravityY = this.state.gravityY;
+    readonly wireframe = this.state.wireframe;
+    readonly texturesEnabled = this.state.texturesEnabled;
+    readonly transformMode = this.state.transformMode;
+    readonly currentSceneId = this.state.currentSceneId;
+    readonly selectedEntity = this.entityMgr.selectedEntity;
+    readonly mainMenuVisible = this.state.mainMenuVisible;
+    readonly hudVisible = this.state.hudVisible;
+    readonly showDebugOverlay = this.state.showDebugOverlay;
+    readonly showPhysicsDebug = this.state.showPhysicsDebug;
+    readonly canUndo = this.state.canUndo;
+    readonly canRedo = this.state.canRedo;
+    readonly weather = this.state.weather;
+    readonly timeOfDay = this.state.timeOfDay;
+    readonly atmosphere = this.state.atmosphere;
+    readonly world = this.entityMgr.world;
 
-  tweenCamera(config: { pos: {x:number,y:number,z:number}, lookAt: {x:number,y:number,z:number}, duration: number }) {
-      this.cameraControl.transitionTo({
-          targetPos: new THREE.Vector3(config.pos.x, config.pos.y, config.pos.z),
-          lookAt: new THREE.Vector3(config.lookAt.x, config.lookAt.y, config.lookAt.z),
-          duration: config.duration
-      });
-  }
+    async init(canvas: HTMLCanvasElement) {
+        await this.bootstrap.init(canvas, this);
+    }
 
-  setMainMenuVisible(visible: boolean) { this.state.setMainMenuVisible(visible); }
+    getEntityName(e: number) { return this.ops.getEntityName(e); }
+    resize(w: number, h: number) { this.sys.scene.resize(w, h); }
+
+    tweenCamera(config: { pos: {x:number, y:number, z:number}, lookAt: {x:number, y:number, z:number}, duration: number }) {
+        this.cameraControl.transitionTo({
+            targetPos: new THREE.Vector3(config.pos.x, config.pos.y, config.pos.z),
+            lookAt: new THREE.Vector3(config.lookAt.x, config.lookAt.y, config.lookAt.z),
+            duration: config.duration
+        });
+    }
+
+    setMainMenuVisible(visible: boolean) { this.state.setMainMenuVisible(visible); }
 }

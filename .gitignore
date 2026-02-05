@@ -1,16 +1,48 @@
-# Dependencies
+# ========================================
+# QUALIA 3D PROJECT .GITIGNORE
+# Angular 21 + Three.js + Rapier + TypeScript
+# ========================================
+
+# ========================================
+# DEPENDENCIES & PACKAGE MANAGERS
+# ========================================
 node_modules/
 .pnp
 .pnp.js
 .yarn/install-state.gz
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnpm-store/
 
-# Build outputs
+# ========================================
+# BUILD OUTPUTS & DISTRIBUTION
+# ========================================
+# Angular build outputs
 dist/
 dist-ssr/
 build/
 out/
-*.tsbuildinfo
 
+# TypeScript build artifacts
+*.tsbuildinfo
+*.d.ts.map
+
+# Angular CLI specific
+.angular/
+.angular/cache/
+
+# Vite build artifacts (used by Angular 21+)
+.vite/
+
+# Service worker files
+ngsw.json
+ngsw-worker.js
+
+# ========================================
+# ENVIRONMENT & CONFIGURATION
+# ========================================
 # Environment variables
 .env
 .env.local
@@ -18,8 +50,17 @@ out/
 .env.development
 .env.test
 .env.production
+.env.staging
 
-# Logs
+# IDE configuration files that may contain secrets
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# ========================================
+# LOGS & DEBUGGING
+# ========================================
 logs/
 *.log
 npm-debug.log*
@@ -28,58 +69,173 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Runtime data
+# Debug files
+debug.log
+*.stackdump
+
+# ========================================
+# RUNTIME & PROCESS DATA
+# ========================================
 pids/
 *.pid
 *.seed
 *.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# Cache directories
-.cache/
-.parcel-cache/
-.angular/
-.eslintcache
-.stylelintcache
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Operating System Files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
 
 # Temporary files
 *.tmp
 *.temp
 *.bak
 *.backup
+*.swp
+*.swo
+*~
 
-# Testing
-/coverage
+# ========================================
+# TESTING & COVERAGE
+# ========================================
+# Test coverage
+coverage/
+*.lcov
 .nyc_output/
+coverage-summary.json
 
-# Misc
-*.local
-*.log
-*.tgz
+# Jest cache
+.jest/
+
+# Karma cache
+.karma/
+
+# ========================================
+# CACHE DIRECTORIES
+# ========================================
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Three.js specific cache
+.three/
+
+# Rapier physics cache
+.rapier/
+
+# Asset processing cache
+.asset-cache/
+
+# ========================================
+# EDITOR & IDE FILES
+# ========================================
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/launch.json
+
+# WebStorm / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ========================================
+# OPERATING SYSTEM FILES
+# ========================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+
+# ========================================
+# SECURITY & SENSITIVE FILES
+# ========================================
+# Secrets and credentials
+secrets/
+credentials/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# API keys and tokens
+*.env.production
+.env.production.local
+
+# Backup files that might contain sensitive data
+*.backup
+*.bak
+*.old
+
+# ========================================
+# MISCELLANEOUS
+# ========================================
+# OS generated files
+.directory
+.gdb_history
 *.tar.gz
+*.tgz
+
+# Temporary downloads
+*.download
+
+# Lock files (keep only one based on your package manager)
+# package-lock.json    # Keep if using npm
+# yarn.lock           # Keep if using yarn
+# pnpm-lock.yaml      # Keep if using pnpm
+
+# ========================================
+# PROJECT-SPECIFIC IGNORES
+# ========================================
+# Generated documentation
+docs/
+documentation/
+
+# Generated assets
+generated-assets/
+
+# Local development files
+local-config.json
+dev-settings.json
+
+# ========================================
+# END OF QUALIA 3D .GITIGNORE
+# ========================================

@@ -7,19 +7,19 @@ import { MenuManagerService } from '../../services/ui/menu-manager.service';
 import { LayoutService } from '../../services/ui/layout.service';
 
 @Component({
-  selector: 'app-menu-bar',
-  standalone: true,
-  imports: [MenuDropdownComponent],
-  template: `
+    selector: 'app-menu-bar',
+    standalone: true,
+    imports: [MenuDropdownComponent],
+    template: `
     <nav class="flex items-center gap-1 px-4 h-9 bg-slate-950/95 border-b border-slate-800 select-none z-[100] relative shrink-0 backdrop-blur-md"
          aria-label="System Menu">
-         
+
       <!-- Decorative Top Signal Line -->
       <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent pointer-events-none"></div>
 
       <!-- Mobile Menu Trigger -->
       @if (layout.isMobile()) {
-        <button class="mr-3 p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-900 rounded transition-all active:scale-90" 
+        <button class="mr-3 p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-900 rounded transition-all active:scale-90"
                 (click)="toggleMobileMenu()"
                 aria-label="Navigation Hub">
            <span class="material-symbols-outlined text-[24px]">{{ mobileMenuOpen() ? 'close' : 'menu' }}</span>
@@ -27,7 +27,7 @@ import { LayoutService } from '../../services/ui/layout.service';
       }
 
       <!-- SYSTEM_OPS Branding / Command Launcher -->
-      <div class="flex items-center gap-3 mr-8 cursor-pointer group px-2 py-1 rounded hover:bg-white/5 transition-colors" 
+      <div class="flex items-center gap-3 mr-8 cursor-pointer group px-2 py-1 rounded hover:bg-white/5 transition-colors"
            (click)="layout.toggleLauncher()"
            title="Open Kernel Hub [Ctrl+K]">
          <div class="w-6 h-6 bg-cyan-950/40 border border-cyan-500/40 rounded flex items-center justify-center group-hover:border-cyan-400 group-hover:shadow-[0_0_10px_rgba(6,182,212,0.3)] transition-all"
@@ -46,7 +46,7 @@ import { LayoutService } from '../../services/ui/layout.service';
       @if (!layout.isMobile()) {
         <div class="flex gap-0.5 h-full items-center">
             @for (menu of menus; track menu.id) {
-              <app-menu-dropdown 
+              <app-menu-dropdown
                 [label]="menu.label"
                 [actions]="menu.children!"
                 [class.bg-slate-900]="openMenuId() === menu.id"
@@ -56,9 +56,9 @@ import { LayoutService } from '../../services/ui/layout.service';
             }
         </div>
       }
-      
+
       <div class="flex-grow"></div>
-      
+
       <!-- Right Side Meta/Telemetry -->
       @if (!layout.isMobile()) {
         <div class="flex items-center gap-5 px-3 border-l border-slate-900 pl-6 h-full opacity-60 hover:opacity-100 transition-opacity">
@@ -94,52 +94,52 @@ import { LayoutService } from '../../services/ui/layout.service';
                 }
             </div>
          </div>
-         
+
          <div class="fixed inset-0 top-9 z-[105] bg-black/60 backdrop-blur-sm animate-in fade-in" (click)="mobileMenuOpen.set(false)"></div>
       }
     </nav>
   `,
-  styles: [`
+    styles: [`
     .custom-scrollbar::-webkit-scrollbar { width: 3px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; }
   `]
 })
 export class MenuBarComponent implements OnInit {
-  openMenuId = signal<string | null>(null);
-  mobileMenuOpen = signal(false);
-  
-  engine = inject(EngineService);
-  keyboard = inject(KeyboardService);
-  menuManager = inject(MenuManagerService);
-  layout = inject(LayoutService);
-  private el = inject(ElementRef);
+    openMenuId = signal<string | null>(null);
+    mobileMenuOpen = signal(false);
 
-  menus: MenuAction[] = [];
+    engine = inject(EngineService);
+    keyboard = inject(KeyboardService);
+    menuManager = inject(MenuManagerService);
+    layout = inject(LayoutService);
+    private el = inject(ElementRef);
 
-  ngOnInit() {
-      this.menus = this.menuManager.getMenuConfig();
-      this.keyboard.register(this.menus);
-  }
+    menus: MenuAction[] = [];
 
-  setOpen(id: string | null) {
-      this.openMenuId.set(id);
-  }
-  
-  toggleMobileMenu() {
-      this.mobileMenuOpen.update(v => !v);
-  }
+    ngOnInit() {
+        this.menus = this.menuManager.getMenuConfig();
+        this.keyboard.register(this.menus);
+    }
 
-  executeMobile(action: MenuAction) {
-      if (!action.isDisabled?.()) {
-          action.execute();
-          this.mobileMenuOpen.set(false);
-      }
-  }
+    setOpen(id: string | null) {
+        this.openMenuId.set(id);
+    }
+
+    toggleMobileMenu() {
+        this.mobileMenuOpen.update(v => !v);
+    }
+
+    executeMobile(action: MenuAction) {
+        if (!action.isDisabled?.()) {
+            action.execute();
+            this.mobileMenuOpen.set(false);
+        }
+    }
 
   @HostListener('document:click', ['$event'])
-  onClick(event: MouseEvent) {
-      if (!this.el.nativeElement.contains(event.target)) {
-          this.setOpen(null);
-      }
-  }
+    onClick(event: MouseEvent) {
+        if (!this.el.nativeElement.contains(event.target)) {
+            this.setOpen(null);
+        }
+    }
 }

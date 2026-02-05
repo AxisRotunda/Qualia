@@ -4,7 +4,7 @@ import { SHARED_SHADER_UTILS } from './common.shader';
 /**
  * Terrain Shader (Slope-Adaptive)
  * Part of RUN_INDUSTRY (Nature Terrain Generation).
- * 
+ *
  * Logic:
  * - Uses Planar Mapping (Top-Down) for flat surfaces (Grass/Sand/Snow).
  * - Uses Bi-Planar Mapping (Sides) for steep surfaces (Rock/Cliff).

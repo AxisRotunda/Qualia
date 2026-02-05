@@ -23,7 +23,7 @@ export class FalloutAlgorithm {
             type: 'standard',
             chunkSize: 180,
             center: { x: 0, z: 0 },
-            materialId: 'mat-rock', 
+            materialId: 'mat-rock',
             physicsMaterial: 'rock',
             resolution: 64
         });
@@ -51,7 +51,7 @@ export class FalloutAlgorithm {
         // Spawn central radioactive basin
         const sludgeY = -1.5;
         const sludgeId = ctx.spawn('terrain-water-lg', 0, sludgeY, 0);
-        ctx.modify(sludgeId, { scale: 0.12 }); 
+        ctx.modify(sludgeId, { scale: 0.12 });
 
         const meshRef = engine.world.meshes.get(sludgeId);
         if (meshRef) {
@@ -69,7 +69,7 @@ export class FalloutAlgorithm {
         const step = 25;
         for (let x = -area; x <= area; x += step) {
             for (let z = -area; z <= area; z += step) {
-                const dist = Math.sqrt(x*x + z*z);
+                const dist = Math.sqrt(x * x + z * z);
                 if (dist < 30) continue; // Keep crater clear
 
                 const seed = ProceduralUtils.hash(x * 12.3, z * 91.1);
@@ -79,7 +79,7 @@ export class FalloutAlgorithm {
                 if (rnd > 0.45) {
                     const isTall = rnd > 0.85;
                     const tpl = isTall ? 'building-tall' : 'building-small';
-                    
+
                     // Collapsed Pose: Slanted rotation
                     this._rot.set(
                         (rnd - 0.5) * 0.15,
@@ -87,9 +87,9 @@ export class FalloutAlgorithm {
                         (rnd - 0.5) * 0.15
                     );
 
-                    const bid = ctx.spawn(tpl, x, 0, z, { 
-                        alignToBottom: true, 
-                        snapToSurface: true, 
+                    const bid = ctx.spawn(tpl, x, 0, z, {
+                        alignToBottom: true,
+                        snapToSurface: true,
                         rotation: this._rot,
                         scale: 0.8 + rnd * 0.4
                     });
@@ -115,7 +115,7 @@ export class FalloutAlgorithm {
 
     private static async scatterDebris(ctx: SceneContext, range: number) {
         ctx.scatter(80, range, (x, z) => {
-            const dist = Math.sqrt(x*x + z*z);
+            const dist = Math.sqrt(x * x + z * z);
             if (dist < 20) return;
 
             const rnd = Math.random();

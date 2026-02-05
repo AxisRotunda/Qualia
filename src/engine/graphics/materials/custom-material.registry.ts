@@ -3,15 +3,15 @@ import { createWaterMaterial } from './water-material.factory';
 import { BUILDING_WINDOW_HEADER, BUILDING_WINDOW_VERTEX, BUILDING_WINDOW_FRAGMENT } from '../shaders/building.shader';
 import { ROBOT_ANIM_HEADER, ROBOT_ANIM_VERTEX, ROBOT_ANIM_FRAGMENT } from '../shaders/robot.shader';
 import { PENGUIN_HEADER, PENGUIN_VERTEX, PENGUIN_FRAGMENT_MAP, PENGUIN_FRAGMENT_ROUGH } from '../shaders/penguin.shader';
-import { 
-    TRIPLANAR_VERTEX_HEAD, 
-    TRIPLANAR_VERTEX_MAIN, 
-    TRIPLANAR_FRAGMENT_HEAD, 
-    TRIPLANAR_FRAGMENT_MAP 
+import {
+    TRIPLANAR_VERTEX_HEAD,
+    TRIPLANAR_VERTEX_MAIN,
+    TRIPLANAR_FRAGMENT_HEAD,
+    TRIPLANAR_FRAGMENT_MAP
 } from '../shaders/triplanar.shader';
-import { 
-    TERRAIN_PARS, 
-    TERRAIN_VERTEX, 
+import {
+    TERRAIN_PARS,
+    TERRAIN_VERTEX,
     TERRAIN_FRAGMENT,
     TERRAIN_ROUGHNESS
 } from '../shaders/terrain.shader';
@@ -25,12 +25,12 @@ import { NATURE_WIND_HEADER, NATURE_WIND_VERTEX } from '../shaders/nature.shader
  */
 function applyGlobalInjections(shader: any, heightFogUniforms: Record<string, THREE.IUniform>, detailNormal: THREE.Texture | null, isAnisotropic = false) {
     Object.assign(shader.uniforms, heightFogUniforms);
-    
+
     if (detailNormal) {
-        shader.uniforms['tDetailNormal'] = { value: detailNormal };
+        shader.uniforms.tDetailNormal = { value: detailNormal };
     }
 
-    // RUN_FIX: Propagate defines to BOTH stages. 
+    // RUN_FIX: Propagate defines to BOTH stages.
     // Three.js internal chunks (like uv_pars) rely on these to declare varyings like vUv.
     const defines = isAnisotropic ? '#define USE_ANISOTROPY\n' : '';
 
@@ -45,13 +45,13 @@ function applyGlobalInjections(shader: any, heightFogUniforms: Record<string, TH
 }
 
 export function registerCustomMaterials(
-    registry: Map<string, THREE.Material | THREE.Material[]>, 
+    registry: Map<string, THREE.Material | THREE.Material[]>,
     getTexture: (id: string) => THREE.Texture | null,
     heightFogUniforms: Record<string, THREE.IUniform>
 ) {
     const microNormal = getTexture('tex-micro-normal');
     // RUN_INDUSTRY: Load dedicated rock texture for terrain blending
-    const rockTexture = getTexture('tex-rock'); 
+    const rockTexture = getTexture('tex-rock');
 
     // 1. Bio-Wind Group
     const natureIds = ['mat-leaf', 'mat-palm-leaf', 'mat-pine-leaf'];
@@ -59,17 +59,17 @@ export function registerCustomMaterials(
         const mat = registry.get(id) as THREE.MeshStandardMaterial;
         if (mat) {
             // foliage is usually double sided
-            mat.side = THREE.DoubleSide; 
-            
+            mat.side = THREE.DoubleSide;
+
             mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTime = { value: 0 };
-                mat.userData['time'] = shader.uniforms.uTime;
-                
+                mat.userData.time = shader.uniforms.uTime;
+
                 applyGlobalInjections(shader, heightFogUniforms, microNormal);
-                
+
                 shader.vertexShader = NATURE_WIND_HEADER + shader.vertexShader;
                 shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', NATURE_WIND_VERTEX);
-                
+
                 // --- Industry Standard: Volumetric Normal Smoothing ---
                 // Hack: Blend vertex normal with "Up" vector to simulate light scattering through volume
                 // This prevents leaves from looking like harsh flat planes
@@ -92,13 +92,13 @@ export function registerCustomMaterials(
             mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTerrainScale = { value: 0.15 };
                 shader.uniforms.tSlopeMap = { value: rockTexture };
-                
+
                 applyGlobalInjections(shader, heightFogUniforms, microNormal);
-                
+
                 // Inject Adaptive Terrain Logic
                 shader.vertexShader = TERRAIN_PARS + shader.vertexShader;
                 shader.vertexShader = shader.vertexShader.replace('#include <worldpos_vertex>', TERRAIN_VERTEX);
-                
+
                 shader.fragmentShader = TERRAIN_PARS + shader.fragmentShader;
                 shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', TERRAIN_FRAGMENT);
                 shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', TERRAIN_ROUGHNESS);
@@ -129,7 +129,7 @@ export function registerCustomMaterials(
             shader.uniforms.uRobotTime = { value: 0 };
             shader.uniforms.uRobotMode = { value: 0 };
             shader.uniforms.uRobotSpeed = { value: 0 };
-            robotMat.userData['uRobotTime'] = shader.uniforms.uRobotTime;
+            robotMat.userData.uRobotTime = shader.uniforms.uRobotTime;
             applyGlobalInjections(shader, heightFogUniforms, microNormal, true);
             shader.vertexShader = ROBOT_ANIM_HEADER + shader.vertexShader;
             shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', ROBOT_ANIM_VERTEX);
@@ -145,13 +145,13 @@ export function registerCustomMaterials(
         if (mat) {
             mat.onBeforeCompile = (shader, renderer) => {
                 shader.uniforms.uTime = { value: 0 };
-                mat.userData['time'] = shader.uniforms.uTime; // Hook for MaterialAnimationSystem
+                mat.userData.time = shader.uniforms.uTime; // Hook for MaterialAnimationSystem
                 applyGlobalInjections(shader, heightFogUniforms, microNormal);
-                
+
                 // HEADER must be in BOTH Vertex and Fragment for declare varyings/uniforms
                 shader.vertexShader = PENGUIN_HEADER + shader.vertexShader;
                 shader.fragmentShader = PENGUIN_HEADER + shader.fragmentShader;
-                
+
                 shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', PENGUIN_VERTEX);
                 shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', PENGUIN_FRAGMENT_MAP);
                 shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', PENGUIN_FRAGMENT_ROUGH);
@@ -165,8 +165,8 @@ export function registerCustomMaterials(
         cityWindowMat.onBeforeCompile = (shader, renderer) => {
             shader.uniforms.uTime = { value: 0 };
             shader.uniforms.uSunElevation = { value: 1.0 };
-            cityWindowMat.userData['time'] = cityWindowMat.userData['time'] || shader.uniforms.uTime;
-            cityWindowMat.userData['sunElevation'] = shader.uniforms.uSunElevation;
+            cityWindowMat.userData.time = cityWindowMat.userData.time || shader.uniforms.uTime;
+            cityWindowMat.userData.sunElevation = shader.uniforms.uSunElevation;
             applyGlobalInjections(shader, heightFogUniforms, microNormal);
             shader.vertexShader = BUILDING_WINDOW_HEADER + shader.vertexShader;
             shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + BUILDING_WINDOW_VERTEX);
@@ -179,10 +179,10 @@ export function registerCustomMaterials(
     const normalMap = getTexture('tex-water-normal');
     if (normalMap) {
         const waterMat = createWaterMaterial(normalMap);
-        
+
         // Link shared sun vector for highlights
-        waterMat.userData['sunDir'] = heightFogUniforms['uSunDir'];
-        
+        waterMat.userData.sunDir = heightFogUniforms.uSunDir;
+
         // Finalize onBeforeCompile to include global fog logic
         const baseOnBeforeCompile = waterMat.onBeforeCompile;
         waterMat.onBeforeCompile = (shader, renderer) => {
@@ -191,13 +191,13 @@ export function registerCustomMaterials(
         };
 
         registry.set('mat-water', waterMat);
-        
+
         const acidMat = waterMat.clone();
         acidMat.color.setHex(0x1a2c0f);
         // Ensure clone also utilizes the injected atmospheric logic
         acidMat.onBeforeCompile = (shader, renderer) => {
-            shader.uniforms.uTime = waterMat.userData['time'];
-            applyGlobalInjections(shader, heightFogUniforms, null); 
+            shader.uniforms.uTime = waterMat.userData.time;
+            applyGlobalInjections(shader, heightFogUniforms, null);
         };
         registry.set('mat-acid', acidMat);
     }

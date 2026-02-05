@@ -5,18 +5,18 @@ import { GameInputService } from '../../../services/game-input.service';
 import { WeaponService } from '../../../engine/features/combat/weapon.service';
 
 @Component({
-  selector: 'app-touch-action-cluster',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-touch-action-cluster',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <div class="absolute bottom-0 right-0 w-72 h-72 pointer-events-none z-[60] touch-none select-none">
-       
+
        <!-- 1. PRIMARY: FIRE -->
        <div class="absolute bottom-10 right-10 w-24 h-24 pointer-events-none">
            <div class="absolute inset-0 rounded-full border border-rose-500/10 animate-spin-slow"></div>
            <button class="absolute inset-1 rounded-full border-2 border-rose-500/30 bg-rose-950/40 backdrop-blur-xl text-rose-100 shadow-[0_0_40px_rgba(244,63,94,0.15)] flex items-center justify-center pointer-events-auto transition-all active:scale-90 active:bg-rose-600 active:border-white/5 active:shadow-[0_0_60px_rgba(244,63,94,0.4)] touch-none group overflow-hidden"
-                   (pointerdown)="onFire($event, true)" 
-                   (pointerup)="onFire($event, false)" 
+                   (pointerdown)="onFire($event, true)"
+                   (pointerup)="onFire($event, false)"
                    (pointercancel)="onFire($event, false)"
                    (pointerleave)="onFire($event, false)"
                    aria-label="Attack">
@@ -27,8 +27,8 @@ import { WeaponService } from '../../../engine/features/combat/weapon.service';
 
        <!-- 2. SECONDARY: JUMP -->
        <button class="absolute bottom-36 right-12 w-16 h-16 rounded-full border border-cyan-500/20 bg-cyan-950/40 backdrop-blur-lg text-cyan-200 shadow-xl flex items-center justify-center pointer-events-auto transition-all active:scale-90 active:bg-cyan-500 active:text-white active:border-white/5 touch-none group"
-               (pointerdown)="onJump($event, true)" 
-               (pointerup)="onJump($event, false)" 
+               (pointerdown)="onJump($event, true)"
+               (pointerup)="onJump($event, false)"
                (pointercancel)="onJump($event, false)"
                (pointerleave)="onJump($event, false)"
                aria-label="Jump">
@@ -74,7 +74,7 @@ import { WeaponService } from '../../../engine/features/combat/weapon.service';
 
     </div>
   `,
-  styles: [`
+    styles: [`
     :host {
         display: block;
         pointer-events: none;
@@ -91,56 +91,56 @@ import { WeaponService } from '../../../engine/features/combat/weapon.service';
   `]
 })
 export class TouchActionClusterComponent {
-  private input = inject(GameInputService);
-  private weaponService = inject(WeaponService);
+    private input = inject(GameInputService);
+    private weaponService = inject(WeaponService);
 
-  running = signal(false);
-  crouching = signal(false);
+    running = signal(false);
+    crouching = signal(false);
 
-  weaponIcon = computed(() => {
-      switch(this.weaponService.equipped()) {
-          case 'blaster': return 'boltz';
-          case 'hammer': return 'hammer';
-          case 'fist': return 'sports_mma';
-          case 'pistol': return 'pistol';
-          default: return 'help';
-      }
-  });
+    weaponIcon = computed(() => {
+        switch (this.weaponService.equipped()) {
+            case 'blaster': return 'boltz';
+            case 'hammer': return 'hammer';
+            case 'fist': return 'sports_mma';
+            case 'pistol': return 'pistol';
+            default: return 'help';
+        }
+    });
 
-  onJump(e: Event, state: boolean) {
-      this.stopProp(e);
-      if (state) this.input.vibrate(10); 
-      this.input.setVirtualJump(state);
-  }
+    onJump(e: Event, state: boolean) {
+        this.stopProp(e);
+        if (state) this.input.vibrate(10);
+        this.input.setVirtualJump(state);
+    }
 
-  onFire(e: Event, state: boolean) {
-      this.stopProp(e);
-      if (state) this.input.vibrate(15); 
-      this.input.setVirtualFire(state);
-  }
+    onFire(e: Event, state: boolean) {
+        this.stopProp(e);
+        if (state) this.input.vibrate(15);
+        this.input.setVirtualFire(state);
+    }
 
-  toggleRun(e: Event) {
-      this.stopProp(e);
-      this.running.update(v => !v);
-      this.input.vibrate(10);
-      this.input.setVirtualRun(this.running());
-  }
+    toggleRun(e: Event) {
+        this.stopProp(e);
+        this.running.update(v => !v);
+        this.input.vibrate(10);
+        this.input.setVirtualRun(this.running());
+    }
 
-  toggleCrouch(e: Event) {
-      this.stopProp(e);
-      this.crouching.update(v => !v);
-      this.input.vibrate(10);
-      this.input.setVirtualCrouch(this.crouching());
-  }
+    toggleCrouch(e: Event) {
+        this.stopProp(e);
+        this.crouching.update(v => !v);
+        this.input.vibrate(10);
+        this.input.setVirtualCrouch(this.crouching());
+    }
 
-  onCycleWeapon(e: Event) {
-      this.stopProp(e);
-      this.input.vibrate(15);
-      this.weaponService.cycle();
-  }
+    onCycleWeapon(e: Event) {
+        this.stopProp(e);
+        this.input.vibrate(15);
+        this.weaponService.cycle();
+    }
 
-  private stopProp(e: Event) {
-      if (e.cancelable) e.preventDefault();
-      e.stopPropagation();
-  }
+    private stopProp(e: Event) {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+    }
 }

@@ -27,15 +27,15 @@ export const FALLOUT_SCENE: ScenePreset = {
     load: async (ctx, engine) => {
         // 1. Environment: Toxic Apocalypse
         ctx.atmosphere('fallout')
-           .weather('ash')
-           .time(16.5) // Late afternoon "Sickly Hour"
-           .light({
-               dirIntensity: 0.5,
-               ambientIntensity: 0.2,
-               dirColor: '#e0d7a3'
-           })
-           .gravity(-9.81)
-           .cameraPreset('side');
+            .weather('ash')
+            .time(16.5) // Late afternoon "Sickly Hour"
+            .light({
+                dirIntensity: 0.5,
+                ambientIntensity: 0.2,
+                dirColor: '#e0d7a3'
+            })
+            .gravity(-9.81)
+            .cameraPreset('side');
 
         if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
 
@@ -44,7 +44,7 @@ export const FALLOUT_SCENE: ScenePreset = {
 
         // 3. Entrance sequence
         engine.input.setMode('walk');
-        
+
         const cam = engine.sys.scene.getCamera();
         cam.position.set(40, 5, 40);
         cam.lookAt(0, 2, 0);

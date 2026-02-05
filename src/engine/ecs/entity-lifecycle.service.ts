@@ -7,7 +7,7 @@ export type { EntityCreatedEvent, EntityDestroyedEvent } from '../events/game-ev
 
 @Injectable({ providedIn: 'root' })
 export class EntityLifecycleService {
-  public readonly onEntityCreated = new Subject<EntityCreatedEvent>();
-  public readonly onEntityDestroyed = new Subject<EntityDestroyedEvent>();
-  public readonly onWorldReset = new Subject<void>();
+    public readonly onEntityCreated = new Subject<EntityCreatedEvent>();
+    public readonly onEntityDestroyed = new Subject<EntityDestroyedEvent>();
+    public readonly onWorldReset = new Subject<void>();
 }

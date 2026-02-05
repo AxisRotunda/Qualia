@@ -21,7 +21,7 @@ export interface AssetDef {
     // Function that uses the generator context to create geometry
     generator: (ctx: GeneratorContext) => THREE.BufferGeometry | null;
     // Array of material IDs to apply to the mesh
-    materials: string | string[]; 
+    materials: string | string[];
 }
 
 // Helper for simple single material assignment

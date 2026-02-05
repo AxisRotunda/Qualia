@@ -23,7 +23,7 @@ export class IceAlgorithm {
             type: 'standard',
             chunkSize: 160,
             center: { x: 0, z: 0 },
-            materialId: 'mat-snow', 
+            materialId: 'mat-snow',
             physicsMaterial: 'ice', // Low friction surface
             resolution: 64
         });
@@ -47,30 +47,30 @@ export class IceAlgorithm {
         const count = 40;
         const range = 70;
 
-        for(let i=0; i<count; i++) {
+        for (let i = 0; i < count; i++) {
             const x = (Math.random() - 0.5) * range * 2;
             const z = (Math.random() - 0.5) * range * 2;
-            
-            const dist = Math.sqrt(x*x + z*z);
+
+            const dist = Math.sqrt(x * x + z * z);
             if (dist < 15) continue; // Keep center clearing open
 
             // Grouping logic via noise to create natural clusters
             const noise = ProceduralUtils.noise(x * 0.05, z * 0.05);
-            
+
             if (noise > 0.3) {
                 this._rot.set(
-                    (Math.random()-0.5) * 0.5, 
-                    Math.random() * Math.PI * 2, 
-                    (Math.random()-0.5) * 0.5
+                    (Math.random() - 0.5) * 0.5,
+                    Math.random() * Math.PI * 2,
+                    (Math.random() - 0.5) * 0.5
                 );
                 const scale = 0.5 + Math.random() * 1.5;
-                
-                ctx.spawn('ice-01', x, 0, z, { 
-                    alignToBottom: true, 
-                    snapToSurface: true, 
+
+                ctx.spawn('ice-01', x, 0, z, {
+                    alignToBottom: true,
+                    snapToSurface: true,
                     snapOffset: -0.5, // Embed slightly into the snow
-                    scale, 
-                    rotation: this._rot 
+                    scale,
+                    rotation: this._rot
                 });
             }
         }
@@ -79,11 +79,11 @@ export class IceAlgorithm {
 
         // 5. Physics Props (Pure Ice Blocks only - Cleaned up industrial debris)
         engine.state.setLoadingStage('PLACING ARTIFACTS');
-        
+
         // Ice Blocks (Low friction vs Low friction)
         ctx.spawn('prop-ice-block', 6, 2, 6);
         ctx.spawn('prop-ice-block', -6, 2, 6);
-        
+
         // Removed Crate, Cinderblock, Glass Pane to fit "Pure Nature/Research" theme.
 
         // 6. RUN_FLORA: Hardy Border Pines and Tundra bushes
@@ -99,11 +99,11 @@ export class IceAlgorithm {
     private static async passFlora(ctx: SceneContext, engine: EngineService) {
         const count = 30;
         const radius = 90;
-        
+
         for (let i = 0; i < count; i++) {
             const angle = (i / count) * Math.PI * 2 + (Math.random() * 0.5);
             const dist = 65 + Math.random() * 25; // 65m - 90m radius (Outer rim)
-            
+
             const x = Math.cos(angle) * dist;
             const z = Math.sin(angle) * dist;
 
@@ -118,11 +118,11 @@ export class IceAlgorithm {
             const type = Math.random() > 0.7 ? 'bush-tundra' : 'hero-pine';
             const finalScale = type === 'bush-tundra' ? scale * 1.5 : scale;
 
-            ctx.spawn(type, x, 0, z, { 
-                alignToBottom: true, 
-                snapToSurface: true, 
-                scale: finalScale, 
-                rotation: this._rot 
+            ctx.spawn(type, x, 0, z, {
+                alignToBottom: true,
+                snapToSurface: true,
+                scale: finalScale,
+                rotation: this._rot
             });
 
             if (i % 10 === 0) await yieldToMain();
@@ -138,13 +138,13 @@ export class IceAlgorithm {
             const z = Math.sin(angle) * 20;
 
             const entity = ctx.spawn('robot-actor', x, 2, z, { alignToBottom: true });
-            
+
             ctx.modify(entity, { scale: 0.5 });
-            ctx.engine.ops.setEntityName(entity, `GLACIAL_SENTRY_${i+1}`);
+            ctx.engine.ops.setEntityName(entity, `GLACIAL_SENTRY_${i + 1}`);
 
             // Register AI
             ctx.engine.world.agents.add(entity, 3.5); // Speed 3.5 m/s
-            
+
             // Register Kinematics
             ctx.engine.world.kinematicControllers.add(entity, {
                 targetPosition: { x, y: 0, z },
@@ -156,17 +156,17 @@ export class IceAlgorithm {
     private static passPenguins(ctx: SceneContext) {
         const penguinCount = 12;
         const groupCenter = { x: -15, z: -15 };
-        
+
         for (let i = 0; i < penguinCount; i++) {
             const x = groupCenter.x + (Math.random() - 0.5) * 12;
             const z = groupCenter.z + (Math.random() - 0.5) * 12;
-            
+
             const entity = ctx.spawn('fauna-penguin', x, 0.5, z, { alignToBottom: true, snapToSurface: true });
-            ctx.engine.ops.setEntityName(entity, `PENGUIN_${i+1}`);
-            
+            ctx.engine.ops.setEntityName(entity, `PENGUIN_${i + 1}`);
+
             // Waddle Logic
             ctx.engine.world.agents.add(entity, 1.0 + Math.random() * 0.5); // Slow speed
-            
+
             ctx.engine.world.kinematicControllers.add(entity, {
                 targetPosition: { x, y: 0, z },
                 targetRotation: { x: 0, y: 0, z: 0, w: 1 }

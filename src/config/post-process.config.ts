@@ -7,7 +7,7 @@ export const POST_PROCESS_CONFIG = {
     BLOOM: {
         STRENGTH: 0.45,
         RADIUS: 0.1,
-        THRESHOLD: 1.05 
+        THRESHOLD: 1.05
     },
     COMPOSITE: {
         VIGNETTE_INTENSITY: 0.95,
@@ -15,7 +15,7 @@ export const POST_PROCESS_CONFIG = {
         ABERRATION_INTENSITY: 1.8 // Reduced slightly for better text legibility
     },
     MOBILE: {
-        BLOOM_ENABLED: false, 
+        BLOOM_ENABLED: false,
         PIXEL_RATIO_CAP: 1.0
     },
     DESKTOP: {

@@ -9,52 +9,52 @@ import { EntityStoreService } from '../ecs/entity-store.service';
 import { DebugRendererService } from '../graphics/debug-renderer.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class PhysicsSystem implements GameSystem {
-  readonly priority = 200;
-  private physics = inject(PhysicsService);
-  private transformSystem = inject(EntityTransformSystem);
-  private state = inject(EngineStateService);
-  private scene = inject(SceneService);
-  private entityStore = inject(EntityStoreService);
-  private debugRenderer = inject(DebugRendererService);
+    readonly priority = 200;
+    private physics = inject(PhysicsService);
+    private transformSystem = inject(EntityTransformSystem);
+    private state = inject(EngineStateService);
+    private scene = inject(SceneService);
+    private entityStore = inject(EntityStoreService);
+    private debugRenderer = inject(DebugRendererService);
 
-  update(dt: number): void {
-    const paused = this.state.isPaused() || 
-                   this.state.mainMenuVisible() || 
+    update(dt: number): void {
+        const paused = this.state.isPaused() ||
+                   this.state.mainMenuVisible() ||
                    this.state.loading();
-    
-    if (!paused) {
-      const scale = this.state.timeScale();
-      const scaledDt = dt * scale;
 
-      const pStart = performance.now();
-      
-      // RUN_INDUSTRY: Snapshot current state before step to allow Render interpolation
-      this.entityStore.world.transforms.snapshotAll();
+        if (!paused) {
+            const scale = this.state.timeScale();
+            const scaledDt = dt * scale;
 
-      this.physics.world.step(scaledDt);
-      
-      this.state.setPhysicsTime(Math.round((performance.now() - pStart) * 100) / 100);
-      
-      const syncMode = this.state.mode() === 'edit' ? 'edit' : 'play';
-      const isDragging = this.scene.isDraggingGizmo();
-      this.transformSystem.syncPhysicsToEcs(syncMode, isDragging);
+            const pStart = performance.now();
+
+            // RUN_INDUSTRY: Snapshot current state before step to allow Render interpolation
+            this.entityStore.world.transforms.snapshotAll();
+
+            this.physics.world.step(scaledDt);
+
+            this.state.setPhysicsTime(Math.round((performance.now() - pStart) * 100) / 100);
+
+            const syncMode = this.state.mode() === 'edit' ? 'edit' : 'play';
+            const isDragging = this.scene.isDraggingGizmo();
+            this.transformSystem.syncPhysicsToEcs(syncMode, isDragging);
+        }
+
+        if (this.state.mode() === 'edit' && this.scene.isDraggingGizmo()) {
+            const e = this.entityStore.selectedEntity();
+            if (e !== null) {
+                this.transformSystem.updateSingleEntityFromVisual(e);
+            }
+        }
+
+        if (this.state.showPhysicsDebug() && !this.state.loading()) {
+            const buffers = this.physics.world.getDebugBuffers();
+            this.debugRenderer.update(buffers);
+        } else {
+            this.debugRenderer.update(null);
+        }
     }
-
-    if (this.state.mode() === 'edit' && this.scene.isDraggingGizmo()) {
-      const e = this.entityStore.selectedEntity();
-      if (e !== null) {
-        this.transformSystem.updateSingleEntityFromVisual(e);
-      }
-    }
-
-    if (this.state.showPhysicsDebug() && !this.state.loading()) {
-      const buffers = this.physics.world.getDebugBuffers();
-      this.debugRenderer.update(buffers);
-    } else {
-      this.debugRenderer.update(null);
-    }
-  }
 }

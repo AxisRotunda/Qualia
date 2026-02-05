@@ -26,15 +26,15 @@ export const MEDIEVAL_CITADEL_SCENE: ScenePreset = {
     load: async (ctx, engine) => {
         // 1. Environment: Golden Hour Citadel
         ctx.atmosphere('citadel')
-           .weather('clear')
-           .time(18.5) // Early sunset
-           .light({
-               dirIntensity: 4.0,
-               ambientIntensity: 0.8,
-               dirColor: '#ffbb66'
-           })
-           .gravity(-9.81)
-           .cameraPreset('side');
+            .weather('clear')
+            .time(18.5) // Early sunset
+            .light({
+                dirIntensity: 4.0,
+                ambientIntensity: 0.8,
+                dirColor: '#ffbb66'
+            })
+            .gravity(-9.81)
+            .cameraPreset('side');
 
         if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
 
@@ -43,7 +43,7 @@ export const MEDIEVAL_CITADEL_SCENE: ScenePreset = {
 
         // 3. Entrance sequence
         engine.input.setMode('walk');
-        
+
         const cam = engine.sys.scene.getCamera();
         cam.position.set(60, 10, 60);
         cam.lookAt(0, 5, 0);

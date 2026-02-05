@@ -9,104 +9,104 @@ import { CharacterControllerService } from './controllers/character-controller.s
 import { GameInputService } from '../services/game-input.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class InputManagerService {
-  private state = inject(EngineStateService);
-  private sceneService = inject(SceneService);
-  private entityStore = inject(EntityStoreService);
-  private gameInput = inject(GameInputService);
+    private state = inject(EngineStateService);
+    private sceneService = inject(SceneService);
+    private entityStore = inject(EntityStoreService);
+    private gameInput = inject(GameInputService);
 
-  // Controllers
-  private cameraControl = inject(CameraControlService);
-  private flyControls = inject(FlyControlsService);
-  private charController = inject(CharacterControllerService);
+    // Controllers
+    private cameraControl = inject(CameraControlService);
+    private flyControls = inject(FlyControlsService);
+    private charController = inject(CharacterControllerService);
 
-  init() {
-    const canvas = this.sceneService.getDomElement();
-    const camera = this.sceneService.getCamera();
-    
-    this.cameraControl.init(camera, canvas);
-    this.flyControls.init(camera, canvas);
-  }
+    init() {
+        const canvas = this.sceneService.getDomElement();
+        const camera = this.sceneService.getCamera();
 
-  update(dt: number) {
-    const mode = this.state.mode();
-    if (mode === 'explore') {
-        this.flyControls.update(dt);
-    } else if (mode === 'walk') {
-        this.charController.update(dt);
-    } else {
-        const dragging = this.sceneService.isDraggingGizmo();
-        // Disable camera control if dragging gizmo or if menu is open
-        const camActive = !dragging && !this.state.mainMenuVisible();
-        this.cameraControl.setEnabled(camActive);
-        this.cameraControl.update(dt);
+        this.cameraControl.init(camera, canvas);
+        this.flyControls.init(camera, canvas);
     }
-  }
 
-  setMode(mode: 'edit' | 'explore' | 'walk') {
-      const previous = this.state.mode();
-      if (previous === mode) return;
-      const canvas = this.sceneService.getDomElement();
+    update(dt: number) {
+        const mode = this.state.mode();
+        if (mode === 'explore') {
+            this.flyControls.update(dt);
+        } else if (mode === 'walk') {
+            this.charController.update(dt);
+        } else {
+            const dragging = this.sceneService.isDraggingGizmo();
+            // Disable camera control if dragging gizmo or if menu is open
+            const camActive = !dragging && !this.state.mainMenuVisible();
+            this.cameraControl.setEnabled(camActive);
+            this.cameraControl.update(dt);
+        }
+    }
 
-      // --- Teardown Logic ---
-      switch(previous) {
-          case 'explore': this.flyControls.disable(); break;
-          case 'walk': 
-              this.charController.destroy(); 
-              this.gameInput.exitPointerLock(); 
-              break;
-          case 'edit': this.cameraControl.setEnabled(false); break;
-      }
+    setMode(mode: 'edit' | 'explore' | 'walk') {
+        const previous = this.state.mode();
+        if (previous === mode) return;
+        const canvas = this.sceneService.getDomElement();
 
-      this.state.setMode(mode);
-      
-      // --- Initialization Logic ---
-      switch(mode) {
-          case 'edit':
-              this.cameraControl.setEnabled(true);
-              this.gameInput.exitPointerLock();
-              break;
-          case 'explore':
-              this.entityStore.selectedEntity.set(null); 
-              this.flyControls.enable();
-              this.gameInput.requestPointerLock(canvas);
-              break;
-          case 'walk':
-              this.entityStore.selectedEntity.set(null);
-              // Initialize at current camera position
-              this.charController.init(this.sceneService.getCamera().position.clone());
-              this.gameInput.requestPointerLock(canvas);
-              break;
-      }
-  }
+        // --- Teardown Logic ---
+        switch (previous) {
+            case 'explore': this.flyControls.disable(); break;
+            case 'walk':
+                this.charController.destroy();
+                this.gameInput.exitPointerLock();
+                break;
+            case 'edit': this.cameraControl.setEnabled(false); break;
+        }
 
-  toggleMode() {
-      const m = this.state.mode();
-      this.setMode(m === 'edit' ? 'walk' : m === 'walk' ? 'explore' : 'edit');
-  }
+        this.state.setMode(mode);
 
-  // --- Delegation ---
+        // --- Initialization Logic ---
+        switch (mode) {
+            case 'edit':
+                this.cameraControl.setEnabled(true);
+                this.gameInput.exitPointerLock();
+                break;
+            case 'explore':
+                this.entityStore.selectedEntity.set(null);
+                this.flyControls.enable();
+                this.gameInput.requestPointerLock(canvas);
+                break;
+            case 'walk':
+                this.entityStore.selectedEntity.set(null);
+                // Initialize at current camera position
+                this.charController.init(this.sceneService.getCamera().position.clone());
+                this.gameInput.requestPointerLock(canvas);
+                break;
+        }
+    }
 
-  getFire(): boolean { return this.gameInput.getFire(); }
-  getJump(): boolean { return this.gameInput.getJump(); }
+    toggleMode() {
+        const m = this.state.mode();
+        this.setMode(m === 'edit' ? 'walk' : m === 'walk' ? 'explore' : 'edit');
+    }
 
-  setCameraPreset(p: CameraViewPreset) {
-      this.cameraControl.setPreset(p);
-  }
+    // --- Delegation ---
 
-  resetCamera() {
-      this.cameraControl.reset();
-  }
-  
-  focusSelectedEntity() {
-      const e = this.entityStore.selectedEntity();
-      if (e === null) return;
-      
-      const t = this.entityStore.world.transforms.get(e);
-      if (t) {
-          this.cameraControl.focusOn(new THREE.Vector3(t.position.x, t.position.y, t.position.z));
-      }
-  }
+    getFire(): boolean { return this.gameInput.getFire(); }
+    getJump(): boolean { return this.gameInput.getJump(); }
+
+    setCameraPreset(p: CameraViewPreset) {
+        this.cameraControl.setPreset(p);
+    }
+
+    resetCamera() {
+        this.cameraControl.reset();
+    }
+
+    focusSelectedEntity() {
+        const e = this.entityStore.selectedEntity();
+        if (e === null) return;
+
+        const t = this.entityStore.world.transforms.get(e);
+        if (t) {
+            this.cameraControl.focusOn(new THREE.Vector3(t.position.x, t.position.y, t.position.z));
+        }
+    }
 }

@@ -1,5 +1,5 @@
 
-import { Component, inject, output, signal, effect, computed } from '@angular/core';
+import { Component, inject, output, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngineService } from '../../services/engine.service';
 import { MobileTransformToolbarComponent } from './mobile-transform-toolbar.component';
@@ -8,16 +8,16 @@ import { TouchCameraLayerComponent } from './touch/touch-camera-layer.component'
 import { TouchObjectLayerComponent } from './touch/touch-object-layer.component';
 
 @Component({
-  selector: 'app-touch-controls',
-  standalone: true,
-  imports: [
-    CommonModule, 
-    MobileTransformToolbarComponent,
-    MobileContextActionsComponent,
-    TouchCameraLayerComponent,
-    TouchObjectLayerComponent
-  ],
-  template: `
+    selector: 'app-touch-controls',
+    standalone: true,
+    imports: [
+        CommonModule,
+        MobileTransformToolbarComponent,
+        MobileContextActionsComponent,
+        TouchCameraLayerComponent,
+        TouchObjectLayerComponent
+    ],
+    template: `
     <!-- Restore UI Button -->
     @if (!engine.hudVisible()) {
       <button class="fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-slate-900/50 text-slate-400 border border-white/10 backdrop-blur flex items-center justify-center active:scale-95 transition-all pointer-events-auto"
@@ -40,18 +40,18 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
         </div>
     }
 
-    <!-- 
-      CONTROLLER LAYERS 
+    <!--
+      CONTROLLER LAYERS
       Note: These layers have specific zones with pointer-events-auto.
       The containers themselves are pointer-events-none.
     -->
     @if (isObjectControlActive()) {
-        <app-touch-object-layer 
+        <app-touch-object-layer
             [showLabels]="engine.hudVisible()"
             [transformMode]="engine.transformMode()"
         />
     } @else {
-        <app-touch-camera-layer 
+        <app-touch-camera-layer
             [showLabels]="engine.hudVisible()"
             [isEditMode]="engine.mode() === 'edit'"
             [isWalkMode]="engine.mode() === 'walk'"
@@ -60,7 +60,7 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
 
     <!-- Context Actions Overlay (Always visible if something is selected and HUD is on) -->
     @if (engine.selectedEntity() !== null && engine.hudVisible()) {
-       <app-mobile-context-actions 
+       <app-mobile-context-actions
           [controlMode]="controlMode()"
           (toggleControlMode)="toggleControlMode()"
           (deselect)="deselect()"
@@ -70,7 +70,7 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
 
     <!-- TRANSFORM TOOLBAR - VISIBLE IN ALL MODES IF SELECTED -->
     @if (showTransformToolbar()) {
-       <app-mobile-transform-toolbar 
+       <app-mobile-transform-toolbar
           [currentMode]="engine.transformMode()"
           [canUndo]="engine.canUndo()"
           [hasSelection]="engine.selectedEntity() !== null"
@@ -80,7 +80,7 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
        />
     }
   `,
-  styles: [`
+    styles: [`
     :host {
         display: block;
         width: 100%;
@@ -91,59 +91,59 @@ import { TouchObjectLayerComponent } from './touch/touch-object-layer.component'
   `]
 })
 export class TouchControlsComponent {
-  engine = inject(EngineService);
-  
-  toggleInspector = output<void>();
+    engine = inject(EngineService);
 
-  // 'camera' = Moving Player/Camera
-  // 'object' = Moving Selected Entity
-  controlMode = signal<'camera' | 'object'>('camera');
+    toggleInspector = output<void>();
 
-  constructor() {
-      effect(() => {
-          if (this.engine.selectedEntity() === null) {
-              // If selection lost, force back to camera
-              this.controlMode.set('camera');
-          }
-      });
-  }
+    // 'camera' = Moving Player/Camera
+    // 'object' = Moving Selected Entity
+    controlMode = signal<'camera' | 'object'>('camera');
 
-  isObjectControlActive() {
-      return this.engine.selectedEntity() !== null && this.controlMode() === 'object';
-  }
+    constructor() {
+        effect(() => {
+            if (this.engine.selectedEntity() === null) {
+                // If selection lost, force back to camera
+                this.controlMode.set('camera');
+            }
+        });
+    }
 
-  showTransformToolbar() {
-      // Show tool bar if we have a selection, OR if we are in edit mode (even without selection for Undo etc)
-      // If NOT in edit mode (Walk/Fly), only show if selected
-      const hasSelection = this.engine.selectedEntity() !== null;
-      const isEdit = this.engine.mode() === 'edit';
-      const visible = !this.engine.mainMenuVisible() && this.engine.hudVisible();
-      
-      return visible && (isEdit || hasSelection);
-  }
+    isObjectControlActive() {
+        return this.engine.selectedEntity() !== null && this.controlMode() === 'object';
+    }
 
-  toggleControlMode() {
-      if (this.controlMode() === 'camera') {
-          this.controlMode.set('object');
-      } else {
-          this.controlMode.set('camera');
-      }
-  }
+    showTransformToolbar() {
+        // Show tool bar if we have a selection, OR if we are in edit mode (even without selection for Undo etc)
+        // If NOT in edit mode (Walk/Fly), only show if selected
+        const hasSelection = this.engine.selectedEntity() !== null;
+        const isEdit = this.engine.mode() === 'edit';
+        const visible = !this.engine.mainMenuVisible() && this.engine.hudVisible();
 
-  setTransformMode(mode: 'translate'|'rotate'|'scale') {
-      this.engine.viewport.setTransformMode(mode);
-      // Auto-switch to object control mode if we click a tool
-      if (this.engine.selectedEntity() !== null) {
-          this.controlMode.set('object');
-      }
-  }
+        return visible && (isEdit || hasSelection);
+    }
 
-  deleteSelected() {
-      const e = this.engine.selectedEntity();
-      if (e !== null) this.engine.ops.deleteEntity(e);
-  }
+    toggleControlMode() {
+        if (this.controlMode() === 'camera') {
+            this.controlMode.set('object');
+        } else {
+            this.controlMode.set('camera');
+        }
+    }
 
-  deselect() {
-      this.engine.interaction.selectEntity(null);
-  }
+    setTransformMode(mode: 'translate'|'rotate'|'scale') {
+        this.engine.viewport.setTransformMode(mode);
+        // Auto-switch to object control mode if we click a tool
+        if (this.engine.selectedEntity() !== null) {
+            this.controlMode.set('object');
+        }
+    }
+
+    deleteSelected() {
+        const e = this.engine.selectedEntity();
+        if (e !== null) this.engine.ops.deleteEntity(e);
+    }
+
+    deselect() {
+        this.engine.interaction.selectEntity(null);
+    }
 }

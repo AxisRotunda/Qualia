@@ -6,16 +6,16 @@ import { PhysicsBodyDef } from '../../schema';
 import { VisualOptions } from '../visuals-factory.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class GeometryResolverService {
-  private assetService = inject(AssetService);
-  private primitiveRegistry = inject(PrimitiveRegistryService);
+    private assetService = inject(AssetService);
+    private primitiveRegistry = inject(PrimitiveRegistryService);
 
-  resolve(data: PhysicsBodyDef, options: VisualOptions): THREE.BufferGeometry {
-      if (options.meshId) {
-          return this.assetService.getGeometry(options.meshId);
-      }
-      return this.primitiveRegistry.getGeometry(data);
-  }
+    resolve(data: PhysicsBodyDef, options: VisualOptions): THREE.BufferGeometry {
+        if (options.meshId) {
+            return this.assetService.getGeometry(options.meshId);
+        }
+        return this.primitiveRegistry.getGeometry(data);
+    }
 }

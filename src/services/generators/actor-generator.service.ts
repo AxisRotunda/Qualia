@@ -4,20 +4,20 @@ import * as THREE from 'three';
 import { ActorDesignService } from './actor/actor-design.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class ActorGeneratorService {
-  private design = inject(ActorDesignService);
+    private design = inject(ActorDesignService);
 
-  generateRobotActor(): THREE.BufferGeometry | null {
-    return this.design.generateRobotActor();
-  }
+    generateRobotActor(): THREE.BufferGeometry | null {
+        return this.design.generateRobotActor();
+    }
 
-  generateIceGolem(): THREE.BufferGeometry | null {
-    return this.design.generateIceGolem();
-  }
+    generateIceGolem(): THREE.BufferGeometry | null {
+        return this.design.generateIceGolem();
+    }
 
-  generatePenguin(): THREE.BufferGeometry | null {
-    return this.design.generatePenguin();
-  }
+    generatePenguin(): THREE.BufferGeometry | null {
+        return this.design.generatePenguin();
+    }
 }

@@ -24,7 +24,7 @@ export const PHYSICS_MATERIALS: Record<PhysicsMaterialType, MaterialData> = {
     'sandstone': { density: 2200, friction: 1.0, restitution: 0.01 }, // Very abrasive
     'glass': { density: 2500, friction: 0.3, restitution: 0.15 },
     'rubber': { density: 1100, friction: 0.9, restitution: 0.65 }, // High energy return
-    
+
     // Advanced Engineering Materials
     'titanium': { density: 4500, friction: 0.6, restitution: 0.2 },
     'carbon-fiber': { density: 1600, friction: 0.4, restitution: 0.2 },

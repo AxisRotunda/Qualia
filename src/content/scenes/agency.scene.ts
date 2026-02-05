@@ -2,134 +2,134 @@ import * as THREE from 'three';
 import { ScenePreset } from '../../data/scene-types';
 
 export const AGENCY_SCENE: ScenePreset = {
-  id: 'agency', 
-  label: 'Bureau 42 Analysis', 
-  description: 'Top-secret government observation room. Classified access only.', 
-  theme: 'city', 
-  previewColor: 'from-emerald-900 to-slate-900',
-  load: (ctx, engine) => {
-      ctx.atmosphere('night')
-         .weather('clear')
-         .light({
-            dirIntensity: 0.1, 
-            ambientIntensity: 0.3, 
-            dirColor: '#1e293b' 
-         })
-         .gravity(-9.81);
-      
-      if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
+    id: 'agency',
+    label: 'Bureau 42 Analysis',
+    description: 'Top-secret government observation room. Classified access only.',
+    theme: 'city',
+    previewColor: 'from-emerald-900 to-slate-900',
+    load: (ctx, engine) => {
+        ctx.atmosphere('night')
+            .weather('clear')
+            .light({
+                dirIntensity: 0.1,
+                ambientIntensity: 0.3,
+                dirColor: '#1e293b'
+            })
+            .gravity(-9.81);
 
-      const roomW = 32;
-      const roomD = 44;
-      const roomH = 6;
+        if (!engine.texturesEnabled()) engine.viewport.toggleTextures();
 
-      const wallTemplate = 'structure-wall-interior';
-      const rot90 = new THREE.Euler(0, Math.PI/2, 0);
+        const roomW = 32;
+        const roomD = 44;
+        const roomH = 6;
 
-      // Floor & Ceiling
-      for(let x = -roomW/2; x < roomW/2; x+=4) {
-          for(let z = -roomD/2; z < roomD/2; z+=4) {
-              ctx.spawn('structure-floor-linoleum', x + 2, 0, z + 2, { alignToBottom: true });
-              ctx.spawn('structure-ceiling', x + 2, roomH - 0.1, z + 2);
-          }
-      }
+        const wallTemplate = 'structure-wall-interior';
+        const rot90 = new THREE.Euler(0, Math.PI / 2, 0);
 
-      // Walls
-      for(let z = -roomD/2; z < roomD/2; z+=4) {
-          ctx.spawn(wallTemplate, -roomW/2, 0, z + 2, { alignToBottom: true, rotation: rot90 });
-          ctx.spawn(wallTemplate, roomW/2, 0, z + 2, { alignToBottom: true, rotation: rot90 });
-      }
-      for(let x = -roomW/2; x < roomW/2; x+=4) {
-          ctx.spawn(wallTemplate, x + 2, 0, -roomD/2, { alignToBottom: true });
-          if (Math.abs(x) > 4) {
-             ctx.spawn('structure-glass-partition', x + 2, 0, roomD/2, { alignToBottom: true });
-          }
-      }
+        // Floor & Ceiling
+        for (let x = -roomW / 2; x < roomW / 2; x += 4) {
+            for (let z = -roomD / 2; z < roomD / 2; z += 4) {
+                ctx.spawn('structure-floor-linoleum', x + 2, 0, z + 2, { alignToBottom: true });
+                ctx.spawn('structure-ceiling', x + 2, roomH - 0.1, z + 2);
+            }
+        }
 
-      // Datacenter
-      const serverZStart = -roomD/2 + 2;
-      const serverRows = 3;
-      const rowSpacing = 3.5;
-      
-      for(let r=0; r<serverRows; r++) {
-          const z = serverZStart + (r * rowSpacing);
-          for(let x = -12; x < -2; x += 1.0) {
-              ctx.spawn('prop-server-rack', x, 0, z, { alignToBottom: true });
-          }
-          for(let x = 2; x < 12; x += 1.0) {
-              ctx.spawn('prop-server-rack', x, 0, z, { alignToBottom: true });
-          }
-      }
-      
-      const serverLight = new THREE.PointLight(0x0ea5e9, 1.5, 15);
-      serverLight.position.set(0, 4, serverZStart + 4);
-      // FIX: Access scene service through sys
-      engine.sys.scene.getScene().add(serverLight);
+        // Walls
+        for (let z = -roomD / 2; z < roomD / 2; z += 4) {
+            ctx.spawn(wallTemplate, -roomW / 2, 0, z + 2, { alignToBottom: true, rotation: rot90 });
+            ctx.spawn(wallTemplate, roomW / 2, 0, z + 2, { alignToBottom: true, rotation: rot90 });
+        }
+        for (let x = -roomW / 2; x < roomW / 2; x += 4) {
+            ctx.spawn(wallTemplate, x + 2, 0, -roomD / 2, { alignToBottom: true });
+            if (Math.abs(x) > 4) {
+                ctx.spawn('structure-glass-partition', x + 2, 0, roomD / 2, { alignToBottom: true });
+            }
+        }
 
-      // Command Center
-      const platZ = 2;
-      const p1 = ctx.spawn('structure-floor-linoleum', 0, 0, platZ, { alignToBottom: true });
-      const pt = engine.world.transforms.get(p1);
-      if(pt) { 
-          pt.scale = {x: 3, y: 2, z: 2.5}; 
-          pt.position.y = 0.2;
-          const rb = engine.world.rigidBodies.get(p1);
-          const def = engine.world.bodyDefs.get(p1);
-          if (rb && def) {
-              // FIX: Access physics service through sys
-              engine.sys.physics.shapes.updateBodyScale(rb.handle, def, pt.scale);
-              engine.sys.physics.world.updateBodyTransform(rb.handle, pt.position);
-          }
-      }
-      
-      ctx.spawn('prop-table-map', 0, 0.4, platZ, { alignToBottom: true });
-      
-      const holoGeo = new THREE.ConeGeometry(1.4, 1.5, 32, 1, true);
-      // FIX: Access material service through sys
-      const holoMat = (engine.sys.materials.getMaterial('mat-glow-blue') as THREE.Material).clone() as THREE.MeshStandardMaterial;
-      holoMat.opacity = 0.15; holoMat.transparent = true; holoMat.side = THREE.DoubleSide;
-      const holoMesh = new THREE.Mesh(holoGeo, holoMat);
-      holoMesh.position.set(0, 0.4 + 1.7, platZ);
-      // FIX: Access scene service through sys
-      engine.sys.scene.getScene().add(holoMesh);
+        // Datacenter
+        const serverZStart = -roomD / 2 + 2;
+        const serverRows = 3;
+        const rowSpacing = 3.5;
 
-      const mapLight = new THREE.SpotLight(0x38bdf8, 5.0, 25, 0.5, 0.5, 1);
-      mapLight.position.set(0, 5.5, platZ);
-      mapLight.target.position.set(0,0,platZ);
-      // FIX: Access scene service through sys
-      engine.sys.scene.getScene().add(mapLight);
-      engine.sys.scene.getScene().add(mapLight.target);
+        for (let r = 0; r < serverRows; r++) {
+            const z = serverZStart + (r * rowSpacing);
+            for (let x = -12; x < -2; x += 1.0) {
+                ctx.spawn('prop-server-rack', x, 0, z, { alignToBottom: true });
+            }
+            for (let x = 2; x < 12; x += 1.0) {
+                ctx.spawn('prop-server-rack', x, 0, z, { alignToBottom: true });
+            }
+        }
 
-      // Meeting Room
-      const glassX = 10;
-      const glassZ = 12;
-      const glassW = 8;
-      const glassD = 8;
-      
-      ctx.spawn('structure-glass-partition', glassX - glassW/2, 0, glassZ, { alignToBottom: true, rotation: rot90 });
-      ctx.spawn('structure-glass-partition', glassX, 0, glassZ - glassD/2, { alignToBottom: true });
-      
-      const mt = ctx.spawn('prop-table-map', glassX + 2, 0, glassZ + 2, { alignToBottom: true });
-      engine.ops.setEntityName(mt, 'Secure Terminal');
+        const serverLight = new THREE.PointLight(0x0ea5e9, 1.5, 15);
+        serverLight.position.set(0, 4, serverZStart + 4);
+        // FIX: Access scene service through sys
+        engine.sys.scene.getScene().add(serverLight);
 
-      // Workstations
-      const createDesk = (x: number, z: number, angle: number) => {
-          const rot = new THREE.Euler(0, angle, 0);
-          ctx.spawn('prop-desk-agency', x, 0, z, { alignToBottom: true, rotation: rot });
-          
-          const monitorOffset = new THREE.Vector3(0, 0.75, 0.3).applyEuler(rot);
-          ctx.spawn('prop-monitor-triple', x + monitorOffset.x, monitorOffset.y, z + monitorOffset.z, { alignToBottom: true, rotation: rot });
-      };
+        // Command Center
+        const platZ = 2;
+        const p1 = ctx.spawn('structure-floor-linoleum', 0, 0, platZ, { alignToBottom: true });
+        const pt = engine.world.transforms.get(p1);
+        if (pt) {
+            pt.scale = { x: 3, y: 2, z: 2.5 };
+            pt.position.y = 0.2;
+            const rb = engine.world.rigidBodies.get(p1);
+            const def = engine.world.bodyDefs.get(p1);
+            if (rb && def) {
+                // FIX: Access physics service through sys
+                engine.sys.physics.shapes.updateBodyScale(rb.handle, def, pt.scale);
+                engine.sys.physics.world.updateBodyTransform(rb.handle, pt.position);
+            }
+        }
 
-      createDesk(-10, -2, 0.5);
-      createDesk(10, -2, -0.5);
-      createDesk(-10, 6, 1.0);
-      createDesk(10, 6, -1.0);
+        ctx.spawn('prop-table-map', 0, 0.4, platZ, { alignToBottom: true });
 
-      engine.input.setMode('walk');
-      // FIX: Access scene service through sys
-      const cam = engine.sys.scene.getCamera();
-      cam.position.set(0, 1.7, 18);
-      cam.lookAt(0, 1.7, 0);
-  }
+        const holoGeo = new THREE.ConeGeometry(1.4, 1.5, 32, 1, true);
+        // FIX: Access material service through sys
+        const holoMat = (engine.sys.materials.getMaterial('mat-glow-blue') as THREE.Material).clone() as THREE.MeshStandardMaterial;
+        holoMat.opacity = 0.15; holoMat.transparent = true; holoMat.side = THREE.DoubleSide;
+        const holoMesh = new THREE.Mesh(holoGeo, holoMat);
+        holoMesh.position.set(0, 0.4 + 1.7, platZ);
+        // FIX: Access scene service through sys
+        engine.sys.scene.getScene().add(holoMesh);
+
+        const mapLight = new THREE.SpotLight(0x38bdf8, 5.0, 25, 0.5, 0.5, 1);
+        mapLight.position.set(0, 5.5, platZ);
+        mapLight.target.position.set(0, 0, platZ);
+        // FIX: Access scene service through sys
+        engine.sys.scene.getScene().add(mapLight);
+        engine.sys.scene.getScene().add(mapLight.target);
+
+        // Meeting Room
+        const glassX = 10;
+        const glassZ = 12;
+        const glassW = 8;
+        const glassD = 8;
+
+        ctx.spawn('structure-glass-partition', glassX - glassW / 2, 0, glassZ, { alignToBottom: true, rotation: rot90 });
+        ctx.spawn('structure-glass-partition', glassX, 0, glassZ - glassD / 2, { alignToBottom: true });
+
+        const mt = ctx.spawn('prop-table-map', glassX + 2, 0, glassZ + 2, { alignToBottom: true });
+        engine.ops.setEntityName(mt, 'Secure Terminal');
+
+        // Workstations
+        const createDesk = (x: number, z: number, angle: number) => {
+            const rot = new THREE.Euler(0, angle, 0);
+            ctx.spawn('prop-desk-agency', x, 0, z, { alignToBottom: true, rotation: rot });
+
+            const monitorOffset = new THREE.Vector3(0, 0.75, 0.3).applyEuler(rot);
+            ctx.spawn('prop-monitor-triple', x + monitorOffset.x, monitorOffset.y, z + monitorOffset.z, { alignToBottom: true, rotation: rot });
+        };
+
+        createDesk(-10, -2, 0.5);
+        createDesk(10, -2, -0.5);
+        createDesk(-10, 6, 1.0);
+        createDesk(10, 6, -1.0);
+
+        engine.input.setMode('walk');
+        // FIX: Access scene service through sys
+        const cam = engine.sys.scene.getCamera();
+        cam.position.set(0, 1.7, 18);
+        cam.lookAt(0, 1.7, 0);
+    }
 };

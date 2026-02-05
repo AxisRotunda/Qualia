@@ -21,46 +21,46 @@ export interface SyncOperation {
 }
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class GitSyncService {
-  private syncState = signal<SyncState>({
-    localHash: '',
-    originHash: '',
-    upstreamHash: '',
-    state: 'CLEAN',
-    aheadCount: 0,
-    behindCount: 0,
-    hasOrigin: false,
-    hasUpstream: false,
-    lastCheck: 0
-  });
+    private syncState = signal<SyncState>({
+        localHash: '',
+        originHash: '',
+        upstreamHash: '',
+        state: 'CLEAN',
+        aheadCount: 0,
+        behindCount: 0,
+        hasOrigin: false,
+        hasUpstream: false,
+        lastCheck: 0
+    });
 
-  private operations = signal<SyncOperation[]>([]);
+    private operations = signal<SyncOperation[]>([]);
 
-  readonly currentState = computed(() => this.syncState());
-  readonly pendingOps = computed(() => 
-    this.operations().filter(op => op.status === 'pending' || op.status === 'running')
-  );
-  readonly canSync = computed(() => {
-    const state = this.syncState();
-    return state.state !== 'DIRTY' && state.hasOrigin && state.hasUpstream;
-  });
-  readonly needsPull = computed(() => {
-    const state = this.syncState();
-    return state.behindCount > 0;
-  });
-  readonly needsPush = computed(() => {
-    const state = this.syncState();
-    return state.aheadCount > 0;
-  });
+    readonly currentState = computed(() => this.syncState());
+    readonly pendingOps = computed(() =>
+        this.operations().filter(op => op.status === 'pending' || op.status === 'running')
+    );
+    readonly canSync = computed(() => {
+        const state = this.syncState();
+        return state.state !== 'DIRTY' && state.hasOrigin && state.hasUpstream;
+    });
+    readonly needsPull = computed(() => {
+        const state = this.syncState();
+        return state.behindCount > 0;
+    });
+    readonly needsPush = computed(() => {
+        const state = this.syncState();
+        return state.aheadCount > 0;
+    });
 
-  /**
+    /**
    * Generates a Node.js git synchronization script.
    * This can be run standalone for automation.
    */
-  generateSyncScript(mode: 'check' | 'pull' | 'push' | 'full' = 'full'): string {
-    return `#!/usr/bin/env node
+    generateSyncScript(mode: 'check' | 'pull' | 'push' | 'full' = 'full'): string {
+        return `#!/usr/bin/env node
 /**
  * QUALIA Git Sync Automation Script
  * Generated: ${new Date().toISOString()}
@@ -260,13 +260,13 @@ if (mode === 'push' || mode === 'full') {
 
 log('--- SYNC COMPLETE ---', 'green');
 `;
-  }
+    }
 
-  /**
+    /**
    * Returns the git commands for manual execution
    */
-  getManualSyncCommands(): string {
-    return `
+    getManualSyncCommands(): string {
+        return `
 # QUALIA Git Sync Commands
 # Copy and execute these commands manually if needed
 
@@ -287,5 +287,5 @@ git push origin main
 # 5. Full sync cycle
 git fetch upstream && git merge --ff-only upstream/main && git push origin main
 `;
-  }
+    }
 }

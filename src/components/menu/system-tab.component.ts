@@ -1,13 +1,12 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FilesystemService } from '../../services/ui/filesystem.service';
-import { EngineService } from '../../services/engine.service';
 
 @Component({
-  selector: 'app-menu-system-tab',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-menu-system-tab',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <div class="h-full flex flex-col gap-10 animate-in slide-in-from-right-4 duration-500">
       <header class="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-white/8 pb-6 shrink-0 gap-3">
         <div>
@@ -32,7 +31,7 @@ import { EngineService } from '../../services/engine.service';
                 @for (op of fs.pendingOps(); track op.id) {
                   <div class="p-4 rounded-xl bg-slate-900/40 border border-white/8 flex flex-col gap-3 relative group overflow-hidden hover:border-amber-500/20 hover:bg-slate-900/60 transition-all">
                     <div class="absolute inset-y-0 left-0 w-1 bg-amber-500 shadow-[0_0_12px_rgba(217,119,6,0.5)] group-hover:shadow-[0_0_16px_rgba(217,119,6,0.8)] transition-shadow"></div>
-                    
+
                     <div class="flex justify-between items-start gap-2">
                       <span class="text-[8px] font-mono text-slate-500 tracking-tighter">{{ op.id }}</span>
                       <span class="text-[8px] font-black px-2 py-1 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase font-bold">{{ op.action }}</span>
@@ -89,7 +88,7 @@ import { EngineService } from '../../services/engine.service';
                     MCP Automation
                 </h4>
                 <p class="text-[10px] text-slate-400 leading-relaxed mb-4 font-medium">
-                   This project is optimized for the <span class="text-white font-bold">@modelcontextprotocol/server-filesystem</span>. 
+                   This project is optimized for the <span class="text-white font-bold">@modelcontextprotocol/server-filesystem</span>.
                    If your AI host supports MCP, the agent can execute these file operations natively using the manifest as a transaction log.
                 </p>
                 <div class="flex items-center gap-2 text-[9px] font-mono text-cyan-600 bg-cyan-500/8 p-3 rounded-lg border border-cyan-500/20">
@@ -103,7 +102,7 @@ import { EngineService } from '../../services/engine.service';
                 <div class="absolute top-0 right-0 p-2 opacity-8 pointer-events-none">
                     <span class="material-symbols-outlined text-8xl">javascript</span>
                 </div>
-                
+
                 <div>
                    <h4 class="text-[10px] font-black text-slate-200 uppercase tracking-widest mb-1 font-bold">Atomic Sync Utility</h4>
                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-tight">Manual Fallback Pipeline</p>
@@ -111,7 +110,7 @@ import { EngineService } from '../../services/engine.service';
 
                 <div class="relative group">
                    <pre class="bg-black/70 rounded-xl p-5 text-[8px] font-mono text-cyan-500 overflow-x-auto max-h-[260px] border border-white/8 custom-scrollbar leading-relaxed tracking-[0.05em]"><code>{{ fs.generateSyncScript() }}</code></pre>
-                   
+
                    <button (click)="copyToClipboard()"
                            class="absolute top-3 right-3 p-2.5 rounded-lg bg-slate-800/80 border border-white/15 text-white opacity-0 group-hover:opacity-100 transition-opacity active:scale-90 hover:bg-slate-700 shadow-xl backdrop-blur-sm">
                      <span class="material-symbols-outlined text-lg">{{ copyIcon() }}</span>
@@ -127,7 +126,7 @@ import { EngineService } from '../../services/engine.service';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
@@ -135,14 +134,14 @@ import { EngineService } from '../../services/engine.service';
   `]
 })
 export class SystemTabComponent {
-  fs = inject(FilesystemService);
-  copyIcon = signal('content_copy');
+    fs = inject(FilesystemService);
+    copyIcon = signal('content_copy');
 
-  copyToClipboard() {
-    const text = this.fs.generateSyncScript();
-    navigator.clipboard.writeText(text).then(() => {
-      this.copyIcon.set('check');
-      setTimeout(() => this.copyIcon.set('content_copy'), 2000);
-    });
-  }
+    copyToClipboard() {
+        const text = this.fs.generateSyncScript();
+        navigator.clipboard.writeText(text).then(() => {
+            this.copyIcon.set('check');
+            setTimeout(() => this.copyIcon.set('content_copy'), 2000);
+        });
+    }
 }

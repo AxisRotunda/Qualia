@@ -5,12 +5,12 @@ import { WeaponService } from '../../../engine/features/combat/weapon.service';
 import { COMBAT_CONFIG } from '../../../engine/features/combat/combat.config';
 
 @Component({
-  selector: 'app-weapon-status',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-weapon-status',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <div class="flex items-center gap-3 bg-slate-950/80 backdrop-blur-xl border border-white/10 pr-5 pl-1.5 py-1.5 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] select-none pointer-events-auto group transition-all hover:border-cyan-500/30">
-       
+
        <!-- Tactical Weapon Hex -->
        <div class="w-11 h-11 rounded-full flex items-center justify-center border-2 border-white/5 relative overflow-hidden transition-all group-hover:scale-105"
             [ngClass]="colorClass()">
@@ -26,7 +26,7 @@ import { COMBAT_CONFIG } from '../../../engine/features/combat/combat.config';
              <span class="text-[8px] font-mono text-cyan-500/80 tabular-nums">{{ energy() | number:'1.0-0' }}%</span>
           </div>
           <span class="text-[11px] font-black text-white font-sans tracking-widest mb-1.5 uppercase drop-shadow-sm">{{ label() }}</span>
-          
+
           <!-- Segmented Energy Bar (Industry Style) -->
           <div class="flex gap-0.5 h-1.5 w-full">
               @for (seg of [1,2,3,4,5,6,7,8,9,10]; track seg) {
@@ -54,34 +54,34 @@ import { COMBAT_CONFIG } from '../../../engine/features/combat/combat.config';
        </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     @keyframes scan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
     .shadow-amber { box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
   `]
 })
 export class WeaponStatusComponent {
-  weaponService = inject(WeaponService);
-  energy = this.weaponService.energy;
+    weaponService = inject(WeaponService);
+    energy = this.weaponService.energy;
 
-  currentDef = computed(() => {
-      return COMBAT_CONFIG.WEAPONS[this.weaponService.equipped()];
-  });
+    currentDef = computed(() => {
+        return COMBAT_CONFIG.WEAPONS[this.weaponService.equipped()];
+    });
 
-  label = computed(() => this.currentDef().label);
-  
-  icon = computed(() => {
-      switch(this.currentDef().id) {
-          case 'blaster': return 'boltz';
-          case 'hammer': return 'hammer';
-          case 'fist': return 'sports_mma';
-          default: return 'help';
-      }
-  });
+    label = computed(() => this.currentDef().label);
 
-  colorClass = computed(() => {
-      const id = this.currentDef().id;
-      if (id === 'blaster') return 'bg-cyan-600/40 shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]';
-      if (id === 'hammer') return 'bg-orange-600/40 shadow-[inset_0_0_15px_rgba(234,88,12,0.2)]';
-      return 'bg-slate-600/40 shadow-[inset_0_0_15px_rgba(255,255,255,0.1)]';
-  });
+    icon = computed(() => {
+        switch (this.currentDef().id) {
+            case 'blaster': return 'boltz';
+            case 'hammer': return 'hammer';
+            case 'fist': return 'sports_mma';
+            default: return 'help';
+        }
+    });
+
+    colorClass = computed(() => {
+        const id = this.currentDef().id;
+        if (id === 'blaster') return 'bg-cyan-600/40 shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]';
+        if (id === 'hammer') return 'bg-orange-600/40 shadow-[inset_0_0_15px_rgba(234,88,12,0.2)]';
+        return 'bg-slate-600/40 shadow-[inset_0_0_15px_rgba(255,255,255,0.1)]';
+    });
 }

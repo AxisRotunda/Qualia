@@ -1,1 +1,0 @@
-// FILE DELETED - Replaced by src/docs/protocol-optimize.md

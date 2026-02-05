@@ -6,13 +6,13 @@
  * @returns A new Worker instance
  */
 export function createInlineWorker(script: string): Worker {
-  const blob = new Blob([script], { type: 'application/javascript' });
-  const url = URL.createObjectURL(blob);
-  const worker = new Worker(url);
-  
-  // Revoke the URL immediately as the Worker has already loaded the script.
-  // This frees up memory associated with the Blob.
-  URL.revokeObjectURL(url);
-  
-  return worker;
+    const blob = new Blob([script], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    const worker = new Worker(url);
+
+    // Revoke the URL immediately as the Worker has already loaded the script.
+    // This frees up memory associated with the Blob.
+    URL.revokeObjectURL(url);
+
+    return worker;
 }

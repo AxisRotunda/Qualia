@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as BufferUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import * as BufferUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Optimization: Module-level scratch objects to prevent GC churn
 const _mat = new THREE.Matrix4();
@@ -7,8 +7,8 @@ const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _scale = new THREE.Vector3();
 const _euler = new THREE.Euler();
-const _v = new THREE.Vector3(); 
-const _color = new THREE.Color(); 
+const _v = new THREE.Vector3();
+const _color = new THREE.Color();
 
 /**
  * Scales UV coordinates of a BoxGeometry to simulate box mapping.
@@ -23,7 +23,7 @@ export function scaleUVs(geo: THREE.BufferGeometry, w: number, h: number, d: num
     scaleFaceUVs(uvs, 3, w, d, factor); // Bottom (-y)
     scaleFaceUVs(uvs, 4, w, h, factor); // Front (+z)
     scaleFaceUVs(uvs, 5, w, h, factor); // Back (-z)
-    
+
     uvs.needsUpdate = true;
 }
 
@@ -43,7 +43,7 @@ export function projectPlanarUVs(geo: THREE.BufferGeometry, scale = 0.1) {
     const uvs = geo.getAttribute('uv');
     if (!pos || !uvs) return;
 
-    for(let i=0; i<pos.count; i++) {
+    for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const z = pos.getZ(i);
         uvs.setXY(i, x * scale, z * scale);
@@ -94,8 +94,8 @@ export class Geo {
         const colors = new Float32Array(count * 3);
         _color.setHex(hex);
         const r = _color.r, g = _color.g, b = _color.b;
-        for(let i=0; i<count; i++) {
-            colors[i*3] = r; colors[i*3+1] = g; colors[i*3+2] = b;
+        for (let i = 0; i < count; i++) {
+            colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
         }
         this.raw.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         return this;
@@ -124,12 +124,12 @@ export class Geo {
         const colors = new Float32Array(count * 3);
         const colBot = new THREE.Color(hexBot);
         const colTop = new THREE.Color(hexTop);
-        
-        for(let i=0; i<count; i++) {
+
+        for (let i = 0; i < count; i++) {
             const y = pos.getY(i);
             const t = Math.max(0, Math.min(1, (y - minY) / (maxY - minY)));
             _color.copy(colBot).lerp(colTop, t);
-            colors[i*3] = _color.r; colors[i*3+1] = _color.g; colors[i*3+2] = _color.b;
+            colors[i * 3] = _color.r; colors[i * 3 + 1] = _color.g; colors[i * 3 + 2] = _color.b;
         }
         this.raw.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         return this;

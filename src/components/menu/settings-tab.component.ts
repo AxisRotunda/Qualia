@@ -4,10 +4,10 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { EngineService } from '../../services/engine.service';
 
 @Component({
-  selector: 'app-menu-settings-tab',
-  standalone: true,
-  imports: [CommonModule, DecimalPipe],
-  template: `
+    selector: 'app-menu-settings-tab',
+    standalone: true,
+    imports: [CommonModule, DecimalPipe],
+    template: `
     <div class="max-w-3xl animate-in fade-in duration-500">
       <header class="mb-10 border-b border-white/8 pb-6">
         <h2 class="text-4xl sm:text-5xl font-black text-white tracking-[0.15em] uppercase leading-tight">Configuration</h2>
@@ -21,7 +21,7 @@ import { EngineService } from '../../services/engine.service';
               <span class="material-symbols-outlined text-cyan-500 text-xl">visibility</span>
               <h3 class="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Rendering Profile</h3>
           </div>
-          
+
           <div class="bg-slate-950/50 rounded-2xl border border-white/8 p-2 space-y-1 backdrop-blur-md">
             <div class="settings-row">
               <div>
@@ -39,7 +39,7 @@ import { EngineService } from '../../services/engine.service';
                 <div class="text-sm font-bold text-slate-200">Cinematic FX</div>
                 <div class="text-[9px] text-slate-500 tracking-wide uppercase font-bold mt-1">Bloom, Grain & Lens Gradients</div>
               </div>
-              <button (click)="engine.viewport.togglePostProcessing()" 
+              <button (click)="engine.viewport.togglePostProcessing()"
                       class="px-5 py-2 rounded-lg text-[9px] font-black tracking-widest transition-all uppercase border duration-300"
                       [class.bg-cyan-600/80]="engine.state.postProcessingEnabled()"
                       [class.border-cyan-400/60]="engine.state.postProcessingEnabled()"
@@ -59,7 +59,7 @@ import { EngineService } from '../../services/engine.service';
                 <div class="text-sm font-bold text-slate-200">Mesh Topology</div>
                 <div class="text-[9px] text-slate-500 tracking-wide uppercase font-bold mt-1">Global Wireframe Overlay</div>
               </div>
-              <button (click)="toggleWireframe.emit()" 
+              <button (click)="toggleWireframe.emit()"
                       class="px-5 py-2 rounded-lg text-[9px] font-black tracking-widest transition-all uppercase border duration-300"
                       [class.bg-cyan-600/80]="isWireframe()"
                       [class.border-cyan-400/60]="isWireframe()"
@@ -82,7 +82,7 @@ import { EngineService } from '../../services/engine.service';
               <span class="material-symbols-outlined text-emerald-500 text-xl">history</span>
               <h3 class="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Temporal Dilation</h3>
           </div>
-          
+
           <div class="bg-slate-950/50 rounded-2xl border border-white/8 p-8 space-y-7 backdrop-blur-md">
             <div class="flex justify-between items-center">
               <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Physics Time Scale</span>
@@ -90,7 +90,7 @@ import { EngineService } from '../../services/engine.service';
             </div>
             <div class="relative group">
                 <input type="range" min="0.1" max="2.0" step="0.05"
-                       [value]="timeScale()" 
+                       [value]="timeScale()"
                        (input)="emitTimeScale($event)"
                        class="w-full h-2 bg-slate-900 rounded-full appearance-none cursor-pointer border border-white/8 accent-emerald-500 transition-shadow hover:shadow-emerald-600/20 hover:shadow-lg">
                 <div class="absolute -bottom-7 left-0 right-0 flex justify-between text-[8px] font-mono text-slate-600 tracking-tighter uppercase font-bold">
@@ -119,23 +119,23 @@ import { EngineService } from '../../services/engine.service';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .settings-row { @apply flex items-center justify-between p-5 border-b border-white/5 transition-colors hover:bg-white/5; }
   `]
 })
 export class MenuSettingsTabComponent {
-  engine = inject(EngineService);
+    engine = inject(EngineService);
 
-  isPerformanceMode = input.required<boolean>();
-  isWireframe = input.required<boolean>();
-  timeScale = input.required<number>();
-  
-  togglePerformance = output<void>();
-  toggleWireframe = output<void>();
-  updateTimeScale = output<number>();
+    isPerformanceMode = input.required<boolean>();
+    isWireframe = input.required<boolean>();
+    timeScale = input.required<number>();
 
-  emitTimeScale(e: Event) {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      this.updateTimeScale.emit(val);
-  }
+    togglePerformance = output<void>();
+    toggleWireframe = output<void>();
+    updateTimeScale = output<number>();
+
+    emitTimeScale(e: Event) {
+        const val = parseFloat((e.target as HTMLInputElement).value);
+        this.updateTimeScale.emit(val);
+    }
 }

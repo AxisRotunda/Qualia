@@ -1,14 +1,14 @@
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FilesystemService } from '../../services/ui/filesystem.service';
 
 export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
 
 @Component({
-  selector: 'app-menu-sidebar',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-menu-sidebar',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <nav class="sm:w-80 bg-slate-950/80 border-b sm:border-b-0 sm:border-r border-slate-800/60 px-4 py-6 sm:p-8 flex sm:flex-col justify-between sm:justify-start shrink-0 z-20 h-auto sm:h-full backdrop-blur-lg">
         <!-- Branding -->
         <div class="flex items-center gap-3 sm:flex-col sm:items-start mb-0 sm:mb-12 group cursor-default">
@@ -28,22 +28,22 @@ export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
         </div>
 
         <!-- Tabs -->
-        <div class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-visible no-scrollbar flex-1 sm:flex-grow min-w-0">
-            <button (click)="switchTab.emit('home')" 
+        <div class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-visible no-scrollbar flex-1 sm:flex-grow min-w-0 min-w-fit">
+            <button (click)="switchTab.emit('home')"
                     [class.active-nav]="activeTab() === 'home'"
                     class="nav-btn group">
                 <span class="material-symbols-outlined icon">home</span>
                 <span class="label">Dashboard</span>
             </button>
-            
-            <button (click)="switchTab.emit('worlds')" 
+
+            <button (click)="switchTab.emit('worlds')"
                     [class.active-nav]="activeTab() === 'worlds'"
                     class="nav-btn group">
                 <span class="material-symbols-outlined icon">grid_view</span>
                 <span class="label">Simulations</span>
             </button>
 
-            <button (click)="switchTab.emit('settings')" 
+            <button (click)="switchTab.emit('settings')"
                     [class.active-nav]="activeTab() === 'settings'"
                     class="nav-btn group">
                 <span class="material-symbols-outlined icon">tune</span>
@@ -52,12 +52,12 @@ export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
 
             <div class="h-px w-full bg-white/5 my-3 hidden sm:block"></div>
 
-            <button (click)="switchTab.emit('system')" 
+            <button (click)="switchTab.emit('system')"
                     [class.active-nav]="activeTab() === 'system'"
                     class="nav-btn group relative">
                 <span class="material-symbols-outlined icon">settings_system_daydream</span>
                 <span class="label">System Ops</span>
-                
+
                 @if (fs.hasPending()) {
                   <div class="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_12px_orange] animate-pulse sm:relative sm:top-0 sm:right-0 ml-auto"></div>
                 }
@@ -74,7 +74,7 @@ export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
         </div>
     </nav>
   `,
-  styles: [`
+    styles: [`
     .nav-btn {
         @apply relative flex flex-col sm:flex-row items-center sm:gap-3.5 px-3 py-3 sm:px-4 sm:py-3.5 rounded-lg text-slate-500 hover:text-slate-100 transition-all border border-transparent w-full whitespace-nowrap;
         @apply sm:hover:bg-slate-800/60 sm:active:bg-slate-700/60 duration-200;
@@ -96,8 +96,8 @@ export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
   `]
 })
 export class MenuSidebarComponent {
-  activeTab = input.required<MenuTab>();
-  switchTab = output<MenuTab>();
+    activeTab = input.required<MenuTab>();
+    switchTab = output<MenuTab>();
 
-  fs = inject(FilesystemService);
+    fs = inject(FilesystemService);
 }

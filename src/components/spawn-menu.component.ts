@@ -5,12 +5,12 @@ import { EngineService } from '../services/engine.service';
 import { EntityCategory, EntityTemplate } from '../data/entity-types';
 
 @Component({
-  selector: 'app-spawn-menu',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-spawn-menu',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <div class="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center pointer-events-none isolate">
-      <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm pointer-events-auto transition-opacity animate-in fade-in duration-200" 
+      <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm pointer-events-auto transition-opacity animate-in fade-in duration-200"
            (click)="close.emit()"></div>
 
       <div class="relative w-full h-[60vh] sm:h-auto sm:max-h-[85vh] sm:w-[680px] bg-slate-900 border-t sm:border border-cyan-900/30 shadow-2xl rounded-t-2xl sm:rounded-xl flex flex-col pointer-events-auto animate-in slide-in-from-bottom duration-300 overflow-hidden ring-1 ring-white/5">
@@ -71,37 +71,38 @@ import { EntityCategory, EntityTemplate } from '../data/entity-types';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none;  scrollbar-width: none; }
     .bg-cyan-950_80 { background-color: rgba(8, 51, 68, 0.8); }
   `]
 })
 export class SpawnMenuComponent {
-  engine = inject(EngineService);
-  close = output<void>();
-  categories: EntityCategory[] = ['building', 'prop', 'nature', 'terrain', 'shape'];
-  activeCategory = signal<EntityCategory>('building');
+    engine = inject(EngineService);
+    close = output<void>();
+    categories: EntityCategory[] = ['building', 'prop', 'nature', 'terrain', 'shape'];
+    activeCategory = signal<EntityCategory>('building');
 
-  filteredTemplates = computed(() => this.engine.library.getTemplatesByCategory(this.activeCategory()));
+    filteredTemplates = computed(() => this.engine.library.getTemplatesByCategory(this.activeCategory()));
 
-  getCategoryIcon(c: EntityCategory): string {
-      switch(c) {
-          case 'building': return 'domain';
-          case 'prop': return 'deployed_code';
-          case 'nature': return 'forest';
-          case 'terrain': return 'landscape';
-          case 'shape': return 'category';
-      }
-  }
+    getCategoryIcon(c: EntityCategory): string {
+        switch (c) {
+            case 'building': return 'domain';
+            case 'prop': return 'deployed_code';
+            case 'nature': return 'forest';
+            case 'terrain': return 'landscape';
+            case 'shape': return 'category';
+            default: return 'help';
+        }
+    }
 
-  spawn(item: EntityTemplate) {
-      this.engine.spawner.startPlacement(item.id);
-      this.close.emit();
-  }
+    spawn(item: EntityTemplate) {
+        this.engine.spawner.startPlacement(item.id);
+        this.close.emit();
+    }
 
-  getAsHex(color: number | undefined): string {
-      if (!color) return 'transparent';
-      return '#' + color.toString(16).padStart(6, '0');
-  }
+    getAsHex(color: number | undefined): string {
+        if (!color) return 'transparent';
+        return '#' + color.toString(16).padStart(6, '0');
+    }
 }

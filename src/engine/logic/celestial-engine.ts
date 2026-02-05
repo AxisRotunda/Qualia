@@ -18,7 +18,7 @@ export interface CelestialState {
  */
 export class CelestialEngine {
     private static readonly RADIUS = 150;
-    
+
     // Persistent Scratch Objects
     private static readonly _pos = new THREE.Vector3();
     private static readonly _color = new THREE.Color();
@@ -38,7 +38,7 @@ export class CelestialEngine {
 
     /**
      * Calculates solar parameters based on current hour (0-24).
-     * Returns a reference to the shared static state object. 
+     * Returns a reference to the shared static state object.
      * Do NOT hold this reference across frames if values are needed later; copy them.
      */
     static calculateSun(hour: number): Readonly<CelestialState> {
@@ -47,7 +47,7 @@ export class CelestialEngine {
         const x = Math.cos(normTime) * this.RADIUS;
         const y = Math.sin(normTime) * this.RADIUS;
         const z = Math.cos(normTime * 0.5) * 40; // Slight seasonal wobble
-        
+
         this._pos.set(x, y, z);
         const elevation = y / this.RADIUS;
 
@@ -57,7 +57,7 @@ export class CelestialEngine {
             // Day cycle: 0 -> 1.0 (noon) -> 0
             const t = Math.min(1.0, elevation / 0.2); // Snap up quickly at sunrise
             intensity = t;
-            
+
             if (elevation < 0.2) {
                 // Golden Hour (Warm)
                 this._color.setHSL(0.06 + (0.04 * t), 0.9, 0.5 + (0.1 * t));
@@ -67,12 +67,12 @@ export class CelestialEngine {
             }
         } else {
             // Night cycle
-            this._color.setHSL(0.64, 0.5, 0.2); 
+            this._color.setHSL(0.64, 0.5, 0.2);
             intensity = 0.05; // Faint moonlight/starlight
         }
 
         this.updateSkyColor(elevation);
-        
+
         // Ground bounce is essentially sky color reflected + local shadow darkening
         this._ground.copy(this._sky).multiplyScalar(0.4);
 

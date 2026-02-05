@@ -239,14 +239,33 @@ function generateCommitMessage(files) {
   
   let message = `${AUTO_COMMIT_PREFIX} Auto-sync ${timestamp}`;
   
-  if (modified.length > 0) {
-    message += `\n\nModified (${modified.length}):\n- ${modified.join('\n- ')}`;
+  // Helper function to truncate file lists
+  function truncateFileList(fileList, category) {
+    if (fileList.length === 0) return '';
+    
+    // If too many files, just show count
+    if (fileList.length > 20) {
+      return `\n\n${category} (${fileList.length} files)`;
+    }
+    
+    // Show first 10 files, then truncate if needed
+    const displayFiles = fileList.slice(0, 10);
+    const remaining = fileList.length - displayFiles.length;
+    const fileText = displayFiles.join('\n- ');
+    const remainingText = remaining > 0 ? `\n- ... and ${remaining} more` : '';
+    
+    return `\n\n${category} (${fileList.length}):\n- ${fileText}${remainingText}`;
   }
-  if (added.length > 0) {
-    message += `\n\nAdded (${added.length}):\n- ${added.join('\n- ')}`;
-  }
-  if (deleted.length > 0) {
-    message += `\n\nDeleted (${deleted.length}):\n- ${deleted.join('\n- ')}`;
+  
+  // Add file information with truncation
+  message += truncateFileList(modified, 'Modified');
+  message += truncateFileList(added, 'Added');
+  message += truncateFileList(deleted, 'Deleted');
+  
+  // Ensure message doesn't exceed reasonable length for Windows
+  if (message.length > 2000) {
+    // If still too long, use a simple summary
+    message = `${AUTO_COMMIT_PREFIX} Auto-sync ${timestamp}\n\nModified: ${modified.length} files\nAdded: ${added.length} files\nDeleted: ${deleted.length} files`;
   }
   
   return message;

@@ -1,5 +1,5 @@
 
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { EngineService } from '../../services/engine.service';
 import { LayoutService } from '../../services/ui/layout.service';
 import { MenuBarComponent } from '../menu/menu-bar.component';
@@ -13,26 +13,26 @@ import { WeaponStatusComponent } from './hud/weapon-status.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-game-hud',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MenuBarComponent,
-    ToolbarComponent,
-    StatusBarComponent,
-    DebugOverlayComponent,
-    SceneTreeComponent,
-    InspectorComponent,
-    MobileDrawersComponent,
-    WeaponStatusComponent
-  ],
-  template: `
+    selector: 'app-game-hud',
+    standalone: true,
+    imports: [
+        CommonModule,
+        MenuBarComponent,
+        ToolbarComponent,
+        StatusBarComponent,
+        DebugOverlayComponent,
+        SceneTreeComponent,
+        InspectorComponent,
+        MobileDrawersComponent,
+        WeaponStatusComponent
+    ],
+    template: `
     @if (engine.hudVisible()) {
       <app-menu-bar />
       <app-toolbar />
 
       <div class="flex flex-1 overflow-hidden relative pointer-events-none">
-        
+
         @if (layout.leftPanelOpen() && !layout.isMobile()) {
           <aside class="flex flex-col w-64 bg-slate-950/95 border-r border-slate-800 z-10 pointer-events-auto h-full">
             <app-scene-tree />
@@ -40,17 +40,17 @@ import { CommonModule } from '@angular/common';
         }
 
         <div class="flex-1 relative flex flex-col items-center justify-center">
-           
+
            <!-- INDUSTRY: Tactical Reticle Layer -->
            @if (isTacticalMode()) {
                <div class="relative transition-all duration-150 ease-out"
                     [style.transform]="'scale(' + reticleScale() + ')'"
                     [class.text-rose-500]="targetAcquired()"
                     [class.text-cyan-400]="!targetAcquired()">
-                  
+
                   <!-- Center Calibration Dot -->
                   <div class="w-1 h-1 bg-white rounded-full shadow-[0_0_8px_white] opacity-80"></div>
-                  
+
                   <!-- Hit Marker Layer -->
                   @if (engine.state.hitMarkerActive()) {
                       <div class="absolute inset-[-12px] animate-in zoom-in-150 duration-75 text-cyan-300">
@@ -87,10 +87,10 @@ import { CommonModule } from '@angular/common';
                   </div>
                }
            }
-           
+
            <div class="flex-1 w-full flex items-end justify-center pb-4 relative">
                <app-debug-overlay />
-               
+
                @if (!layout.isMobile() && engine.mode() === 'walk') {
                    <div class="absolute bottom-6 right-6 animate-in slide-in-from-right-4 fade-in duration-500">
                        <app-weapon-status />
@@ -121,32 +121,32 @@ import { CommonModule } from '@angular/common';
       <app-status-bar />
     }
   `,
-  styles: [`
+    styles: [`
     :host { display: flex; flex-direction: column; height: 100%; width: 100%; pointer-events: none; }
     app-menu-bar, app-toolbar, app-status-bar { pointer-events: auto; }
   `]
 })
 export class GameHudComponent {
-  engine = inject(EngineService);
-  layout = inject(LayoutService);
-  
-  isTacticalMode = computed(() => this.engine.mode() === 'walk' || this.engine.mode() === 'explore');
-  targetAcquired = computed(() => this.engine.state.acquiredTarget() !== null);
+    engine = inject(EngineService);
+    layout = inject(LayoutService);
 
-  // RUN_INDUSTRY: Dynamic Spread based on Velocity and Action State
-  reticleScale = computed(() => {
-      let scale = 1.0;
-      
-      // Speed spread (maxes at 1.8x at full sprint)
-      const speed = this.engine.state.playerSpeed();
-      scale += Math.min(speed / 12.0, 0.8);
+    isTacticalMode = computed(() => this.engine.mode() === 'walk' || this.engine.mode() === 'explore');
+    targetAcquired = computed(() => this.engine.state.acquiredTarget() !== null);
 
-      if (this.engine.state.isAiming()) {
-          scale *= 0.6; // Tighten
-      } else if (this.engine.input.getFire()) {
-          scale *= 1.3; // Bloom
-      }
-      
-      return scale;
-  });
+    // RUN_INDUSTRY: Dynamic Spread based on Velocity and Action State
+    reticleScale = computed(() => {
+        let scale = 1.0;
+
+        // Speed spread (maxes at 1.8x at full sprint)
+        const speed = this.engine.state.playerSpeed();
+        scale += Math.min(speed / 12.0, 0.8);
+
+        if (this.engine.state.isAiming()) {
+            scale *= 0.6; // Tighten
+        } else if (this.engine.input.getFire()) {
+            scale *= 1.3; // Bloom
+        }
+
+        return scale;
+    });
 }

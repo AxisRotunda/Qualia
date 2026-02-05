@@ -10,7 +10,7 @@ export interface EntityTemplate {
   icon: string;
   geometry: 'box' | 'cylinder' | 'sphere' | 'cone' | 'mesh';
   meshId?: string;
-  physicsShape?: 'box' | 'cylinder' | 'capsule' | 'sphere' | 'cone' | 'convex-hull' | 'trimesh'; 
+  physicsShape?: 'box' | 'cylinder' | 'capsule' | 'sphere' | 'cone' | 'convex-hull' | 'trimesh';
   size: THREE.Vector3;
   materialId?: string;
   color?: number;

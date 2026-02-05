@@ -9,93 +9,93 @@ import { EntityLifecycleService } from '../ecs/entity-lifecycle.service';
 import { Subscription } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class DestructionSystem implements GameSystem, OnDestroy {
-  readonly priority = 205; 
+    readonly priority = 205;
 
-  private store = inject(EntityStoreService);
-  private physics = inject(PhysicsService);
-  private fracture = inject(FractureService);
-  private lifecycle = inject(EntityLifecycleService);
+    private store = inject(EntityStoreService);
+    private physics = inject(PhysicsService);
+    private fracture = inject(FractureService);
+    private lifecycle = inject(EntityLifecycleService);
 
-  private lastVelSq = new Float32Array(10000); 
-  private destroyedQueue: { e: Entity, ctx?: ImpactContext }[] = [];
-  
-  private spawnGuard = new Set<Entity>();
-  private sub: Subscription;
+    private lastVelSq = new Float32Array(10000);
+    private destroyedQueue: { e: Entity, ctx?: ImpactContext }[] = [];
 
-  constructor() {
-      this.sub = this.lifecycle.onEntityDestroyed.subscribe(evt => {
-          this.spawnGuard.delete(evt.entity);
-          this.lastVelSq[evt.entity] = 0;
-      });
-      this.sub.add(this.lifecycle.onWorldReset.subscribe(() => {
-          this.spawnGuard.clear();
-          this.lastVelSq.fill(0);
-      }));
-  }
+    private spawnGuard = new Set<Entity>();
+    private sub: Subscription;
 
-  update(dt: number): void {
-      const world = this.store.world;
-      const rWorld = this.physics.rWorld;
-      if (!rWorld) return;
+    constructor() {
+        this.sub = this.lifecycle.onEntityDestroyed.subscribe(evt => {
+            this.spawnGuard.delete(evt.entity);
+            this.lastVelSq[evt.entity] = 0;
+        });
+        this.sub.add(this.lifecycle.onWorldReset.subscribe(() => {
+            this.spawnGuard.clear();
+            this.lastVelSq.fill(0);
+        }));
+    }
 
-      if (this.lastVelSq.length <= world.entities.size * 2) {
-          const newBuff = new Float32Array(this.lastVelSq.length * 2);
-          newBuff.set(this.lastVelSq);
-          this.lastVelSq = newBuff;
-      }
+    update(dt: number): void {
+        const world = this.store.world;
+        const rWorld = this.physics.rWorld;
+        if (!rWorld) return;
 
-      this.destroyedQueue.length = 0;
+        if (this.lastVelSq.length <= world.entities.size * 2) {
+            const newBuff = new Float32Array(this.lastVelSq.length * 2);
+            newBuff.set(this.lastVelSq);
+            this.lastVelSq = newBuff;
+        }
 
-      world.integrity.forEach((health, maxHealth, threshold, entity) => {
-          const rbHandle = world.rigidBodies.getHandle(entity);
-          if (rbHandle === undefined) return;
+        this.destroyedQueue.length = 0;
 
-          const body = rWorld.getRigidBody(rbHandle);
-          if (!body || !body.isDynamic()) return;
+        world.integrity.forEach((health, maxHealth, threshold, entity) => {
+            const rbHandle = world.rigidBodies.getHandle(entity);
+            if (rbHandle === undefined) return;
 
-          const vel = body.linvel();
-          const currentVelSq = vel.x*vel.x + vel.y*vel.y + vel.z*vel.z;
-          
-          if (!this.spawnGuard.has(entity)) {
-              this.spawnGuard.add(entity);
-              this.lastVelSq[entity] = currentVelSq;
-              return;
-          }
+            const body = rWorld.getRigidBody(rbHandle);
+            if (!body || !body.isDynamic()) return;
 
-          const prevVelSq = this.lastVelSq[entity] || 0;
-          const deltaV = Math.abs(Math.sqrt(currentVelSq) - Math.sqrt(prevVelSq));
-          const impact = deltaV * body.mass();
+            const vel = body.linvel();
+            const currentVelSq = vel.x * vel.x + vel.y * vel.y + vel.z * vel.z;
 
-          if (impact > threshold) {
-              const damage = (impact - threshold) * 0.1;
-              if (damage > 0) {
-                  // Deceleration-based damage (hitting walls) doesn't have a single impact velocity like a bullet
-                  world.integrity.applyDamage(entity, damage);
-              }
-          }
+            if (!this.spawnGuard.has(entity)) {
+                this.spawnGuard.add(entity);
+                this.lastVelSq[entity] = currentVelSq;
+                return;
+            }
 
-          this.lastVelSq[entity] = currentVelSq;
+            const prevVelSq = this.lastVelSq[entity] || 0;
+            const deltaV = Math.abs(Math.sqrt(currentVelSq) - Math.sqrt(prevVelSq));
+            const impact = deltaV * body.mass();
 
-          if (world.integrity.getHealth(entity) <= 0) {
-              const integ = world.integrity.get(entity);
-              this.destroyedQueue.push({ 
-                  e: entity, 
-                  ctx: (integ?.lastImpactVel && (integ.lastImpactVel.x !== 0 || integ.lastImpactVel.z !== 0)) 
-                    ? { point: integ.lastImpactPoint!, velocity: integ.lastImpactVel! } 
-                    : undefined 
-              });
-          }
-      });
+            if (impact > threshold) {
+                const damage = (impact - threshold) * 0.1;
+                if (damage > 0) {
+                    // Deceleration-based damage (hitting walls) doesn't have a single impact velocity like a bullet
+                    world.integrity.applyDamage(entity, damage);
+                }
+            }
 
-      for(const item of this.destroyedQueue) {
-          this.fracture.fracture(item.e, item.ctx);
-      }
-  }
+            this.lastVelSq[entity] = currentVelSq;
 
-  ngOnDestroy() {
-      this.sub.unsubscribe();
-  }
+            if (world.integrity.getHealth(entity) <= 0) {
+                const integ = world.integrity.get(entity);
+                this.destroyedQueue.push({
+                    e: entity,
+                    ctx: (integ?.lastImpactVel && (integ.lastImpactVel.x !== 0 || integ.lastImpactVel.z !== 0))
+                        ? { point: integ.lastImpactPoint!, velocity: integ.lastImpactVel! }
+                        : undefined
+                });
+            }
+        });
+
+        for (const item of this.destroyedQueue) {
+            this.fracture.fracture(item.e, item.ctx);
+        }
+    }
+
+    ngOnDestroy() {
+        this.sub.unsubscribe();
+    }
 }

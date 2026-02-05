@@ -3,13 +3,13 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { MenuAction } from '../../services/keyboard.service';
 
 @Component({
-  selector: 'app-menu-dropdown',
-  standalone: true,
-  host: {
-    'class': 'relative group block'
-  },
-  template: `
-    <button 
+    selector: 'app-menu-dropdown',
+    standalone: true,
+    host: {
+        'class': 'relative group block'
+    },
+    template: `
+    <button
       class="px-3 py-1 text-sm text-slate-200 hover:bg-slate-800 rounded transition-colors"
       [class.bg-slate-800]="isOpen"
       [attr.aria-haspopup]="true"
@@ -19,14 +19,14 @@ import { MenuAction } from '../../services/keyboard.service';
       (keydown)="onKeyDown($event)">
       {{ label }}
     </button>
-    
+
     @if (isOpen) {
-      <div class="absolute top-full left-0 mt-1 min-w-[200px] bg-slate-800 
+      <div class="absolute top-full left-0 mt-1 min-w-[200px] bg-slate-800
                   rounded-lg shadow-xl border border-slate-700 py-1 z-50 animate-in fade-in zoom-in-95 duration-75"
            role="menu">
         @for (action of actions; track action.id) {
           <button
-            class="w-full px-4 py-2 text-left text-sm text-slate-200 
+            class="w-full px-4 py-2 text-left text-sm text-slate-200
                    hover:bg-cyan-900/40 hover:text-cyan-200 focus:bg-cyan-900/40 focus:outline-none
                    disabled:text-slate-500 disabled:cursor-not-allowed
                    flex items-center justify-between group/item"
@@ -48,10 +48,10 @@ export class MenuDropdownComponent {
   @Input() label!: string;
   @Input() actions!: MenuAction[];
   @Input() isOpen = false;
-  
+
   @Output() menuOpen = new EventEmitter<void>();
   @Output() menuClose = new EventEmitter<void>();
-  
+
   toggle(e: Event) {
       e.stopPropagation();
       if (this.isOpen) this.menuClose.emit();
@@ -60,7 +60,7 @@ export class MenuDropdownComponent {
 
   onHover() {
   }
-  
+
   execute(action: MenuAction) {
       if (!action.isDisabled?.()) {
           action.execute();
@@ -69,9 +69,9 @@ export class MenuDropdownComponent {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
-        event.preventDefault();
-        this.menuOpen.emit();
-    }
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          this.menuOpen.emit();
+      }
   }
 }

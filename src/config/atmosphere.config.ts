@@ -6,20 +6,20 @@ export interface AtmosphereDefinition {
     id: string;
     fog: THREE.Fog | THREE.FogExp2 | null;
     background: THREE.Color;
-    hemiColor?: number; 
-    hemiGround?: number; 
-    
+    hemiColor?: number;
+    hemiGround?: number;
+
     // Lighting Defaults (RUN_REF Phase 42.0)
     sunIntensity: number;
     ambientIntensity: number;
     sunColor?: string;
     sunShadows: boolean;
-    
+
     // Volumetric Height Fog (RUN_VOLUMETRICS)
-    fogHeight?: number; 
+    fogHeight?: number;
     fogFalloff?: number;
-    fogScattering?: number; 
-    
+    fogScattering?: number;
+
     // Weather Defaults
     defaultWeather?: WeatherType;
     defaultTime?: number;
@@ -29,7 +29,7 @@ export interface AtmosphereDefinition {
 export const ATMOSPHERE_PRESETS: Record<string, () => AtmosphereDefinition> = {
     'clear': () => ({
         id: 'clear',
-        fog: new THREE.Fog(0x5a7d9a, 80, 500), 
+        fog: new THREE.Fog(0x5a7d9a, 80, 500),
         background: new THREE.Color(0x5a7d9a),
         sunIntensity: 1.8,
         ambientIntensity: 1.2, // Boosted from 0.8
@@ -120,7 +120,7 @@ export const ATMOSPHERE_PRESETS: Record<string, () => AtmosphereDefinition> = {
     }),
     'city': () => ({
         id: 'city',
-        fog: new THREE.FogExp2(0x64748b, 0.008), 
+        fog: new THREE.FogExp2(0x64748b, 0.008),
         background: new THREE.Color(0x64748b),
         sunIntensity: 2.2,
         ambientIntensity: 1.5, // Boosted from 1.0 (Urban light pollution)
@@ -149,7 +149,7 @@ export const ATMOSPHERE_PRESETS: Record<string, () => AtmosphereDefinition> = {
     }),
     'desert': () => ({
         id: 'desert',
-        fog: new THREE.FogExp2(0xe6c288, 0.012), 
+        fog: new THREE.FogExp2(0xe6c288, 0.012),
         background: new THREE.Color(0x87ceeb),
         sunIntensity: 4.5,
         ambientIntensity: 1.2, // Boosted from 0.8 (Bright sand bounce)

@@ -17,6 +17,9 @@
 *   **[222]**: `CLINE_SETUP`: Created `cline-skills.md` with skill taxonomy mapping T3 Protocols to capabilities. Defined skill invocation protocol.
 
 ## [RECENT_LOG_BUFFER] (LIFO)
+*   **[227]**: `CLINE_SUBAGENT_SETUP`: Verified complete CLINE sub-agent configuration. All systems operational: 9 JSON skills in `.cline/skills/`, 11 JSON workflows in `.cline/workflows/`, Markdown references in `src/docs/core/`, constitutional rules in `.clinerules/`. FS manifest confirms all operations completed. Sub-agent system ready for autonomous execution.
+*   **[226]**: `CLINE_UI_SETUP`: Created `.cline/workflows/` with 5 executable workflows: boot-sequence, feature-implementation, bug-fix, repository-sync, documentation-audit.
+*   **[225]**: `CLINE_UI_SETUP`: Created `.cline/skills/` with 5 executable skills: physics-dynamics, pbr-materials, ecs-architecture, repository-management, documentation-sync.
 *   **[224]**: `MCP_FIX`: Resolved filesystem MCP path issue. Created `scripts/mcp-setup-universal.js` that auto-detects Cline vs Roo Code. Root cause: original script only updated Roo Code settings. Updated `mcp-registry.md` and `fs-manifest.json`.
 *   **[223]**: `SYNC_REPO`: Investigated GIT setup, fixed `.angular/` cache pollution in repository. Implemented agent automation of repo sync handling with `git-sync.cjs` script and `GitSyncService`.
 *   **[222]**: `RUN_KNOWLEDGE`: Remade `system-instructions.md` as an AI BIOS. Implemented Cognitive Boot Sequence and hardcoded path mapping. Migrated to Tier 1.

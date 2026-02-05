@@ -2,7 +2,7 @@
 import { Component, input, output, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WeatherType } from '../../services/particle.service';
-import { EnvironmentControlService } from '../../engine/features/environment-control.service';
+
 import { EngineService } from '../../services/engine.service';
 import { WorldAtmosTabComponent } from './tabs/world-atmos-tab.component';
 import { WorldLightTabComponent } from './tabs/world-light-tab.component';
@@ -12,18 +12,18 @@ import { WorldPhysTabComponent } from './tabs/world-phys-tab.component';
 type Tab = 'atmos' | 'light' | 'phys' | 'fx';
 
 @Component({
-  selector: 'app-world-settings-panel',
-  standalone: true,
-  imports: [
-      CommonModule, 
-      WorldAtmosTabComponent,
-      WorldLightTabComponent,
-      WorldFxTabComponent,
-      WorldPhysTabComponent
-  ],
-  template: `
+    selector: 'app-world-settings-panel',
+    standalone: true,
+    imports: [
+        CommonModule,
+        WorldAtmosTabComponent,
+        WorldLightTabComponent,
+        WorldFxTabComponent,
+        WorldPhysTabComponent
+    ],
+    template: `
      <div class="flex flex-col gap-6 select-none pb-4">
-        
+
         <!-- Tab Navigation -->
         <div class="flex items-center border-b border-white/10 px-1 relative h-10">
             <button (click)="activeTab.set('atmos')" class="tab-btn flex-1" [class.active]="activeTab() === 'atmos'" title="Atmosphere">
@@ -48,7 +48,7 @@ type Tab = 'atmos' | 'light' | 'phys' | 'fx';
         <div class="min-h-[300px]">
             @switch (activeTab()) {
                 @case ('atmos') {
-                    <app-world-atmos-tab 
+                    <app-world-atmos-tab
                         [currentWeather]="currentWeather()"
                         [currentAtmosphere]="currentAtmosphere()"
                         (weatherChange)="weatherChange.emit($event)"
@@ -56,7 +56,7 @@ type Tab = 'atmos' | 'light' | 'phys' | 'fx';
                     />
                 }
                 @case ('light') {
-                    <app-world-light-tab 
+                    <app-world-light-tab
                         [currentTime]="currentTime()"
                         (timeChange)="timeChange.emit($event)"
                     />
@@ -65,7 +65,7 @@ type Tab = 'atmos' | 'light' | 'phys' | 'fx';
                     <app-world-fx-tab />
                 }
                 @case ('phys') {
-                    <app-world-phys-tab 
+                    <app-world-phys-tab
                         [gravity]="gravity()"
                         [timeScale]="timeScale()"
                         (gravityChange)="gravityChange.emit($event)"
@@ -76,26 +76,26 @@ type Tab = 'atmos' | 'light' | 'phys' | 'fx';
         </div>
      </div>
   `,
-  styles: [`
+    styles: [`
     .tab-btn { @apply relative h-full flex flex-col items-center justify-center text-slate-500 hover:text-slate-300 transition-colors; }
     .tab-btn.active { @apply text-cyan-400; }
     .active-line { @apply absolute bottom-0 left-2 right-2 h-0.5 bg-cyan-400 shadow-[0_0_8px_cyan]; }
   `]
 })
 export class WorldSettingsPanelComponent {
-  engine = inject(EngineService);
-  
-  gravity = input.required<number>();
-  timeScale = input<number>(1.0);
-  currentTime = input.required<number>();
-  currentWeather = input.required<WeatherType>();
-  currentAtmosphere = input.required<string>();
-  
-  activeTab = signal<Tab>('atmos');
+    engine = inject(EngineService);
 
-  gravityChange = output<number>();
-  timeScaleChange = output<number>();
-  weatherChange = output<WeatherType>();
-  timeChange = output<number>();
-  atmosphereChange = output<any>();
+    gravity = input.required<number>();
+    timeScale = input<number>(1.0);
+    currentTime = input.required<number>();
+    currentWeather = input.required<WeatherType>();
+    currentAtmosphere = input.required<string>();
+
+    activeTab = signal<Tab>('atmos');
+
+    gravityChange = output<number>();
+    timeScaleChange = output<number>();
+    weatherChange = output<WeatherType>();
+    timeChange = output<number>();
+    atmosphereChange = output<any>();
 }

@@ -1,5 +1,4 @@
-
-import { Component, inject, HostListener, signal, ChangeDetectionStrategy, OnDestroy, AfterViewInit, ElementRef, viewChild } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy, OnDestroy, AfterViewInit, ElementRef, viewChild, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngineService } from '../../services/engine.service';
 import { LayoutService } from '../../services/ui/layout.service';
@@ -7,27 +6,27 @@ import { MenuManagerService } from '../../services/ui/menu-manager.service';
 import { MenuAction } from '../../services/keyboard.service';
 
 @Component({
-  selector: 'app-system-launcher',
-  standalone: true,
-  imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
+    selector: 'app-system-launcher',
+    standalone: true,
+    imports: [CommonModule],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: `
     @if (layout.launcherOpen()) {
       <div class="fixed inset-0 z-[400] flex pointer-events-none isolate"
-           role="dialog" 
-           aria-modal="true" 
+           role="dialog"
+           aria-modal="true"
            aria-labelledby="kernel-title"
            (keydown.escape)="layout.setLauncher(false)">
-        
+
         <!-- Backdrop Blur -->
         <div class="absolute inset-0 bg-slate-950/20 backdrop-blur-md pointer-events-auto animate-in fade-in duration-300"
              (click)="layout.setLauncher(false)"></div>
 
         <!-- Monolith Panel -->
-        <aside #panel 
+        <aside #panel
                class="relative w-80 h-full bg-slate-950/95 border-r border-white/10 shadow-[40px_0_100px_rgba(0,0,0,0.8)] flex flex-col pointer-events-auto animate-in slide-in-from-left duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] outline-none"
                tabindex="-1">
-          
+
           <!-- Tech Accent Signal Beam -->
           <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-blue-600 to-transparent shadow-[0_0_15px_cyan]"></div>
 
@@ -47,7 +46,7 @@ import { MenuAction } from '../../services/keyboard.service';
 
           <!-- Command Tree -->
           <div class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar flex flex-col gap-10" role="menu">
-              @for (category of menuConfig; track category.id) {
+              @for (category of categories(); track category.id) {
                   <section role="group" [attr.aria-label]="category.label">
                       <div class="flex items-center gap-3 mb-5 px-4">
                           <div class="w-1.5 h-1.5 rounded-sm bg-cyan-500 shadow-[0_0_6px_cyan]"></div>
@@ -55,16 +54,16 @@ import { MenuAction } from '../../services/keyboard.service';
                               {{ category.label }}
                           </h3>
                       </div>
-                      
+
                       <div class="flex flex-col gap-1.5">
                           @for (action of category.children; track action.id) {
-                              <button 
+                              <button
                                   role="menuitem"
                                   class="w-full group flex items-center justify-between p-3 rounded-xl border border-transparent transition-all hover:bg-white/5 hover:border-white/10 text-left disabled:opacity-20 disabled:pointer-events-none focus:bg-white/10 focus:outline-none"
                                   [disabled]="action.isDisabled?.()"
                                   [class.hidden]="action.isVisible?.() === false"
                                   (click)="execute(action)">
-                                  
+
                                   <div class="flex items-center gap-4">
                                       <span class="material-symbols-outlined text-[20px] text-slate-600 group-hover:text-cyan-400 transition-colors">
                                           {{ getIcon(action.id) }}
@@ -89,13 +88,13 @@ import { MenuAction } from '../../services/keyboard.service';
              <div class="grid grid-cols-2 gap-x-4 gap-y-2.5 text-slate-500 font-bold uppercase">
                 <span class="flex items-center gap-2"><div class="w-1 h-1 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_4px_emerald]"></div> Uptime</span>
                 <span class="text-slate-300 text-right">{{ uptime() }}s</span>
-                
+
                 <span>Core.Freq</span>
                 <span class="text-cyan-600 text-right">60.0_Hz</span>
-                
+
                 <span>Buffer_Heap</span>
                 <span class="text-slate-300 text-right">{{ (engine.objectCount() * 0.45).toFixed(1) }} MB</span>
-                
+
                 <span>Instance_ID</span>
                 <span class="text-slate-500 text-right text-[8px]">QX_{{ sessionId }}</span>
              </div>
@@ -111,70 +110,84 @@ import { MenuAction } from '../../services/keyboard.service';
       </div>
     }
   `,
-  styles: [`
+    styles: [`
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #1e293b transparent;
+    }
     .custom-scrollbar::-webkit-scrollbar { width: 3px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
   `]
 })
-export class SystemLauncherComponent implements OnDestroy, AfterViewInit {
-  panelRef = viewChild<ElementRef>('panel');
-  
-  engine = inject(EngineService);
-  layout = inject(LayoutService);
-  menuManager = inject(MenuManagerService);
+export class SystemLauncherComponent implements OnDestroy, AfterViewInit, OnInit {
+    panelRef = viewChild<ElementRef>('panel');
 
-  menuConfig: MenuAction[] = [];
-  sessionId = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase();
-  uptime = signal(0);
-  private intervalId: any;
+    engine = inject(EngineService);
+    layout = inject(LayoutService);
+    menuManager = inject(MenuManagerService);
 
-  constructor() {
-      this.menuConfig = this.menuManager.getMenuConfig();
-      this.intervalId = setInterval(() => {
-          this.uptime.update(v => v + 1);
-      }, 1000);
-  }
+    menuConfig: MenuAction[] = [];
 
-  ngAfterViewInit() {
-      if (this.layout.launcherOpen()) {
-          this.panelRef()?.nativeElement.focus();
-      }
-  }
+    // Computed property to get only menu items with children (categories)
+    readonly categories = computed(() => this.menuConfig.filter((item): item is MenuAction & { children: MenuAction[] } =>
+        Array.isArray(item.children) && item.children.length > 0
+    ));
 
-  ngOnDestroy() {
-      if (this.intervalId) {
-          clearInterval(this.intervalId);
-      }
-  }
+    sessionId = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase();
+    uptime = signal(0);
+    private intervalId!: ReturnType<typeof setInterval>;
 
-  execute(action: MenuAction) {
-      action.execute();
-      this.layout.setLauncher(false);
-  }
+    constructor() {
+        // Only dependency injection here
+    }
 
-  getIcon(id: string): string {
-      switch(id) {
-          case 'new': return 'restart_alt';
-          case 'qsave': return 'save_as';
-          case 'qload': return 'history';
-          case 'main-menu': return 'power_settings_new';
-          case 'undo': return 'undo';
-          case 'redo': return 'redo';
-          case 'duplicate': return 'content_copy';
-          case 'delete': return 'delete_forever';
-          case 'sim-play': return 'play_circle';
-          case 'sim-pause': return 'pause_circle';
-          case 'sim-grav-moon': return 'brightness_3';
-          case 'sim-grav-earth': return 'public';
-          case 'sim-grav-zero': return 'vaping_rooms';
-          case 'view-ui': return 'layers';
-          case 'view-textures': return 'texture';
-          case 'view-debug': return 'bug_report';
-          case 'camera-focus': return 'center_focus_strong';
-          case 'camera-top': return 'grid_view';
-          case 'camera-front': return 'view_quilt';
-          default: return 'radio_button_checked';
-      }
-  }
+    ngOnInit() {
+        this.menuConfig = this.menuManager.getMenuConfig();
+        this.intervalId = setInterval(() => {
+            this.uptime.update(v => v + 1);
+        }, 1000);
+    }
+
+    ngAfterViewInit() {
+        if (this.layout.launcherOpen()) {
+            this.panelRef()?.nativeElement.focus();
+        }
+    }
+
+    ngOnDestroy() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+        }
+    }
+
+    execute(action: MenuAction) {
+        action.execute();
+        this.layout.setLauncher(false);
+    }
+
+    getIcon(id: string): string {
+        switch (id) {
+            case 'new': return 'restart_alt';
+            case 'qsave': return 'save_as';
+            case 'qload': return 'history';
+            case 'main-menu': return 'power_settings_new';
+            case 'undo': return 'undo';
+            case 'redo': return 'redo';
+            case 'duplicate': return 'content_copy';
+            case 'delete': return 'delete_forever';
+            case 'sim-play': return 'play_circle';
+            case 'sim-pause': return 'pause_circle';
+            case 'sim-grav-moon': return 'brightness_3';
+            case 'sim-grav-earth': return 'public';
+            case 'sim-grav-zero': return 'vaping_rooms';
+            case 'view-ui': return 'layers';
+            case 'view-textures': return 'texture';
+            case 'view-debug': return 'bug_report';
+            case 'camera-focus': return 'center_focus_strong';
+            case 'camera-top': return 'grid_view';
+            case 'camera-front': return 'view_quilt';
+            default: return 'radio_button_checked';
+        }
+    }
 }

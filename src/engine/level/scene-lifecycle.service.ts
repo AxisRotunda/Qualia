@@ -8,21 +8,21 @@ import { SceneLoadEvent } from '../events/game-events';
  * Part of RUN_EVENTS protocol.
  */
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class SceneLifecycleService {
-  // Emitted before world reset starts
-  public readonly beforeUnload = new Subject<void>();
-  
-  // Emitted when current world data is purged
-  public readonly onWorldCleared = new Subject<void>();
-  
-  // Emitted when a new scene load begins
-  public readonly onLoadStart = new Subject<SceneLoadEvent>();
-  
-  // Emitted when scene logic is finished and simulation resumes
-  public readonly onLoadComplete = new Subject<SceneLoadEvent>();
+    // Emitted before world reset starts
+    public readonly beforeUnload = new Subject<void>();
 
-  // Recovery hook for fatal load failures
-  public readonly onEmergencyPurge = new Subject<string>();
+    // Emitted when current world data is purged
+    public readonly onWorldCleared = new Subject<void>();
+
+    // Emitted when a new scene load begins
+    public readonly onLoadStart = new Subject<SceneLoadEvent>();
+
+    // Emitted when scene logic is finished and simulation resumes
+    public readonly onLoadComplete = new Subject<SceneLoadEvent>();
+
+    // Recovery hook for fatal load failures
+    public readonly onEmergencyPurge = new Subject<string>();
 }

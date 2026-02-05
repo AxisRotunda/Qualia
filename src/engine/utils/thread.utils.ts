@@ -4,10 +4,10 @@
  * Use inside heavy loops (e.g., procedural generation).
  */
 export async function yieldToMain(): Promise<void> {
-  return new Promise(resolve => {
+    return new Promise(resolve => {
     // slightly longer delay than 0 to ensure browser has time to paint
-    setTimeout(resolve, 0);
-  });
+        setTimeout(resolve, 0);
+    });
 }
 
 /**

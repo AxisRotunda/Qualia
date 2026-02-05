@@ -27,14 +27,14 @@ export const COMBAT_CONFIG = {
         'pistol': {
             id: 'pistol' as WeaponType,
             label: 'Kinetic 9mm',
-            cooldown: 120, 
+            cooldown: 120,
             impulse: 180, // Snappy response on light props (V~4.5m/s on 40kg)
             damage: 15,
-            color: 0xffcc00, 
+            color: 0xffcc00,
             range: 150,
-            energyCost: 4, 
-            projectileSpeed: 380, 
-            gravityScale: 1.0, 
+            energyCost: 4,
+            projectileSpeed: 380,
+            gravityScale: 1.0,
             shellEject: true,
             shake: 0.06,
             haptic: 8,
@@ -46,19 +46,19 @@ export const COMBAT_CONFIG = {
             hitTime: 0,
             animationType: 'recoil' as WeaponAnimationType
         },
-        'blaster': { 
-            id: 'blaster' as WeaponType, 
-            label: 'Pulse Rifle', 
-            cooldown: 140, 
+        'blaster': {
+            id: 'blaster' as WeaponType,
+            label: 'Pulse Rifle',
+            cooldown: 140,
             impulse: 600, // Heavy impact (V~15m/s on 40kg)
             damage: 40,
             color: 0x0ea5e9,
             range: 200,
-            energyCost: 6, 
-            projectileSpeed: 180, 
-            gravityScale: 0.01, 
+            energyCost: 6,
+            projectileSpeed: 180,
+            gravityScale: 0.01,
             shake: 0.08,
-            haptic: [10, 5] as any, 
+            haptic: [10, 5] as any,
             kickBack: 0.1,
             kickUp: 0.06,
             viewOffset: { x: 0.28, y: -0.28, z: -0.6 },
@@ -67,12 +67,12 @@ export const COMBAT_CONFIG = {
             hitTime: 0,
             animationType: 'recoil' as WeaponAnimationType
         },
-        'hammer': { 
-            id: 'hammer' as WeaponType, 
-            label: 'Breacher', 
-            cooldown: 1500, 
+        'hammer': {
+            id: 'hammer' as WeaponType,
+            label: 'Breacher',
+            cooldown: 1500,
             impulse: 8000, // Massive impulse (V~200m/s on 40kg - Instant launch)
-            damage: 500, 
+            damage: 500,
             range: 5.0,
             energyCost: 35,
             color: 0xf97316,
@@ -82,14 +82,14 @@ export const COMBAT_CONFIG = {
             kickUp: 0.6,
             viewOffset: { x: 0.35, y: -0.4, z: -0.5 },
             viewScale: 0.65,
-            swingTime: 850, 
-            hitTime: 450,   
+            swingTime: 850,
+            hitTime: 450,
             animationType: 'swing' as WeaponAnimationType
         }
     },
     SYSTEMS: {
-        RECHARGE_RATE: 20.0, 
-        RECHARGE_DELAY: 0.8, 
+        RECHARGE_RATE: 20.0,
+        RECHARGE_DELAY: 0.8
     },
     VIEW_MODEL: {
         SWAY_AMOUNT: 0.045,

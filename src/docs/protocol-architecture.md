@@ -1,1 +1,0 @@
-DELETED: File migrated to src/docs/protocols/protocol-architecture.md

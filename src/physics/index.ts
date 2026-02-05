@@ -3,7 +3,7 @@
  * > **ID**: PHYSICS_INDEX_V1.0
  * > **Role**: Centralized physics service exports
  * > **Tier**: T2 (Engine Subsystem)
- * 
+ *
  * @ SAFETY: All numeric inputs to physics must pass Number.isFinite()
  * @ SAFETY: Heightfield/Trimesh dimensions must be Math.floor() integers
  */

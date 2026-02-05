@@ -34,5 +34,5 @@ export const ARCHITECTURE_ASSETS: Record<string, AssetDef> = {
 
     // Ruin Assets (RUN_SCENE_OPT Phase 56.0)
     'gen-ruin-slab': simple(() => Geo.box(10, 1, 10).mapBox(10, 1, 10).get(), 'mat-sandstone'),
-    'gen-ruin-wall': simple(() => Geo.box(4, 3.5, 0.8).mapBox(4, 3.5, 0.8).get(), 'mat-sandstone'),
+    'gen-ruin-wall': simple(() => Geo.box(4, 3.5, 0.8).mapBox(4, 3.5, 0.8).get(), 'mat-sandstone')
 };

@@ -11,16 +11,16 @@ import { TemplateFactoryService } from '../services/factories/template-factory.s
 import { ParticleService } from '../services/particle.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class SubsystemsService {
-  public readonly physics = inject(PhysicsService);
-  public readonly scene = inject(SceneService);
-  public readonly graph = inject(SceneGraphService);
-  public readonly assets = inject(AssetService);
-  public readonly materials = inject(MaterialService);
-  public readonly particles = inject(ParticleService);
-  public readonly physicsFactory = inject(PhysicsFactoryService);
-  public readonly visualsFactory = inject(VisualsFactoryService);
-  public readonly entityFactory = inject(TemplateFactoryService);
+    public readonly physics = inject(PhysicsService);
+    public readonly scene = inject(SceneService);
+    public readonly graph = inject(SceneGraphService);
+    public readonly assets = inject(AssetService);
+    public readonly materials = inject(MaterialService);
+    public readonly particles = inject(ParticleService);
+    public readonly physicsFactory = inject(PhysicsFactoryService);
+    public readonly visualsFactory = inject(VisualsFactoryService);
+    public readonly entityFactory = inject(TemplateFactoryService);
 }

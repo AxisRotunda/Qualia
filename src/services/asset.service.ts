@@ -12,68 +12,68 @@ import { ASSET_CONFIG } from '../config/asset.config';
 import { GeneratorContext } from '../config/asset-types';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class AssetService {
-  // Generators - Made public to allow scene scripts to access procedural logic directly
-  public readonly natureGen = inject(NatureGeneratorService);
-  public readonly archGen = inject(ArchitectureGeneratorService);
-  public readonly interiorGen = inject(InteriorGeneratorService);
-  public readonly scifiGen = inject(SciFiGeneratorService);
-  public readonly weaponGen = inject(WeaponGeneratorService);
-  public readonly actorGen = inject(ActorGeneratorService);
-  
-  private geometries = new Map<string, THREE.BufferGeometry>();
+    // Generators - Made public to allow scene scripts to access procedural logic directly
+    public readonly natureGen = inject(NatureGeneratorService);
+    public readonly archGen = inject(ArchitectureGeneratorService);
+    public readonly interiorGen = inject(InteriorGeneratorService);
+    public readonly scifiGen = inject(SciFiGeneratorService);
+    public readonly weaponGen = inject(WeaponGeneratorService);
+    public readonly actorGen = inject(ActorGeneratorService);
 
-  // Context passed to configuration functions
-  private get generatorContext(): GeneratorContext {
-      return {
-          nature: this.natureGen,
-          arch: this.archGen,
-          interior: this.interiorGen,
-          scifi: this.scifiGen,
-          weapon: this.weaponGen,
-          actor: this.actorGen
-      };
-  }
+    private geometries = new Map<string, THREE.BufferGeometry>();
 
-  getGeometry(id: string): THREE.BufferGeometry {
-    if (this.geometries.has(id)) {
-        return this.geometries.get(id)!;
+    // Context passed to configuration functions
+    private get generatorContext(): GeneratorContext {
+        return {
+            nature: this.natureGen,
+            arch: this.archGen,
+            interior: this.interiorGen,
+            scifi: this.scifiGen,
+            weapon: this.weaponGen,
+            actor: this.actorGen
+        };
     }
 
-    const config = ASSET_CONFIG[id];
-    let geo: THREE.BufferGeometry | null = null;
-    
-    if (config) {
-        geo = config.generator(this.generatorContext);
+    getGeometry(id: string): THREE.BufferGeometry {
+        if (this.geometries.has(id)) {
+            return this.geometries.get(id)!;
+        }
+
+        const config = ASSET_CONFIG[id];
+        let geo: THREE.BufferGeometry | null = null;
+
+        if (config) {
+            geo = config.generator(this.generatorContext);
+        }
+
+        if (geo) {
+            this.geometries.set(id, geo);
+            return geo;
+        }
+
+        // Fallback for unknown assets
+        console.warn(`AssetService: Geometry '${id}' not found, returning fallback box.`);
+        return new THREE.BoxGeometry(1, 1, 1);
     }
 
-    if (geo) {
-        this.geometries.set(id, geo);
-        return geo;
-    }
-    
-    // Fallback for unknown assets
-    console.warn(`AssetService: Geometry '${id}' not found, returning fallback box.`);
-    return new THREE.BoxGeometry(1, 1, 1);
-  }
-
-  /**
-   * Forces generation of an asset and caches it. 
+    /**
+   * Forces generation of an asset and caches it.
    * Used by LevelManager during preloading phase.
    */
-  warmupAsset(id: string) {
-      if (!this.geometries.has(id)) {
-          this.getGeometry(id);
-      }
-  }
+    warmupAsset(id: string) {
+        if (!this.geometries.has(id)) {
+            this.getGeometry(id);
+        }
+    }
 
-  getAssetMaterials(assetId: string): string | string[] {
-      const config = ASSET_CONFIG[assetId];
-      if (config) {
-          return config.materials;
-      }
-      return 'mat-default';
-  }
+    getAssetMaterials(assetId: string): string | string[] {
+        const config = ASSET_CONFIG[assetId];
+        if (config) {
+            return config.materials;
+        }
+        return 'mat-default';
+    }
 }

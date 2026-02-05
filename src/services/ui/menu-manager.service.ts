@@ -5,12 +5,12 @@ import { MenuAction } from '../keyboard.service';
 import { createMenuConfig } from '../../config/menu.config';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class MenuManagerService {
-  private engine = inject(EngineService);
+    private engine = inject(EngineService);
 
-  getMenuConfig(): MenuAction[] {
-    return createMenuConfig(this.engine);
-  }
+    getMenuConfig(): MenuAction[] {
+        return createMenuConfig(this.engine);
+    }
 }

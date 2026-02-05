@@ -8,26 +8,26 @@ import { TouchActionClusterComponent } from './touch-action-cluster.component';
 import { TouchLookPadComponent } from './touch-look-pad.component';
 
 @Component({
-  selector: 'app-touch-camera-layer',
-  standalone: true,
-  imports: [
-      CommonModule, 
-      VirtualJoystickComponent, 
-      TouchActionClusterComponent,
-      TouchLookPadComponent
-  ],
-  template: `
+    selector: 'app-touch-camera-layer',
+    standalone: true,
+    imports: [
+        CommonModule,
+        VirtualJoystickComponent,
+        TouchActionClusterComponent,
+        TouchLookPadComponent
+    ],
+    template: `
     <div class="absolute inset-0 select-none touch-none pointer-events-none bg-transparent isolate">
-        
+
         <!-- Left Zone (Move) - Floating Joystick -->
         <div class="absolute top-[20%] bottom-0 left-0 w-1/2 pointer-events-auto touch-none bg-transparent z-10">
-           <app-virtual-joystick 
-                color="cyan" 
+           <app-virtual-joystick
+                color="cyan"
                 mode="floating"
-                (move)="onSimMove($event)" 
-                (tap)="onTap($event)" 
+                (move)="onSimMove($event)"
+                (tap)="onTap($event)"
                 (longPress)="onLongPress($event)" />
-           
+
            @if (showLabels()) {
              <div class="absolute bottom-24 left-10 pointer-events-none select-none transition-all duration-700 ease-out"
                   [class.opacity-0]="!isMoving()"
@@ -39,25 +39,25 @@ import { TouchLookPadComponent } from './touch-look-pad.component';
              </div>
            }
         </div>
-        
+
         <!-- Right Zone (Look) - Touchpad (Swipe 1:1) -->
         <div class="absolute top-[20%] bottom-0 right-0 w-[45%] pointer-events-auto touch-none bg-transparent z-10">
-           
+
            @if (isEditMode()) {
                <!-- Edit Mode: Keep Joystick for Orbit -->
-               <app-virtual-joystick 
-                    color="amber" 
+               <app-virtual-joystick
+                    color="amber"
                     mode="fixed"
-                    (move)="onSimLook($event)" 
-                    (tap)="onTap($event)" 
+                    (move)="onSimLook($event)"
+                    (tap)="onTap($event)"
                     (longPress)="onLongPress($event)" />
            } @else {
                <!-- Walk/Explore Mode: Use Touchpad (Direct Delta) -->
-               <app-touch-look-pad 
+               <app-touch-look-pad
                     (tap)="onTap($event)"
                     (longPress)="onLongPress($event)" />
            }
-           
+
            @if (showLabels()) {
              <div class="absolute bottom-24 right-10 pointer-events-none select-none opacity-20 hover:opacity-50 transition-opacity duration-500">
                 <div class="flex items-center gap-3 justify-end">
@@ -76,7 +76,7 @@ import { TouchLookPadComponent } from './touch-look-pad.component';
         }
     </div>
   `,
-  styles: [`
+    styles: [`
     :host {
         display: block;
         width: 100%;
@@ -86,34 +86,34 @@ import { TouchLookPadComponent } from './touch-look-pad.component';
   `]
 })
 export class TouchCameraLayerComponent {
-  input = inject(GameInputService);
-  interaction = inject(InteractionService);
+    input = inject(GameInputService);
+    interaction = inject(InteractionService);
 
-  showLabels = input.required<boolean>();
-  isEditMode = input.required<boolean>();
-  isWalkMode = input.required<boolean>();
+    showLabels = input.required<boolean>();
+    isEditMode = input.required<boolean>();
+    isWalkMode = input.required<boolean>();
 
-  modeLabelMove() { return this.isEditMode() ? 'PAN' : 'MOVE'; }
-  modeLabelLook() { return this.isEditMode() ? 'ORBIT' : 'LOOK'; }
+    modeLabelMove() { return this.isEditMode() ? 'PAN' : 'MOVE'; }
+    modeLabelLook() { return this.isEditMode() ? 'ORBIT' : 'LOOK'; }
 
-  isMoving() {
-      const v = this.input.virtualMove;
-      return Math.abs(v.x) > 0.01 || Math.abs(v.y) > 0.01;
-  }
+    isMoving() {
+        const v = this.input.virtualMove;
+        return Math.abs(v.x) > 0.01 || Math.abs(v.y) > 0.01;
+    }
 
-  onTap(pos: {x: number, y: number}) {
-      this.interaction.selectEntityAt(pos.x, pos.y);
-  }
+    onTap(pos: {x: number, y: number}) {
+        this.interaction.selectEntityAt(pos.x, pos.y);
+    }
 
-  onLongPress(pos: {x: number, y: number}) {
-      this.interaction.openContextMenu(pos.x, pos.y);
-  }
+    onLongPress(pos: {x: number, y: number}) {
+        this.interaction.openContextMenu(pos.x, pos.y);
+    }
 
-  onSimMove(v: {x: number, y: number}) { 
-      this.input.setVirtualMove(v.x, v.y); 
-  }
-  
-  onSimLook(v: {x: number, y: number}) { 
-      this.input.setVirtualLook(v.x, v.y); 
-  }
+    onSimMove(v: {x: number, y: number}) {
+        this.input.setVirtualMove(v.x, v.y);
+    }
+
+    onSimLook(v: {x: number, y: number}) {
+        this.input.setVirtualLook(v.x, v.y);
+    }
 }

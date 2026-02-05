@@ -14,14 +14,14 @@ export enum InputAction {
     RUN = 'RUN',
     CROUCH = 'CROUCH',
     DASH = 'DASH',
-    
+
     // Combat Actions
     FIRE = 'FIRE',
     AIM = 'AIM',
     RELOAD = 'RELOAD',
     MELEE = 'MELEE',
     Q_CYCLE = 'Q_CYCLE',
-    
+
     // Camera & View
     ASCEND = 'ASCEND',
     DESCEND = 'DESCEND',
@@ -29,7 +29,7 @@ export enum InputAction {
     I_FOCUS = 'I_FOCUS',
     TOGGLE_HUD = 'TOGGLE_HUD',
     SCREENSHOT = 'SCREENSHOT',
-    
+
     // Desktop-Specific Actions
     MOUSE_WHEEL_ZOOM = 'MOUSE_WHEEL_ZOOM',
     MOUSE_MIDDLE_PAN = 'MOUSE_MIDDLE_PAN',
@@ -37,7 +37,7 @@ export enum InputAction {
     CTRL_MULTI_SELECT = 'CTRL_MULTI_SELECT',
     SHIFT_RANGE_SELECT = 'SHIFT_RANGE_SELECT',
     PRECISION_MODE = 'PRECISION_MODE', // Slow, precise movement
-    
+
     // Menu & UI
     TOGGLE_MENU = 'TOGGLE_MENU',
     TOGGLE_INSPECTOR = 'TOGGLE_INSPECTOR',
@@ -45,17 +45,17 @@ export enum InputAction {
     REDO = 'REDO',
     DELETE = 'DELETE',
     DUPLICATE = 'DUPLICATE',
-    
+
     // Transform Modes
     TRANSLATE_MODE = 'TRANSLATE_MODE',
     ROTATE_MODE = 'ROTATE_MODE',
     SCALE_MODE = 'SCALE_MODE',
-    
+
     // Quick Actions
     QUICK_SAVE = 'QUICK_SAVE',
     QUICK_LOAD = 'QUICK_LOAD',
     SPAWN_ENTITY = 'SPAWN_ENTITY',
-    
+
     // Physics
     TOGGLE_PHYSICS = 'TOGGLE_PHYSICS',
     TOGGLE_PAUSE = 'TOGGLE_PAUSE',
@@ -67,58 +67,58 @@ export type InputBindingMap = Record<InputAction, string[]>;
 export const DEFAULT_INPUT_MAP: InputBindingMap = {
     // Movement
     [InputAction.MOVE_FORWARD]: ['KeyW', 'ArrowUp'],
-    [InputAction.MOVE_BACK]:    ['KeyS', 'ArrowDown'],
-    [InputAction.MOVE_LEFT]:    ['KeyA', 'ArrowLeft'],
-    [InputAction.MOVE_RIGHT]:   ['KeyD', 'ArrowRight'],
-    [InputAction.JUMP]:         ['Space'],
-    [InputAction.RUN]:          ['ShiftLeft', 'ShiftRight'],
-    [InputAction.CROUCH]:       ['ControlLeft', 'KeyC'],
-    [InputAction.DASH]:         ['AltLeft', 'AltRight'],
-    
+    [InputAction.MOVE_BACK]: ['KeyS', 'ArrowDown'],
+    [InputAction.MOVE_LEFT]: ['KeyA', 'ArrowLeft'],
+    [InputAction.MOVE_RIGHT]: ['KeyD', 'ArrowRight'],
+    [InputAction.JUMP]: ['Space'],
+    [InputAction.RUN]: ['ShiftLeft', 'ShiftRight'],
+    [InputAction.CROUCH]: ['ControlLeft', 'KeyC'],
+    [InputAction.DASH]: ['AltLeft', 'AltRight'],
+
     // Combat
-    [InputAction.FIRE]:         ['Mouse0'], 
-    [InputAction.AIM]:          ['Mouse2'], 
-    [InputAction.RELOAD]:       ['KeyR'],
-    [InputAction.MELEE]:        ['KeyF'],
-    [InputAction.Q_CYCLE]:      ['KeyQ'],
-    
+    [InputAction.FIRE]: ['Mouse0'],
+    [InputAction.AIM]: ['Mouse2'],
+    [InputAction.RELOAD]: ['KeyR'],
+    [InputAction.MELEE]: ['KeyF'],
+    [InputAction.Q_CYCLE]: ['KeyQ'],
+
     // Camera
-    [InputAction.ASCEND]:       ['KeyE'],
-    [InputAction.DESCEND]:      ['KeyQ'],
-    [InputAction.V_MODE]:       ['KeyV'],
-    [InputAction.I_FOCUS]:      ['KeyF'],
-    [InputAction.TOGGLE_HUD]:   ['KeyH'],
-    [InputAction.SCREENSHOT]:   ['PrintScreen'],
-    
+    [InputAction.ASCEND]: ['KeyE'],
+    [InputAction.DESCEND]: ['KeyQ'],
+    [InputAction.V_MODE]: ['KeyV'],
+    [InputAction.I_FOCUS]: ['KeyF'],
+    [InputAction.TOGGLE_HUD]: ['KeyH'],
+    [InputAction.SCREENSHOT]: ['PrintScreen'],
+
     // Desktop Specific
-    [InputAction.MOUSE_WHEEL_ZOOM]:   ['MouseWheel'],
-    [InputAction.MOUSE_MIDDLE_PAN]:   ['Mouse1'], // Middle mouse
-    [InputAction.ALT_ROTATE]:         ['Alt+Mouse0'],
-    [InputAction.CTRL_MULTI_SELECT]:  ['Ctrl+Mouse0'],
+    [InputAction.MOUSE_WHEEL_ZOOM]: ['MouseWheel'],
+    [InputAction.MOUSE_MIDDLE_PAN]: ['Mouse1'], // Middle mouse
+    [InputAction.ALT_ROTATE]: ['Alt+Mouse0'],
+    [InputAction.CTRL_MULTI_SELECT]: ['Ctrl+Mouse0'],
     [InputAction.SHIFT_RANGE_SELECT]: ['Shift+Mouse0'],
-    [InputAction.PRECISION_MODE]:     ['Alt'],
-    
+    [InputAction.PRECISION_MODE]: ['Alt'],
+
     // Menu & UI
-    [InputAction.TOGGLE_MENU]:      ['Escape'],
+    [InputAction.TOGGLE_MENU]: ['Escape'],
     [InputAction.TOGGLE_INSPECTOR]: ['KeyI'],
-    [InputAction.UNDO]:             ['Ctrl+KeyZ'],
-    [InputAction.REDO]:             ['Ctrl+Shift+KeyZ', 'Ctrl+KeyY'],
-    [InputAction.DELETE]:           ['Delete', 'Backspace'],
-    [InputAction.DUPLICATE]:        ['Ctrl+KeyD'],
-    
+    [InputAction.UNDO]: ['Ctrl+KeyZ'],
+    [InputAction.REDO]: ['Ctrl+Shift+KeyZ', 'Ctrl+KeyY'],
+    [InputAction.DELETE]: ['Delete', 'Backspace'],
+    [InputAction.DUPLICATE]: ['Ctrl+KeyD'],
+
     // Transform
-    [InputAction.TRANSLATE_MODE]:   ['KeyW'],
-    [InputAction.ROTATE_MODE]:      ['KeyE'],
-    [InputAction.SCALE_MODE]:       ['KeyR'],
-    
+    [InputAction.TRANSLATE_MODE]: ['KeyW'],
+    [InputAction.ROTATE_MODE]: ['KeyE'],
+    [InputAction.SCALE_MODE]: ['KeyR'],
+
     // Quick Actions
-    [InputAction.QUICK_SAVE]:   ['Ctrl+KeyS'],
-    [InputAction.QUICK_LOAD]:   ['Ctrl+KeyL'],
+    [InputAction.QUICK_SAVE]: ['Ctrl+KeyS'],
+    [InputAction.QUICK_LOAD]: ['Ctrl+KeyL'],
     [InputAction.SPAWN_ENTITY]: ['KeyN'],
-    
+
     // Physics
     [InputAction.TOGGLE_PHYSICS]: ['KeyP'],
-    [InputAction.TOGGLE_PAUSE]:   ['Space'],
+    [InputAction.TOGGLE_PAUSE]: ['Space'],
     [InputAction.RESET_POSITION]: ['KeyR']
 };
 

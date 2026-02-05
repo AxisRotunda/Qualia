@@ -25,62 +25,62 @@ import { TelemetrySystem } from '../systems/telemetry.system';
 import { TerrainManagerService } from '../features/terrain-manager.service';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class EngineRuntimeService {
-  private loop = inject(GameLoopService);
-  private state = inject(EngineStateService);
-  private injector = inject(Injector);
+    private loop = inject(GameLoopService);
+    private state = inject(EngineStateService);
+    private injector = inject(Injector);
 
-  // Systems
-  private systems: GameSystem[] = [];
+    // Systems
+    private systems: GameSystem[] = [];
 
-  private totalTime = 0;
-  private readonly MAX_DT = 100; 
+    private totalTime = 0;
+    private readonly MAX_DT = 100;
 
-  constructor() {
+    constructor() {
     // Initialize Systems Order
-    this.systems = [
-      inject(InputSystem),
-      inject(EnvironmentSystem),
-      inject(SceneLogicSystem),
-      inject(BehaviorSystem), 
-      inject(KinematicSystem),
-      inject(BuoyancySystem),
-      inject(CombatSystem), 
-      inject(PhysicsSystem),
-      inject(DestructionSystem), 
-      inject(RepairSystem), 
-      inject(CityTrafficSystem), 
-      inject(AnimationSystem), 
-      inject(MaterialAnimationSystem),
-      inject(WeaponSystem), 
-      inject(VfxSystem), 
-      inject(TerrainManagerService), // Priority 890: Cull before render
-      inject(RenderSystem),
-      inject(TelemetrySystem), // Gather data after render
-      inject(StatisticsSystem)
-    ].sort((a, b) => a.priority - b.priority);
-  }
-
-  init() {
-    runInInjectionContext(this.injector, () => {
-      inject(EngineService);
-      effect(() => {
-        const fps = this.loop.fps();
-        this.state.setFps(fps);
-      });
-    });
-
-    this.loop.start((dt) => this.tick(dt));
-  }
-
-  private tick(rawDt: number) {
-    const dt = Math.min(rawDt, this.MAX_DT);
-    this.totalTime += dt;
-
-    for (const system of this.systems) {
-      system.update(dt, this.totalTime);
+        this.systems = [
+            inject(InputSystem),
+            inject(EnvironmentSystem),
+            inject(SceneLogicSystem),
+            inject(BehaviorSystem),
+            inject(KinematicSystem),
+            inject(BuoyancySystem),
+            inject(CombatSystem),
+            inject(PhysicsSystem),
+            inject(DestructionSystem),
+            inject(RepairSystem),
+            inject(CityTrafficSystem),
+            inject(AnimationSystem),
+            inject(MaterialAnimationSystem),
+            inject(WeaponSystem),
+            inject(VfxSystem),
+            inject(TerrainManagerService), // Priority 890: Cull before render
+            inject(RenderSystem),
+            inject(TelemetrySystem), // Gather data after render
+            inject(StatisticsSystem)
+        ].sort((a, b) => a.priority - b.priority);
     }
-  }
+
+    init() {
+        runInInjectionContext(this.injector, () => {
+            inject(EngineService);
+            effect(() => {
+                const fps = this.loop.fps();
+                this.state.setFps(fps);
+            });
+        });
+
+        this.loop.start((dt) => this.tick(dt));
+    }
+
+    private tick(rawDt: number) {
+        const dt = Math.min(rawDt, this.MAX_DT);
+        this.totalTime += dt;
+
+        for (const system of this.systems) {
+            system.update(dt, this.totalTime);
+        }
+    }
 }

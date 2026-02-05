@@ -6,12 +6,12 @@ import { ObjectManipulationService } from '../features/object-manipulation.servi
 
 @Injectable({ providedIn: 'root' })
 export class InputSystem implements GameSystem {
-  readonly priority = 0;
-  private inputManager = inject(InputManagerService);
-  private objectControl = inject(ObjectManipulationService);
+    readonly priority = 0;
+    private inputManager = inject(InputManagerService);
+    private objectControl = inject(ObjectManipulationService);
 
-  update(dt: number): void {
-    this.inputManager.update(dt);
-    this.objectControl.update(dt / 1000); 
-  }
+    update(dt: number): void {
+        this.inputManager.update(dt);
+        this.objectControl.update(dt / 1000);
+    }
 }
