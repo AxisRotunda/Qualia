@@ -150,6 +150,10 @@ export class MaterialService {
         return this.materialRegistry.has(id);
     }
 
+    forEachMaterial(callback: (mat: THREE.Material | THREE.Material[], key: string) => void): void {
+        this.materialRegistry.forEach(callback);
+    }
+
     setWireframeForAll(enabled: boolean) {
         this.materialRegistry.forEach(mat => {
             if (Array.isArray(mat)) {

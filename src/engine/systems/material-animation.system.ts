@@ -53,7 +53,7 @@ export class MaterialAnimationSystem implements GameSystem {
         const waveScale = this.state.waveTimeScale();
 
         // Global Time Uniform
-        this.materials.materialRegistry.forEach((mat) => {
+        this.materials.forEachMaterial((mat) => {
             const m = (Array.isArray(mat) ? mat[0] : mat) as THREE.Material;
             if (m.userData.time && m.userData.time.value !== undefined) {
                 m.userData.time.value = wrappedTime;

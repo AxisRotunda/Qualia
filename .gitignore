@@ -54,9 +54,7 @@ ngsw-worker.js
 
 # IDE configuration files that may contain secrets
 .idea/
-.vscode/settings.json
-.vscode/launch.json
-.vscode/tasks.json
+.vscode/
 
 # ========================================
 # LOGS & DEBUGGING
@@ -125,14 +123,6 @@ coverage-summary.json
 # ========================================
 # EDITOR & IDE FILES
 # ========================================
-# VS Code
-.vscode/*
-!.vscode/extensions.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/settings.json
-!.vscode/launch.json
-
 # WebStorm / IntelliJ IDEA
 .idea/
 *.iml
@@ -157,6 +147,15 @@ coverage-summary.json
 auto-save-list
 tramp
 .\#*
+
+# ========================================
+# CLINE & PROJECT CONFIGURATION
+# ========================================
+# Cline AI agent configuration (local development only)
+.cline/
+
+# Project-specific rules and workflows (local development only)
+.clinerules/
 
 # ========================================
 # OPERATING SYSTEM FILES
