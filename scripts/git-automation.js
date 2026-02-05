@@ -71,7 +71,7 @@ class GitAutomation {
   }
 
   hasRemote(name) {
-    const result = this.exec(`git remote get-url ${name} 2>/dev/null`);
+    const result = this.exec(`git remote get-url ${name}`);
     return typeof result === 'string' && result.trim().length > 0;
   }
 
@@ -193,7 +193,7 @@ class GitAutomation {
     const isDirty = files.length > 0;
     
     // Check commit count
-    const aheadResult = this.exec(`git rev-list --count target/${this.targetBranch}...HEAD 2>/dev/null`);
+    const aheadResult = this.exec(`git rev-list --count target/${this.targetBranch}...HEAD`);
     const aheadCount = typeof aheadResult === 'string' ? parseInt(aheadResult.trim(), 10) || 0 : 0;
 
     if (isDirty) {

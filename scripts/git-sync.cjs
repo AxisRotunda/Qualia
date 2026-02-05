@@ -86,12 +86,12 @@ function getBranch() {
 }
 
 function getCommitHash(ref) {
-  const result = exec(`git rev-parse ${ref} 2>/dev/null`);
+  const result = exec(`git rev-parse ${ref}`);
   return typeof result === 'string' ? result.trim() : null;
 }
 
 function getCommitCount(ref1, ref2) {
-  const result = exec(`git rev-list --count ${ref1}...${ref2} 2>/dev/null`);
+  const result = exec(`git rev-list --count ${ref1}...${ref2}`);
   return typeof result === 'string' ? parseInt(result.trim(), 10) || 0 : 0;
 }
 
@@ -115,12 +115,12 @@ function getChangedFiles() {
 }
 
 function hasRemote(name) {
-  const result = exec(`git remote get-url ${name} 2>/dev/null`);
+  const result = exec(`git remote get-url ${name}`);
   return typeof result === 'string' && result.trim().length > 0;
 }
 
 function getRemoteUrl(name) {
-  const result = exec(`git remote get-url ${name} 2>/dev/null`);
+  const result = exec(`git remote get-url ${name}`);
   return typeof result === 'string' ? result.trim() : null;
 }
 
