@@ -28,7 +28,7 @@ export type MenuTab = 'home' | 'worlds' | 'settings' | 'system';
         </div>
 
         <!-- Tabs -->
-        <div class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-visible no-scrollbar flex-1 sm:flex-grow min-w-0 min-w-fit">
+        <div class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-visible no-scrollbar flex-1 sm:flex-grow min-w-0">
             <button (click)="switchTab.emit('home')"
                     [class.active-nav]="activeTab() === 'home'"
                     class="nav-btn group">

@@ -4,7 +4,7 @@ import { ScenePreset } from '../../data/scene-types';
 
 export const ORBIT_SCENE: ScenePreset = {
     id: 'orbit',
-    label: 'Orbital Station',
+    label: 'Space Station',
     description: 'Zero-G environment with asteroids and structures.',
     theme: 'space',
     previewColor: 'from-slate-800 to-black',

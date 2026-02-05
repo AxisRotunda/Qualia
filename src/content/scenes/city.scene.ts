@@ -5,7 +5,7 @@ import { CityAlgorithm } from '../algorithms/city.algorithm';
 
 export const CITY_SCENE: ScenePreset = {
     id: 'city',
-    label: 'Metropolis',
+    label: 'Urban Jungle',
     description: 'Dense urban center with procedural zoning, grid infrastructure, and elevated highways.',
     theme: 'city',
     previewColor: 'from-blue-700 to-slate-900',

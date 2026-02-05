@@ -3,9 +3,9 @@ import { ScenePreset } from '../../data/scene-types';
 import { ProvingGroundsAlgorithm } from '../algorithms/proving-grounds.algorithm';
 
 export const DEBUG_SCENE: ScenePreset = {
-    id: 'proving-grounds',
-    label: 'Proving Grounds',
-    description: 'Elite training simulation for kinetic verification and neural calibration.',
+    id: 'debug',
+    label: 'Debug Lab',
+    description: 'Empty scene for testing and debugging.',
     theme: 'default',
     previewColor: 'from-cyan-900 to-slate-950',
 

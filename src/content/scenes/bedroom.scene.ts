@@ -11,7 +11,7 @@ import { yieldToMain } from '../../engine/utils/thread.utils';
  */
 export const BEDROOM_SCENE: ScenePreset = {
     id: 'bedroom',
-    label: 'Cyber-Loft',
+    label: 'Cozy Room',
     description: 'A compact high-rise apartment. Modern minimalist furniture, neon ambient lighting, and panoramic city views.',
     theme: 'city',
     previewColor: 'from-fuchsia-900 to-slate-950',

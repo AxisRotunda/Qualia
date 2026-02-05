@@ -9,7 +9,7 @@ import { DesertAlgorithm } from '../algorithms/desert.algorithm';
  */
 export const DESERT_SCENE: ScenePreset = {
     id: 'desert',
-    label: 'Oasis Mirage',
+    label: 'Desert Oasis',
     description: 'Sweltering sand dunes surrounding a hidden spring. High-fidelity terrain with low-friction sandstone dynamics.',
     theme: 'desert',
     previewColor: 'from-orange-400 to-amber-200',

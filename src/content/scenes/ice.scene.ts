@@ -3,7 +3,7 @@ import { IceAlgorithm } from '../algorithms/ice.algorithm';
 
 export const ICE_SCENE: ScenePreset = {
     id: 'ice',
-    label: 'Glacial Field',
+    label: 'Frozen Tundra',
     description: 'A frozen wasteland. Low friction surfaces and crystalline structures.',
     theme: 'ice',
     previewColor: 'from-cyan-800 to-blue-950',

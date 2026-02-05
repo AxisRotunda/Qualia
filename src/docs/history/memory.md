@@ -17,6 +17,7 @@
 *   **[222]**: `CLINE_SETUP`: Created `cline-skills.md` with skill taxonomy mapping T3 Protocols to capabilities. Defined skill invocation protocol.
 
 ## [RECENT_LOG_BUFFER] (LIFO)
+*   **[229]**: `POWERSHELL_FIX`: Implemented permanent solution for PowerShell Unix command errors (`head`, `tail`, `grep`). Created `scripts/shell-utils.cjs` with cross-platform utilities and `scripts/dev-server.cjs` for port 3000 management. Updated `.clinerules/rules.md` with PowerShell Compatibility reference. Port 3000 now automatically cleaned on `npm run dev`.
 *   **[228]**: `RUN_REPAIR`: Fixed broken main menu UI. Root cause: `home-tab.component.ts` contained merged/corrupted content (ArchBuildingService + MenuHomeTabComponent). Removed erroneous service code, kept only MenuHomeTabComponent. Build verified successful.
 *   **[227]**: `CLINE_SUBAGENT_SETUP`: Verified complete CLINE sub-agent configuration. All systems operational: 9 JSON skills in `.cline/skills/`, 11 JSON workflows in `.cline/workflows/`, Markdown references in `src/docs/core/`, constitutional rules in `.clinerules/`. FS manifest confirms all operations completed. Sub-agent system ready for autonomous execution.
 *   **[226]**: `CLINE_UI_SETUP`: Created `.cline/workflows/` with 5 executable workflows: boot-sequence, feature-implementation, bug-fix, repository-sync, documentation-audit.

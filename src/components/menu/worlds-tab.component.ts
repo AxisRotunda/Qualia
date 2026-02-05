@@ -2,6 +2,7 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ScenePreset } from '../../data/scene-definitions';
+import { getGravityLabel, getThemeLabel, getEnhancedSceneName } from '../../utils/label-mapper';
 
 @Component({
     selector: 'app-menu-worlds-tab',
@@ -13,10 +14,10 @@ import { ScenePreset } from '../../data/scene-definitions';
       <header class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-white/8 pb-6 shrink-0 gap-4">
         <div>
           <h2 class="text-4xl sm:text-5xl font-black text-white tracking-[0.15em] uppercase leading-tight">Simulations</h2>
-          <div class="flex items-center gap-2 text-[9px] mt-3 text-slate-500 font-mono tracking-widest">
-              <span class="px-2.5 py-1 bg-slate-900/60 border border-slate-800/40 rounded-md text-cyan-500 font-bold">{{ scenes().length }}</span>
-              <span class="font-bold">AVAILABLE_PRESETS</span>
-          </div>
+        <div class="flex items-center gap-2 text-[9px] mt-3 text-slate-500 font-mono tracking-widest">
+            <span class="px-2.5 py-1 bg-slate-900/60 border border-slate-800/40 rounded-md text-cyan-500 font-bold">{{ scenes().length }}</span>
+            <span class="font-bold">{{ getAvailablePresetsLabel() }}</span>
+        </div>
         </div>
 
         <div class="hidden sm:flex gap-2">
@@ -54,7 +55,7 @@ import { ScenePreset } from '../../data/scene-definitions';
                                 {{ getGravityLabel(s.id, s.theme) }}
                             </span>
                             <span class="badge border-white/10 text-white/60 bg-white/5 uppercase">
-                                {{ s.theme }}
+                                {{ getThemeLabel(s.theme) }}
                             </span>
                         </div>
 
@@ -65,7 +66,7 @@ import { ScenePreset } from '../../data/scene-definitions';
 
                     <!-- Description Domain -->
                     <div class="space-y-3">
-                        <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors drop-shadow-lg uppercase leading-tight">{{ s.label }}</h3>
+                    <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors drop-shadow-lg uppercase leading-tight">{{ getEnhancedSceneName(s.id, s.label) }}</h3>
                         <p class="text-[10px] text-slate-400 line-clamp-3 leading-relaxed font-medium group-hover:text-slate-300 transition-colors">{{ s.description }}</p>
                     </div>
 
@@ -107,9 +108,19 @@ export class MenuWorldsTabComponent {
         }
     }
 
+    getAvailablePresetsLabel(): string {
+        return 'Available Worlds';
+    }
+
+    getEnhancedSceneName(id: string, currentLabel: string): string {
+        return getEnhancedSceneName(id, currentLabel);
+    }
+
     getGravityLabel(id: string, theme: string): string {
-        if (theme === 'space') return '0.0G';
-        if (id.includes('moon')) return '0.16G';
-        return '1.0G';
+        return getGravityLabel(id, theme);
+    }
+
+    getThemeLabel(theme: string): string {
+        return getThemeLabel(theme);
     }
 }

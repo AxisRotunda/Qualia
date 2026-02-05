@@ -3,7 +3,7 @@ import { ScenePreset } from '../../data/scene-types';
 
 export const FOREST_SCENE: ScenePreset = {
     id: 'forest',
-    label: 'Deep Forest',
+    label: 'Ancient Woods',
     description: 'Dense woods with fallen logs, organic terrain, and dynamic lighting.',
     theme: 'forest',
     previewColor: 'from-emerald-700 to-green-900',
