@@ -17,6 +17,7 @@
 *   **[222]**: `CLINE_SETUP`: Created `cline-skills.md` with skill taxonomy mapping T3 Protocols to capabilities. Defined skill invocation protocol.
 
 ## [RECENT_LOG_BUFFER] (LIFO)
+*   **[228]**: `RUN_REPAIR`: Fixed broken main menu UI. Root cause: `home-tab.component.ts` contained merged/corrupted content (ArchBuildingService + MenuHomeTabComponent). Removed erroneous service code, kept only MenuHomeTabComponent. Build verified successful.
 *   **[227]**: `CLINE_SUBAGENT_SETUP`: Verified complete CLINE sub-agent configuration. All systems operational: 9 JSON skills in `.cline/skills/`, 11 JSON workflows in `.cline/workflows/`, Markdown references in `src/docs/core/`, constitutional rules in `.clinerules/`. FS manifest confirms all operations completed. Sub-agent system ready for autonomous execution.
 *   **[226]**: `CLINE_UI_SETUP`: Created `.cline/workflows/` with 5 executable workflows: boot-sequence, feature-implementation, bug-fix, repository-sync, documentation-audit.
 *   **[225]**: `CLINE_UI_SETUP`: Created `.cline/skills/` with 5 executable skills: physics-dynamics, pbr-materials, ecs-architecture, repository-management, documentation-sync.
@@ -25,7 +26,6 @@
 *   **[222]**: `RUN_KNOWLEDGE`: Remade `system-instructions.md` as an AI BIOS. Implemented Cognitive Boot Sequence and hardcoded path mapping. Migrated to Tier 1.
 *   **[221]**: `RUN_KNOWLEDGE`: Injected Axial Directives 0.1-0.5 into T0 Kernel. Standardized machine-optimized documentation syntax.
 *   **[220]**: `RUN_REPAIR`: Instituted `AXIAL_VALIDATION` safeguard to prevent content deprecation.
-*   **[219]**: `RUN_REF`: Instituted `fs-manifest.json` protocol for robust file operations.
 
 ## [FRAGMENT_INDEX]
 *   `fragment-002.md`: (Active) 4 Entries.

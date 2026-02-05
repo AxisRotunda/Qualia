@@ -106,10 +106,23 @@ function checkWorkingTree() {
 function getChangedFiles() {
   const result = exec('git status --porcelain');
   if (typeof result === 'string') {
-    return result.trim().split('\n').filter(line => line.length > 0).map(line => ({
-      status: line.slice(0, 2).trim(),
-      file: line.slice(3).trim()
-    }));
+    return result.trim().split('\n').filter(line => line.length > 0).map(line => {
+      const status = line.slice(0, 2).trim();
+      const file = line.slice(3).trim();
+      
+      // Validate file path
+      if (!file || file.length === 0) {
+        return null;
+      }
+      
+      // Normalize path separators for cross-platform compatibility
+      const normalizedFile = file.replace(/\\/g, '/');
+      
+      return {
+        status,
+        file: normalizedFile
+      };
+    }).filter(Boolean); // Remove null entries
   }
   return [];
 }
@@ -237,9 +250,13 @@ function generateCommitMessage(files) {
   const added = files.filter(f => f.status === 'A' || f.status === '??').map(f => f.file);
   const deleted = files.filter(f => f.status === 'D').map(f => f.file);
   
-  let message = `${AUTO_COMMIT_PREFIX} Auto-sync ${timestamp}`;
+  // Validate and sanitize AUTO_COMMIT_PREFIX
+  const prefix = process.env.AUTO_COMMIT_PREFIX || '🤖 [AGENT]';
+  const cleanPrefix = prefix.replace(/[^\x00-\x7F]/g, '').trim() || '🤖 [AGENT]';
   
-  // Helper function to truncate file lists
+  let message = `${cleanPrefix} Auto-sync ${timestamp}`;
+  
+  // Helper function to truncate file lists safely
   function truncateFileList(fileList, category) {
     if (fileList.length === 0) return '';
     
@@ -265,7 +282,7 @@ function generateCommitMessage(files) {
   // Ensure message doesn't exceed reasonable length for Windows
   if (message.length > 2000) {
     // If still too long, use a simple summary
-    message = `${AUTO_COMMIT_PREFIX} Auto-sync ${timestamp}\n\nModified: ${modified.length} files\nAdded: ${added.length} files\nDeleted: ${deleted.length} files`;
+    message = `${cleanPrefix} Auto-sync ${timestamp}\n\nModified: ${modified.length} files\nAdded: ${added.length} files\nDeleted: ${deleted.length} files`;
   }
   
   return message;
@@ -321,11 +338,30 @@ function pullFromUpstream(state) {
   return true;
 }
 
+function validateGitHubToken(token) {
+  if (!token) {
+    return { valid: false, reason: 'Token not found in .env file' };
+  }
+  
+  // Check if token looks like a GitHub token
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    return { valid: false, reason: 'Token format appears invalid. Should start with "ghp_" or "github_pat_"' };
+  }
+  
+  // Check minimum length
+  if (token.length < 40) {
+    return { valid: false, reason: 'Token appears too short. GitHub tokens are typically 40+ characters' };
+  }
+  
+  return { valid: true };
+}
+
 function pushToTarget(state) {
-  if (!GITHUB_TOKEN) {
-    log('ERROR: GITHUB_TOKEN not found in .env file', 'red');
-    log('Please create a .env file with your GitHub Personal Access Token:', 'yellow');
-    log('  GITHUB_TOKEN=your_token_here', 'dim');
+  const tokenValidation = validateGitHubToken(GITHUB_TOKEN);
+  if (!tokenValidation.valid) {
+    log('ERROR: GitHub token validation failed', 'red');
+    log(`Reason: ${tokenValidation.reason}`, 'yellow');
+    log('Please check your .env file and ensure GITHUB_TOKEN is properly set.', 'dim');
     return false;
   }
   
@@ -419,6 +455,7 @@ function fullSync(autoCommitEnabled = false) {
 // Watch mode - auto-sync on changes
 let isSyncing = false;
 let pendingSync = false;
+let watchInterval = null;
 
 async function watchMode() {
   log('Starting watch mode...', 'magenta');
@@ -432,28 +469,58 @@ async function watchMode() {
       return;
     }
     
-    const state = analyzeSyncState();
-    
-    if (state.treeState === 'dirty' || state.aheadCount > 0) {
-      isSyncing = true;
-      log('Changes detected, auto-syncing...', 'cyan');
+    try {
+      const state = analyzeSyncState();
       
-      const success = fullSync(true); // Auto-commit enabled
-      
+      if (state.treeState === 'dirty' || state.aheadCount > 0) {
+        isSyncing = true;
+        log('Changes detected, auto-syncing...', 'cyan');
+        
+        const success = fullSync(true); // Auto-commit enabled
+        
+        isSyncing = false;
+        
+        if (pendingSync) {
+          pendingSync = false;
+          await checkAndSync();
+        }
+      }
+    } catch (error) {
+      log(`Error during watch check: ${error.message}`, 'red');
       isSyncing = false;
       
       if (pendingSync) {
         pendingSync = false;
-        await checkAndSync();
+        // Retry after a short delay
+        setTimeout(checkAndSync, 5000);
       }
     }
   };
   
-  // Initial check
-  await checkAndSync();
+  // Handle graceful shutdown
+  const shutdown = () => {
+    log('Shutting down watch mode...', 'yellow');
+    if (watchInterval) {
+      clearInterval(watchInterval);
+    }
+    process.exit(0);
+  };
   
-  // Set up interval
-  setInterval(checkAndSync, WATCH_INTERVAL);
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+  
+  try {
+    // Initial check
+    await checkAndSync();
+    
+    // Set up interval
+    watchInterval = setInterval(checkAndSync, WATCH_INTERVAL);
+    
+    log('Watch mode active. Monitoring for changes...', 'green');
+  } catch (error) {
+    log(`Failed to start watch mode: ${error.message}`, 'red');
+    process.exit(1);
+  }
 }
 
 // Print usage information
